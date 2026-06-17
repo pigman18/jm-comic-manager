@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ComicInfo>
+  <!-- ===== 基础信息（字符串类型） ===== -->
+  <Title>单行本具体标题，如：第1卷 起始的篇章</Title>
+  <Series>所属系列名称，如：航海王</Series>
+  <Number>该册在系列中的编号，如：1（虽然是数字，但多数程序按字符串解析，可写 1 或 1-3）</Number>
+  <AlternateSeries>交叉联动的副系列名，如：Jump 短篇集</AlternateSeries>
+  <AlternateNumber>副系列中的编号</AlternateNumber>
+  <Summary>漫画的简介、剧情描述或故事梗概</Summary>
+  <Notes>个人备注、扫描组信息或其他自由文本</Notes>
+
+  <!-- ===== 创作与出版人员（字符串类型，多人可用英文逗号分隔） ===== -->
+  <Writer>编剧/原作，如：尾田荣一郎</Writer>
+  <Penciller>主笔/作画，如：尾田荣一郎</Penciller>
+  <Inker>描线/助手</Inker>
+  <Colorist>上色</Colorist>
+  <Letterer>填字/特效</Letterer>
+  <CoverArtist>封面绘制</CoverArtist>
+  <Editor>责任编辑</Editor>
+  <Translator>翻译者</Translator>
+  <Publisher>出版社或同人社团，如：集英社</Publisher>
+  <Imprint>出版社旗下的品牌或子印，如：少年Jump</Imprint>
+
+  <!-- ===== 分类与标签（字符串类型，多值用英文逗号分隔） ===== -->
+  <Genre>类型，如：少年,冒险,奇幻</Genre>
+  <Tags>自定义标签，如：完结,汉化,同人</Tags>
+  <Characters>出现的角色名，如：路飞,娜美</Characters>
+  <Teams>出现的团队名</Teams>
+  <Locations>出现的地点名</Locations>
+  <MainCharacterOrTeam>核心主角或团队名</MainCharacterOrTeam>
+  <StoryArc>所属故事大篇章/剧情弧</StoryArc>
+  <StoryArcNumber>在故事弧中的第几部</StoryArcNumber>
+  <SeriesGroup>系列归属的合集或分组名</SeriesGroup>
+
+  <!-- ===== 网址与扫描信息 ===== -->
+  <Web>相关网址，如官网或百科链接</Web>
+  <ScanInformation>扫描信息，如：汉化组名、来源、版本说明</ScanInformation>
+
+  <!-- ===== 语言与格式 ===== -->
+  <LanguageISO>语言ISO代码，中文填 zh，日文填 ja，英文填 en</LanguageISO>
+  <Format>原书装订格式，如：TBP(平装), HC(精装), Web, Digital</Format>
+
+  <!-- ===== 年龄分级 ===== -->
+  <!-- 可选值：Unknown, Early Childhood, Everyone, Everyone 10+, G,
+       Teen, Mature 17+, MA 15+, R18+, Adults Only 18+, Rating Pending -->
+  <AgeRating>Teen</AgeRating>
+
+  <!-- ===== 评价（0.00 到 5.00 之间的小数） ===== -->
+  <CommunityRating>4.5</CommunityRating>
+  <Review>个人短评或打分理由</Review>
+
+  <!-- ===== 标识符 ===== -->
+  <GTIN>全球贸易商品代码，如ISBN</GTIN>
+
+  <!-- ===== 特殊标识（Yes/No 类型） ===== -->
+  <BlackAndWhite>No</BlackAndWhite>
+  <!-- Manga 可选值：Unknown, No, Yes, YesAndRightToLeft -->
+  <Manga>YesAndRightToLeft</Manga>
+</ComicInfo>

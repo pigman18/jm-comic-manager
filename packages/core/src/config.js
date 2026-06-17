@@ -2,13 +2,23 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 
 const CHANGE = 'handleChangeConfig';
+
+function appDataDir() {
+    const app = 'jm-comic-manager';
+    switch (process.platform) {
+        case 'win32': return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), app);
+        case 'darwin': return path.join(os.homedir(), 'Library', 'Application Support', app);
+        default: return path.join(os.homedir(), '.config', app);
+    }
+}
 
 let defaultConfig = {
     "username": "",
     "password": "",
-    "dataDir": 'linux' === process.platform ? "/data/jm" :  "C:\\jm",
+    "dataDir": path.join(appDataDir(), 'data'),
     "port": 47310,
     "comicViewer": 'linux' === process.platform ? "" : "C:\\Program Files\\ComicRack\\ComicRack.exe",
     "timeout": 86400000,
@@ -37,7 +47,7 @@ let defaultConfig = {
  * @return {{get: function(): object, setValue: function(string, *): void, trigger: function(object): void}}
  */
 function createConfig(manifest, ctx) {
-  let configFile = path.join(manifest.workspace, 'config.json');
+  let configFile = path.join(appDataDir(), 'config.json');
 
   if (typeof ctx?.event?.on === 'function') {
     ctx.event.on(CHANGE, trigger);
@@ -47,6 +57,7 @@ function createConfig(manifest, ctx) {
     let config = {};
       if (!fs.existsSync(configFile)) {
           config = defaultConfig;
+          try { fs.mkdirSync(path.dirname(configFile), { recursive: true }); } catch {}
           fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
           return { ...config };
       }
