@@ -17,3 +17,6 @@ test/config.json
 /bundles/*.*/data/
 **/temp/
 taskManager/.npmrc
+/resources/jm-api/JMComic3v2.0.25/
+/resources/jm-api/JMComic3v2.0.25.apk
+/packages/core/config.json

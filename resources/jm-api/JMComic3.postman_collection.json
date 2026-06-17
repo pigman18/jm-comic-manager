@@ -1,0 +1,1539 @@
+{
+  "info": {
+    "name": "JMComic3 v2.0.25 API",
+    "description": "JMComic3 v2.0.25 接口文档 - 基于 APK 反编译生成\n\n## 通用说明\n\n### 三种加密密钥说明\n本 API 使用 **三种不同的加密密钥**，用途不同:\n\n#### 1. Token 鉴权 (Pre-request 脚本自动计算)\n- 用于请求头的 `Tokenparam` 和 `Token`\n- `Tokenparam` = `{unix_timestamp},{version}` (如 `1718198400,2.0.25`)\n- `Token` = **MD5**({timestamp} + \"185Hcomic3PAPP7R\") → 32 位 hex 字符串 **(不是 AES)**\n- 密钥常量: `\"185Hcomic3PAPP7R\"`\n\n#### 2. 主机发现 (CDN 响应解密)\n- 从 CDN 获取加密 TXT 文件，AES-ECB 解密后得到 apiUrl\n- 密钥派生: `Utf8.parse(MD5(\"diosfjckwpqpdfjkvnqQjsik\").toString())`\n  → 即 MD5 的 hex 字符串 (32 字节) 作为 AES 密钥\n- CDN URL: `https://rup4a04-c02.tos-cn-hongkong.bytepluses.com/newsvr-2025.txt`\n- 解密后 JSON: `{\"Server\": [\"主机名\"], \"jm3_Server\": [[\"域名\", \"名称\"]]}`\n- apiUrl = `https://{主机名}/`\n\n#### 3. API 响应解密 (Post-request 脚本自动尝试)\n- 大部分 API 返回的 `data` 字段可能被 AES-ECB 加密\n- 密钥派生: `Utf8.parse(MD5({timestamp} + keyStr).toString())`\n- 按顺序尝试以下 keyStr:\n  - `\"185Hcomic3PAPP7R\"` (与 Token 鉴权的密钥常量相同)\n  - `\"18comicAPPContent\"`\n- **广告类 API** (`ad_content_all`, `advertise_all`) 密钥中**不含** timestamp:\n  `Utf8.parse(MD5(keyStr).toString())`\n\n### 鉴权 Headers (Pre-request 脚本自动注入)\n- `Tokenparam`: `{timestamp},{version}`\n- `Token`: MD5({timestamp} + \"185Hcomic3PAPP7R\")\n- `Authorization`: `Bearer {jwttoken}` (需登录后手动设置环境变量)\n- `Cookie`: `AVS={memberInfo.s}` (需登录后手动设置环境变量)\n\n### 通用响应格式\n```json\n{\"code\": 200, \"data\": {...}, \"msg\": \"...\"}\n```\n\n### 分页约定\n- 大部分接口 page 从 **1** 开始\n- `promote_list`、`serialization` 接口 page 从 **0** 开始",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "apiUrl",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "version",
+      "value": "2.0.25",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "const ts = Math.floor(Date.now() / 1000);",
+          "const version = '1.6.3';",
+          "const secret = '18comicAPP';",
+          "const token = CryptoJS.MD5(ts + secret).toString();",
+          "pm.request.headers.upsert({ key: 'ts', value: String(ts) });",
+          "pm.request.headers.upsert({ key: 'token', value: token });",
+          "pm.request.headers.upsert({ key: 'tokenparam', value: `${ts},${version}` });",
+          "// Inject auth headers from collection variables (set by login)",
+          "const jwt = pm.collectionVariables.get('jwttoken');",
+          "if (jwt) { pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + jwt }); }",
+          "const avs = pm.collectionVariables.get('memberS');",
+          "if (avs) { pm.request.headers.upsert({ key: 'Cookie', value: 'AVS=' + avs }); }",
+          "pm.variables.set('ts', ts);",
+          "pm.variables.set('token', token);"
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "const ts = pm.variables.get('ts');",
+          "const text = pm.response.text();",
+          "",
+          "// ── CDN 主机发现 ──────────────────────────",
+          "const url = pm.request.url.toString();",
+          "if (url.includes('bytepluses.com')) {",
+          "  const cdnKey = CryptoJS.enc.Utf8.parse(CryptoJS.MD5('diosfjckwpqpdfjkvnqQjsik').toString());",
+          "  try {",
+          "    const decrypted = CryptoJS.AES.decrypt(text, cdnKey, { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8);",
+          "    const config = JSON.parse(decrypted);",
+          "    console.log('Host config:', config);",
+          "    if (config.Server && config.Server.length > 0) {",
+          "      pm.collectionVariables.set('apiUrl', 'https://' + config.Server[0] + '/');",
+          "      console.log('apiUrl set to:', 'https://' + config.Server[0] + '/');",
+          "    }",
+          "    setDataView(config);",
+          "  } catch(e) { console.log('CDN decryption failed:', e); }",
+          "  return;",
+          "}",
+          "",
+          "// ── API 响应解密 ──────────────────────────",
+          "let data = (text.includes('code') && text.includes('data')) ? JSON.parse(text).data : text;",
+          "let result = null;",
+          "const secrets = ['185Hcomic3PAPP7R', '18comicAPPContent'];",
+          "const urlIncludesAd = url.includes('ad_content_all') || url.includes('advertise_all');",
+          "for (const secret of secrets) {",
+          "  const combos = urlIncludesAd ? [secret] : [ts + secret];",
+          "  for (const keyInput of combos) {",
+          "    try {",
+          "      const aesKey = CryptoJS.enc.Utf8.parse(CryptoJS.MD5(keyInput).toString());",
+          "      result = JSON.parse(CryptoJS.AES.decrypt(data, aesKey, { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8));",
+          "      break;",
+          "    } catch(e) { /* try next */ }",
+          "  }",
+          "  if (result) break;",
+          "}",
+          "if (!result) { console.log('Decryption failed with all keys', {url, data}); return; }",
+"console.log('Decrypted:', JSON.stringify(result).slice(0, 200));",
+"if (result.jwttoken) {",
+"  pm.collectionVariables.set('jwttoken', result.jwttoken);",
+"  console.log('✅ jwttoken saved to collection variables');",
+"}",
+"if (result.memberInfo && result.memberInfo.s) {",
+"  pm.collectionVariables.set('memberS', result.memberInfo.s);",
+"  console.log('✅ memberInfo.s saved to collection variables');",
+"}",
+          "setDataView(result);",
+          "",
+          "/**",
+          " * 渲染到 Visualize 标签",
+          " */",
+          "function setDataView(data) {",
+          "  pm.visualizer.set(`",
+          "<!DOCTYPE html>",
+          "<html>",
+          "<head>",
+          "  <meta charset=\"utf-8\" />",
+          "  <link",
+          "    href=\"https://cdn.jsdelivr.net/npm/jsoneditor@9/dist/jsoneditor.min.css\"",
+          "    rel=\"stylesheet\"",
+          "  />",
+          "  <style>",
+          "    html, body {",
+          "      width: 100%;",
+          "      height: 100%;",
+          "      margin: 0;",
+          "      padding: 0;",
+          "      background: #1e1e1e;",
+          "    }",
+          "    #editor {",
+          "      width: 100%;",
+          "      height: 100%;",
+          "    }",
+          "  </style>",
+          "</head>",
+          "<body>",
+          "  <div id=\"editor\"></div>",
+          "  <script src=\"https://cdn.jsdelivr.net/npm/jsoneditor@9/dist/jsoneditor.min.js\"></script>",
+          "  <script>",
+          "    const container = document.getElementById('editor');",
+          "    const options = {",
+          "      mode: 'tree',",
+          "      mainMenuBar: true,",
+          "      navigationBar: true,",
+          "      statusBar: false,",
+          "      theme: 'ace/theme/monokai'",
+          "    };",
+          "    const editor = new JSONEditor(container, options);",
+          "    editor.set(${JSON.stringify(data)});",
+          "  </script>",
+          "</body>",
+          "</html>",
+          "`);",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "📡 主机发现 & 配置",
+      "item": [
+{
+      "name": "🌐 主机发现 (CDN 获取 API 域名)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://rup4a04-c02.tos-cn-hongkong.bytepluses.com/newsvr-2025.txt",
+          "protocol": "https",
+          "host": ["rup4a04-c02", "tos-cn-hongkong", "bytepluses", "com"],
+          "path": ["newsvr-2025.txt"]
+        },
+        "description": "从 CDN 获取加密的服务器配置，解密后得到 apiUrl（自动设置到 {{apiUrl}} 变量）\n\n密钥: AES-ECB, key = UTF8.parse(MD5(\"diosfjckwpqpdfjkvnqQjsik\"))"
+      }
+    },
+    {
+      "name": "获取 App 设置 (GET)",
+      "request": {
+        "method": "GET",
+        "header": [],
+            "url": {
+              "raw": "{{apiUrl}}setting?app_img_shunt=1&express=on&t={{timestamp}}",
+              "host": ["{{apiUrl}}"],
+              "path": ["setting"],
+              "query": [
+                {
+                  "key": "app_img_shunt",
+                  "value": "1",
+                  "description": "必填。图片分流策略: \"0\"=关闭, \"1\"=开启"
+                },
+                {
+                  "key": "express",
+                  "value": "on",
+                  "description": "必填。加速模式: \"on\"=开启, \"off\"=关闭"
+                },
+                {
+                  "key": "t",
+                  "value": "{{timestamp}}",
+                  "description": "必填。当前 Unix 时间戳 (秒)，如 Math.floor(Date.now()/1000)"
+                }
+              ]
+            },
+            "description": "获取应用配置，返回数据中包含 main_web_host（用于构建分享链接的主机名）"
+          }
+        },
+        {
+          "name": "保存 App 设置 (POST)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "language",
+                  "value": "zh-TW",
+                  "description": "必填。语言: \"zh-TW\"=繁体中文, \"zh-CN\"=简体中文, \"en\"=英文"
+                },
+                {
+                  "key": "t",
+                  "value": "{{timestamp}}",
+                  "description": "必填。当前 Unix 时间戳"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{apiUrl}}setting",
+              "host": ["{{apiUrl}}"],
+              "path": ["setting"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔐 用户认证",
+      "item": [
+        {
+          "name": "登录",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "username",
+          "value": "{{username}}",
+          "description": "必填。用户名（从 collection variables 获取）"
+        },
+        {
+          "key": "password",
+          "value": "{{password}}",
+          "description": "必填。密码（从 collection variables 获取）"
+        }
+      ]
+    },
+    "url": {
+      "raw": "{{apiUrl}}login",
+              "host": ["{{apiUrl}}"],
+              "path": ["login"]
+            },
+            "description": "登录成功后返回 jwttoken 和 memberInfo（含 uid、s 等），自动存入 localStorage"
+          }
+        },
+        {
+          "name": "注册",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "username",
+                  "value": "",
+                  "description": "必填。用户名"
+                },
+                {
+                  "key": "password",
+                  "value": "",
+                  "description": "必填。密码"
+                },
+                {
+                  "key": "password_confirm",
+                  "value": "",
+                  "description": "必填。确认密码，需与 password 一致"
+                },
+                {
+                  "key": "email",
+                  "value": "",
+                  "description": "必填。电子邮箱"
+                },
+                {
+                  "key": "gender",
+                  "value": "",
+                  "description": "必填。性别"
+                },
+                {
+                  "key": "adult",
+                  "value": "true",
+                  "description": "必填。是否成人: \"true\"=是, \"false\"=否"
+                },
+                {
+                  "key": "PrivacyPolicy",
+                  "value": "true",
+                  "description": "必填。是否同意隐私政策: \"true\"=同意"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{apiUrl}}register",
+              "host": ["{{apiUrl}}"],
+              "path": ["register"]
+            }
+          }
+        },
+        {
+          "name": "忘记密码",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "email",
+                  "value": "",
+                  "description": "必填。注册时使用的邮箱，用于接收重置密码邮件"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{apiUrl}}forgot",
+              "host": ["{{apiUrl}}"],
+              "path": ["forgot"]
+            }
+          }
+        },
+        {
+          "name": "登出",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{apiUrl}}logout",
+              "host": ["{{apiUrl}}"],
+              "path": ["logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📚 漫画/专辑",
+      "item": [
+        {
+          "name": "漫画详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}album?id=420866",
+              "host": ["{{apiUrl}}"],
+              "path": ["album"],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "420866",
+                  "description": "必填。漫画/专辑 ID"
+                }
+              ]
+            },
+            "description": "获取单本漫画的详细信息，包括标题、作者、标签、章节列表等"
+          }
+        },
+        {
+          "name": "阅读章节内容",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}comic_read?id=1563873",
+              "host": ["{{apiUrl}}"],
+              "path": ["comic_read"],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "1563873",
+                  "description": "必填。章节 ID（从漫画详情的章节列表中获取）"
+                }
+              ]
+            },
+            "description": "获取指定章节的所有图片 URL 列表"
+          }
+        },
+        {
+          "name": "专辑下载",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}album_download_2/420866",
+              "host": ["{{apiUrl}}"],
+              "path": ["album_download_2", "420866"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "420866",
+                  "description": "必填。漫画 ID（作为 URL 路径参数）"
+                }
+              ]
+            },
+            "description": "获取漫画的打包下载信息"
+          }
+        },
+        {
+          "name": "搜索漫画",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}search?search=one+piece&page=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["search"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "one piece",
+                  "description": "推荐。搜索关键词（URL 编码）"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码，默认 1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "热门标签",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}hot_tags",
+              "host": ["{{apiUrl}}"],
+              "path": ["hot_tags"]
+            },
+            "description": "获取当前热搜标签/关键词列表"
+          }
+        },
+        {
+          "name": "首页推广",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}promote",
+              "host": ["{{apiUrl}}"],
+              "path": ["promote"]
+            },
+            "description": "获取首页推荐位/推广位漫画列表"
+          }
+        },
+        {
+          "name": "最新发布",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}latest?page=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["latest"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "必填。页码，从 1 开始"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "随机推荐",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}random_recommend",
+              "host": ["{{apiUrl}}"],
+              "path": ["random_recommend"]
+            },
+            "description": "随机推荐漫画列表"
+          }
+        },
+        {
+          "name": "推广更多列表 (0-based page)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}promote_list?id=38&page=0",
+              "host": ["{{apiUrl}}"],
+              "path": ["promote_list"],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "38",
+                  "description": "必填。分类/内容区块 ID"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "必填。页码，⚠️ 从 0 开始（不是 1）。首次请求传 0，加载更多逐次 +1"
+                }
+              ]
+            },
+            "description": "获取更多推广/推荐列表。注意: page 从 0 开始!"
+          }
+        },
+        {
+          "name": "连载更多列表 (0-based page)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}serialization?type=all&date=1&page=0",
+              "host": ["{{apiUrl}}"],
+              "path": ["serialization"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "all",
+                  "description": "可选。类型筛选: \"all\"=全部, 其他值取决于具体分类"
+                },
+                {
+                  "key": "date",
+                  "value": "1",
+                  "description": "可选。日期筛选: 1-7 表示周一到周日, 0 表示全部"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "必填。页码，⚠️ 从 0 开始。首次请求传 0，加载更多逐次 +1"
+                }
+              ]
+            },
+            "description": "获取连载/系列漫画的更多列表。注意: page 从 0 开始!"
+          }
+        },
+        {
+          "name": "📌 每月必看（特殊调用）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}categories/filter?slug=&sort=mv_m&page=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["categories", "filter"],
+              "query": [
+                {
+                  "key": "slug",
+                  "value": "",
+                  "description": "分类标识。空字符串 = 全部分类"
+                },
+                {
+                  "key": "sort",
+                  "value": "mv_m",
+                  "description": "排序方式。枚举值:\n- \"mv\" = 总排名\n- \"mv_m\" = ⭐ 月排名（每月必看）\n- \"mp_w\" = 周排名\n- \"mp\" = 最新\n- \"va\" = 最多爱心\n- \"vv\" = 最多点击\n- \"pi\" = 最多图片"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码，从 1 开始"
+                }
+              ]
+            },
+            "description": "【每月必看】通过 categories/filter 接口配合 sort=mv_m 实现"
+          }
+        },
+        {
+          "name": "📌 每周更新（特殊调用）",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}serialization?type=all&date=1&page=0",
+              "host": ["{{apiUrl}}"],
+              "path": ["serialization"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "all",
+                  "description": "类型筛选。\"all\"=全部"
+                },
+                {
+                  "key": "date",
+                  "value": "1",
+                  "description": "星期筛选。1-7=周一到周日, 0=全部"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "⚠️ 从 0 开始"
+                }
+              ]
+            },
+            "description": "【每周更新】首页「每周更新」页签 (id=26)，使用 serialization 接口"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏷️ 分类",
+      "item": [
+        {
+          "name": "分类列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}categories",
+              "host": ["{{apiUrl}}"],
+              "path": ["categories"]
+            },
+            "description": "获取所有漫画分类/标签树"
+          }
+        },
+        {
+          "name": "分类筛选列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}categories/filter?slug=woman&sort=mp&page=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["categories", "filter"],
+              "query": [
+                {
+                  "key": "slug",
+                  "value": "woman",
+                  "description": "可选。分类 slug，从分类列表获取。空=全部分类"
+                },
+                {
+                  "key": "sub_slug",
+                  "value": "",
+                  "description": "可选。子分类 slug"
+                },
+                {
+                  "key": "sort",
+                  "value": "mp",
+                  "description": "可选。排序方式:\n- \"mp\" = 最新\n- \"mv\" = 总排名\n- \"mv_m\" = 月排名\n- \"mp_w\" = 周排名\n- \"va\" = 最多爱心\n- \"vv\" = 最多点击\n- \"pi\" = 最多图片"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码，从 1 开始。默认 1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏆 排行榜",
+      "item": [
+        {
+          "name": "周榜",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}week",
+              "host": ["{{apiUrl}}"],
+              "path": ["week"]
+            },
+            "description": "获取本周排行榜数据"
+          }
+        },
+        {
+          "name": "周榜筛选",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}week/filter",
+              "host": ["{{apiUrl}}"],
+              "path": ["week", "filter"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "❤️ 收藏/点赞/历史",
+      "item": [
+        {
+          "name": "收藏列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}favorite?page=1&folder_id=&o=mr",
+              "host": ["{{apiUrl}}"],
+              "path": ["favorite"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码，从 1 开始"
+                },
+                {
+                  "key": "folder_id",
+                  "value": "",
+                  "description": "可选。收藏夹 ID。空=全部收藏"
+                },
+                {
+                  "key": "o",
+                  "value": "mr",
+                  "description": "可选。排序方式: \"mr\"=默认排序"
+                }
+              ]
+            },
+            "description": "获取用户的收藏列表"
+          }
+        },
+        {
+          "name": "添加收藏",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "aid",
+                  "value": "",
+                  "description": "必填。漫画/专辑 ID"
+                },
+                {
+                  "key": "folder_id",
+                  "value": "",
+                  "description": "必填。目标收藏夹 ID"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{apiUrl}}favorite_folder",
+              "host": ["{{apiUrl}}"],
+              "path": ["favorite_folder"]
+            },
+            "description": "添加漫画到收藏夹"
+          }
+        },
+        {
+          "name": "浏览历史",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}watch_list?page=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["watch_list"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码，从 1 开始"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "标签收藏列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}tags_favorite",
+              "host": ["{{apiUrl}}"],
+              "path": ["tags_favorite"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💰 虚拟货币 & 任务",
+      "item": [
+        {
+          "name": "金币购买漫画",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "必填。要购买的漫画/章节 ID"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{apiUrl}}coin_buy_comics",
+              "host": ["{{apiUrl}}"],
+              "path": ["coin_buy_comics"]
+            }
+          }
+        },
+        {
+          "name": "金币充值",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{apiUrl}}coin_buy_charge",
+              "host": ["{{apiUrl}}"],
+              "path": ["coin_buy_charge"]
+            }
+          }
+        },
+        {
+          "name": "任务列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}tasks",
+              "host": ["{{apiUrl}}"],
+              "path": ["tasks"]
+            },
+            "description": "获取可赚金币的任务列表"
+          }
+        },
+        {
+          "name": "金币购买套餐",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}coin",
+              "host": ["{{apiUrl}}"],
+              "path": ["coin"]
+            }
+          }
+        },
+        {
+          "name": "去广告兑换",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "day",
+                  "description": "必填。兑换类型: \"day\"=1天, \"month\"=30天"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{apiUrl}}ad_free",
+              "host": ["{{apiUrl}}"],
+              "path": ["ad_free"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📖 小说",
+      "item": [
+        {
+          "name": "小说列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}novels?page=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["novels"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码，从 1 开始"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "小说详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}novel?nid=100",
+              "host": ["{{apiUrl}}"],
+              "path": ["novel"],
+              "query": [
+                {
+                  "key": "nid",
+                  "value": "100",
+                  "description": "必填。小说 ID"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "小说章节内容",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}novelchapters?ncid=100&lang=tw",
+              "host": ["{{apiUrl}}"],
+              "path": ["novelchapters"],
+              "query": [
+                {
+                  "key": "ncid",
+                  "value": "100",
+                  "description": "必填。小说章节 ID"
+                },
+                {
+                  "key": "lang",
+                  "value": "tw",
+                  "description": "可选。语言: \"tw\"=繁体, \"cn\"=简体"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "小说搜索",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}search_novels?search=keyword&page=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["search_novels"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "keyword",
+                  "description": "推荐。搜索关键词"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "金币购买小说章节",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "ncid",
+                  "value": "",
+                  "description": "必填。小说章节 ID"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{apiUrl}}coin_buy_nc",
+              "host": ["{{apiUrl}}"],
+              "path": ["coin_buy_nc"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎮 游戏",
+      "item": [
+        {
+          "name": "游戏列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}allgames?page=1&search=&category=&game_type=",
+              "host": ["{{apiUrl}}"],
+              "path": ["allgames"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "必填。页码，从 1 开始"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "可选。搜索关键词"
+                },
+                {
+                  "key": "category",
+                  "value": "",
+                  "description": "可选。游戏分类"
+                },
+                {
+                  "key": "game_type",
+                  "value": "",
+                  "description": "可选。游戏子分类"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "游戏详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}game/123",
+              "host": ["{{apiUrl}}"],
+              "path": ["game", "123"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "123",
+                  "description": "必填。游戏 ID（URL 路径参数）"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎬 视频",
+      "item": [
+        {
+          "name": "视频列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}videos?page=1&search_query=&video_type=movie",
+              "host": ["{{apiUrl}}"],
+              "path": ["videos"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码，从 1 开始"
+                },
+                {
+                  "key": "search_query",
+                  "value": "",
+                  "description": "可选。搜索关键词"
+                },
+                {
+                  "key": "video_type",
+                  "value": "movie",
+                  "description": "可选。视频类型: \"movie\"=电影, \"cos\"=COS, \"movie_exclude\"=排除电影, \"hanime\"=H动漫"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "视频详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}video?id=123&video_type=cos",
+              "host": ["{{apiUrl}}"],
+              "path": ["video"],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "123",
+                  "description": "必填。视频 ID"
+                },
+                {
+                  "key": "video_type",
+                  "value": "cos",
+                  "description": "必填。视频类型: \"cos\"=COS, \"movie\"=电影"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "最新 H 动漫",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}latest_hanime",
+              "host": ["{{apiUrl}}"],
+              "path": ["latest_hanime"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "💬 论坛 & 评论",
+      "item": [
+        {
+          "name": "论坛帖子列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}forum?mode=all&page=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["forum"],
+              "query": [
+                {
+                  "key": "mode",
+                  "value": "all",
+                  "description": "可选。模式: \"all\"=全部, \"manhua\"=漫画评论, \"chat\"=聊天大厅, \"novel\"=小说评论"
+                },
+                {
+                  "key": "nid",
+                  "value": "",
+                  "description": "可选。关联的漫画/小说 ID"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "发送评论",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "mode",
+                  "value": "manhua",
+                  "description": "必填。评论模式: \"manhua\"=漫画, \"novel\"=小说, \"chat\"=聊天"
+                },
+                {
+                  "key": "nid",
+                  "value": "",
+                  "description": "必填。目标漫画/小说 ID"
+                },
+                {
+                  "key": "content",
+                  "value": "",
+                  "description": "必填。评论内容"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{apiUrl}}comment",
+              "host": ["{{apiUrl}}"],
+              "path": ["comment"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎨 创作者",
+      "item": [
+        {
+          "name": "创作者信息",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}creator_author?id=123",
+              "host": ["{{apiUrl}}"],
+              "path": ["creator_author"],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "123",
+                  "description": "必填。创作者/作者 ID"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "创作者作品列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}creator_work?page=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["creator_work"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "作者作品详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}creator_author_work?id=456",
+              "host": ["{{apiUrl}}"],
+              "path": ["creator_author_work"],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "456",
+                  "description": "必填。作品 ID"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 每日签到",
+      "item": [
+        {
+          "name": "签到信息",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}daily",
+              "host": ["{{apiUrl}}"],
+              "path": ["daily"]
+            },
+            "description": "获取当前签到状态信息"
+          }
+        },
+        {
+          "name": "执行签到",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "user_id",
+                  "value": "",
+                  "description": "必填。用户 ID（从 memberInfo.uid 获取）"
+                },
+                {
+                  "key": "daily_id",
+                  "value": "",
+                  "description": "必填。签到 ID（从签到信息接口获取）"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{apiUrl}}daily_chk",
+              "host": ["{{apiUrl}}"],
+              "path": ["daily_chk"]
+            }
+          }
+        },
+        {
+          "name": "签到列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}daily_list",
+              "host": ["{{apiUrl}}"],
+              "path": ["daily_list"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 通知",
+      "item": [
+        {
+          "name": "通知列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}notifications",
+              "host": ["{{apiUrl}}"],
+              "path": ["notifications"]
+            }
+          }
+        },
+        {
+          "name": "未读通知数",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}notifications/unreadCount",
+              "host": ["{{apiUrl}}"],
+              "path": ["notifications", "unreadCount"]
+            }
+          }
+        },
+        {
+          "name": "专辑追踪列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}album_tracking",
+              "host": ["{{apiUrl}}"],
+              "path": ["album_tracking"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "⚙️ 用户 & 设置",
+      "item": [
+        {
+          "name": "获取用户资料",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}useredit/{uid}",
+              "host": ["{{apiUrl}}"],
+              "path": ["useredit", "{uid}"],
+              "variable": [
+                {
+                  "key": "uid",
+                  "value": "",
+                  "description": "必填。用户 ID（作为 URL 路径参数），从 memberInfo.uid 获取"
+                }
+              ]
+            },
+            "description": "获取用户个人资料。注意: 登录接口返回的 memberInfo 已包含基本信息"
+          }
+        },
+        {
+          "name": "编辑用户资料",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "username",
+                  "value": "",
+                  "description": "可选。用户名"
+                },
+                {
+                  "key": "email",
+                  "value": "",
+                  "description": "可选。邮箱"
+                },
+                {
+                  "key": "nick_name",
+                  "value": "",
+                  "description": "可选。昵称"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{apiUrl}}useredit",
+              "host": ["{{apiUrl}}"],
+              "path": ["useredit"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📢 广告",
+      "item": [
+        {
+          "name": "广告列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}advertise?type=img&group=game_banners&v=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["advertise"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "img",
+                  "description": "必填。广告类型: \"img\"=图片广告"
+                },
+                {
+                  "key": "group",
+                  "value": "game_banners",
+                  "description": "必填。广告位分组"
+                },
+                {
+                  "key": "v",
+                  "value": "1",
+                  "description": "必填。广告缓存版本号"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "全部广告内容",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}ad_content_all?adKey=&lang=TW&ipcountry=TW&v=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["ad_content_all"],
+              "query": [
+                {
+                  "key": "adKey",
+                  "value": "",
+                  "description": "可选。广告位 Key，空=全部"
+                },
+                {
+                  "key": "lang",
+                  "value": "TW",
+                  "description": "可选。语言: \"TW\"=繁体, \"CN\"=简体"
+                },
+                {
+                  "key": "ipcountry",
+                  "value": "TW",
+                  "description": "可选。IP 国家代码"
+                },
+                {
+                  "key": "v",
+                  "value": "1",
+                  "description": "可选。缓存版本号"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 其他",
+      "item": [
+        {
+          "name": "博客/公告列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}blogs?page=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["blogs"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "可选。页码"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "博客/公告详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}blog?id=1",
+              "host": ["{{apiUrl}}"],
+              "path": ["blog"],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "必填。博客 ID"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "百度图 Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}baitu-create-token",
+              "host": ["{{apiUrl}}"],
+              "path": ["baitu-create-token"]
+            },
+            "description": "创建百度图片上传 Token"
+          }
+        }
+      ]
+    }
+  ]
+}
