@@ -1,0 +1,73 @@
+{
+  "phase": {
+    "login": {
+      "text": "[用户登录]",
+      "color": "#c678dd"
+    },
+    "get_meta": {
+      "text": "[漫画信息]",
+      "color": "#61afef"
+    },
+    "fetch_comic": {
+      "text": "[漫画内容]",
+      "color": "#4fc1e9"
+    },
+    "fetch_file": {
+      "text": "[数据文件]",
+      "color": "#848484"
+    },
+    "fetch_comic_page": {
+      "text": "[漫画信息分页]",
+      "color": "#848484"
+    },
+    "fetch_serialization": {
+      "text": "[漫画每周連載更新]",
+      "color": "#848484"
+    },
+    "fetch_comic_week": {
+      "text": "[每周必看]",
+      "color": "#6a737d"
+    },
+    "sync_local_to_db": {
+      "text": "[本地 → 数据库]",
+      "color": "#56b6c2"
+    },
+    "sync_db_to_local": {
+      "text": "[数据库 → 本地]",
+      "color": "#4fc1e9"
+    }
+  },
+  "step": {
+    "check_login_params": "检查登录参数",
+    "cloud_flare_cookie": "校验",
+    "login_api": "登录",
+    "index_page": "首页",
+    "download_page": "下载页",
+    "captcha": "验证码",
+    "real_link": "真实链接",
+    "download": "下载文件",
+    "append_comic_info": "附带作品信息",
+    "file": "文件",
+    "fetch_comic_page_details": "请求漫画信息分页内容",
+    "fetch_comic_week_list": "请求每周必看列表",
+    "fetch_comic_week": "请求每周必看"
+  },
+  "status": {
+    "start": {
+      "text": "[>]",
+      "color": "#56b6c2"
+    },
+    "running": {
+      "text": "[*]",
+      "color": "#e5c07b"
+    },
+    "success": {
+      "text": "[#]",
+      "color": "#98c379"
+    },
+    "error": {
+      "text": "[!]",
+      "color": "#e06c75"
+    }
+  }
+}

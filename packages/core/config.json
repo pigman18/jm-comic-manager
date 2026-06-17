@@ -1,0 +1,51 @@
+{
+  "dataDir": "C:\\jm",
+  "loginHost": "https://www.cdnhjk.net",
+  "host": "https://18comic.vip",
+  "cdnHosts": [
+    "https://cdn-msp.18comic.vip",
+    "https://cdn-msp2.18comic.vip",
+    "https://cdn-msp3.18comic.vip"
+  ],
+  "apiHosts": [
+    "https://www.cdnhjk.net",
+    "https://www.cdngwc.cc",
+    "https://www.cdngwc.net",
+    "https://www.cdngwc.club"
+  ],
+  "timeout": 86400000,
+  "port": "47310",
+  "proxy": "http://127.0.0.1:10809",
+  "headless": false,
+  "username": "pigman17",
+  "password": "qq123456",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTRVNTSU9OIjp7ImltZ19ob3N0IjoxLCJsYW5ndWFnZSI6ImNuX0NUIiwidWlkIjo1MzAzNzE4LCJ1c2VybmFtZSI6InBpZ21hbjE3IiwiZW1haWwiOiJhMjg2MjQyNDQ3MEBnbWFpbC5jb20iLCJlbWFpbHZlcmlmaWVkIjoieWVzIiwiZm5hbWUiOiIiLCJnZW5kZXIiOiJNYWxlIiwibWVzc2FnZSI6IldlbGNvbWUgcGlnbWFuMTchIiwibm9hZHN0aW1lIjoiMDAwMC0wMC0wMCAwMDowMDowMCIsInBob3RvIjoiNTMwMzcxOC5qcGciLCJ1cGRhdGVfYXQiOiIxNzgxNjAzNjU1In0sImV4cCI6MTgxMzEzOTY5MX0=.Px6Sxqr6VyWi1TrJCigLj6pnkDjvs1eId1XDjcRt8yI=",
+  "memberInfo": {
+    "uid": "5303718",
+    "username": "pigman17",
+    "email": "a2862424470@gmail.com",
+    "emailverified": "yes",
+    "photo": "5303718.jpg?v=1781603655",
+    "fname": "",
+    "gender": "Male",
+    "message": "Welcome pigman17!",
+    "coin": 750,
+    "album_favorites": 0,
+    "s": "ml3tc1i4ffb81tp7988v44c90a",
+    "level_name": "地上的月影",
+    "level": 4,
+    "nextLevelExp": 2100,
+    "exp": "1490",
+    "expPercent": 70.95238095238095,
+    "badges": [],
+    "album_favorites_max": 600,
+    "ad_free": false,
+    "ad_free_before": "0000-00-00 00:00:00",
+    "charge": "0/30",
+    "jar": "0/1",
+    "invitation_qrcode": "https://18comic.vip/uiqrcode?uicode=4dd78ca718",
+    "invitation_url": "https://18comic.vip/signup?uicode=4dd78ca718",
+    "invited_cnt": "0",
+    "jwttoken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJTRVNTSU9OIjp7ImltZ19ob3N0IjoxLCJsYW5ndWFnZSI6ImNuX0NUIiwidWlkIjo1MzAzNzE4LCJ1c2VybmFtZSI6InBpZ21hbjE3IiwiZW1haWwiOiJhMjg2MjQyNDQ3MEBnbWFpbC5jb20iLCJlbWFpbHZlcmlmaWVkIjoieWVzIiwiZm5hbWUiOiIiLCJnZW5kZXIiOiJNYWxlIiwibWVzc2FnZSI6IldlbGNvbWUgcGlnbWFuMTchIiwibm9hZHN0aW1lIjoiMDAwMC0wMC0wMCAwMDowMDowMCIsInBob3RvIjoiNTMwMzcxOC5qcGciLCJ1cGRhdGVfYXQiOiIxNzgxNjAzNjU1In0sImV4cCI6MTgxMzEzOTY5MX0=.Px6Sxqr6VyWi1TrJCigLj6pnkDjvs1eId1XDjcRt8yI="
+  }
+}

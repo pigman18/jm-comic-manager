@@ -1,0 +1,151 @@
+{
+  "id": "@jm/core",
+  "name": "@jm/core",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "author": "pigman17",
+  "version": "1.0.0",
+  "private": true,
+  "description": "用于JM漫画的快速导航和下载，仅供研究学习禁止用于其他用途！",
+  "scripts": {
+    "build": "node build/build.mjs",
+    "build:sea": "node --build-sea build/sea-config.json",
+    "postbuild:sea": "..\\node_modules\\rcedit\\bin\\rcedit.exe dist/JM模块.exe --set-icon resources/icon.ico",
+    "help": "node src/index.js --help",
+    "album:meta": "node src/index.js album:meta",
+    "album:download": "node src/index.js album:download",
+    "search:keyword": "node src/index.js search:keyword",
+    "rank:weekly": "node src/index.js rank:weekly",
+    "rank:serials": "node src/index.js rank:serials",
+    "local2db": "node src/index.js local2db",
+    "db2local": "node src/index.js db2local",
+    "covers": "node src/index.js covers",
+    "server": "node src/index.js server",
+    "command": "node src/index.js"
+  },
+  "dependencies": {
+    "async-lock": "^1.4.1",
+    "compression": "^1.8.1",
+    "express": "^4.22.1",
+    "express-ws": "^5.0.2",
+    "https-proxy-agent": "^9.1.0",
+    "jszip": "^3.10.1",
+    "marked": "^15.0.12",
+    "marked-terminal": "^7.3.0",
+    "morgan": "^1.10.1",
+    "node-notifier": "^10.0.1",
+    "socks-proxy-agent": "^10.0.0",
+    "tunnel": "^0.0.6",
+    "abort-controller": "^3.0.0",
+    "axios": "^1.16.1",
+    "better-sqlite3": "^12.10.0",
+    "cheerio": "^1.2.0",
+    "commander": "^14.0.3",
+    "jimp": "^1.6.1",
+    "tough-cookie": "^6.0.1",
+    "typescript": "^5.9.3",
+    "undici": "^6.21.3",
+    "p-queue": "^9.3.0"
+  },
+  "devDependencies": {
+    "kerberos": "^2.2.2",
+    "@vercel/webpack-asset-relocator-loader": "^1.10.0",
+    "bufferutil": "^4.1.0",
+    "node-loader": "^2.1.0",
+    "rcedit": "^4.0.1",
+    "utf-8-validate": "^6.0.6",
+    "webpack": "^5.93.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-obfuscator": "^3.5.1",
+    "webpack-obfuscator-plugin": "^1.0.2"
+  },
+  "theme": "light",
+  "protocol": {
+    "phase": {
+      "login": {
+        "description": "用户登录流程"
+      },
+      "fetch_info": {
+        "description": "拉取漫画基本信息"
+      },
+      "fetch_comic": {
+        "description": "拉取漫画内容"
+      },
+      "fetch_file": {
+        "description": "拉取单个文件"
+      },
+      "sync_local_to_db": {
+        "description": "同步本地爬虫文件到数据库记录"
+      },
+      "sync_db_to_local": {
+        "description": "同步数据库记录到本地爬虫文件"
+      }
+    },
+    "step": {
+      "cloud_flare_cookie": {
+        "description": "Cloudflare Cookie 校验"
+      },
+      "login_page": {
+        "description": "访问登录页"
+      },
+      "login_api": {
+        "description": "提交登录接口"
+      },
+      "login_meiman": {
+        "description": "访问门户页"
+      },
+      "info_page": {
+        "description": "解析漫画详情页"
+      },
+      "download_page": {
+        "description": "请求漫画下载页"
+      },
+      "captcha": {
+        "description": "验证码识别"
+      },
+      "real_link": {
+        "description": "获取真实下载链接"
+      },
+      "download": {
+        "description": "下载漫画 ZIP"
+      },
+      "file": {
+        "description": "下载单个数据文件"
+      }
+    },
+    "state": {
+      "idle": {
+        "description": "未开始"
+      },
+      "waiting": {
+        "description": "等待执行"
+      },
+      "start": {
+        "description": "开始执行"
+      },
+      "running": {
+        "description": "执行中"
+      },
+      "success": {
+        "description": "执行成功"
+      },
+      "error": {
+        "description": "执行失败"
+      }
+    },
+    "error": {
+      "INFO_NOT_FOUND": {
+        "code": -21,
+        "message": "漫画信息不存在"
+      },
+      "LOGIN_NO_CREDENTIAL": {
+        "code": -10,
+        "message": "麻烦填写用户名和密码"
+      },
+      "COMIC_FETCH_FAILED": {
+        "code": -30,
+        "message": "拉取漫画下载失败"
+      }
+    }
+  }
+}

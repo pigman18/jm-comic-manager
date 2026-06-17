@@ -1,0 +1,190 @@
+{
+  "name": "vscode-jm-bundle",
+  "repository": "https://gitee.com/zjh95/puzzle-bundles",
+  "displayName": "jm.bundle.vscode",
+  "description": "一个用于JM漫画的快速导航与下载辅助插件",
+  "publisher": "pigman",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.105.1"
+  },
+  "categories": [
+    "Comic", "Crawler"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "media/icon.png",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "jmContainer",
+          "title": "JM",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "jmContainer": [
+        {
+          "type": "webview",
+          "id": "jmView",
+          "name": "JM",
+          "icon": "media/icon.svg",
+          "contextualTitle": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "jm.setDataDir",
+        "title": "选择数据目录",
+        "icon": "$(folder)"
+      },
+      {
+        "command": "jm.setComicViewer",
+        "title": "选择本地漫画阅读器（ComicRack.exe）",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "jm.comic.downloadArchive",
+        "title": "下载漫画",
+        "icon": "$(book)"
+      },
+      {
+        "command": "jm.openBrowser",
+        "title": "打开浏览页面",
+        "icon": "$(globe)"
+      }
+    ],
+    "viewsWelcome": [
+      {
+        "view": "这里填你的自定义视图ID",
+        "contents": "## 欢迎使用 JM 插件\n\n[选择数据目录](command:jm.setDataDir)\n\n[选择漫画阅读器](command:jm.setComicViewer)"
+      }
+    ],
+    "configuration": {
+      "title": "JM模块配置",
+      "properties": {
+        "jm.username": {
+          "type": "string",
+          "description": "JM用户名",
+          "order": 1
+        },
+        "jm.password": {
+          "type": "string",
+          "description": "JM密码",
+          "editPresentation": "password",
+          "order": 2
+        },
+        "jm.proxy": {
+          "type": "string",
+          "description": "代理地址",
+          "order": 3
+        },
+        "jm.dataDir": {
+          "type": "string",
+          "default": "C:\\jm",
+          "description": "数据目录",
+          "scope": "application",
+          "order": 4
+        },
+        "jm.port": {
+          "type": "number",
+          "default": 47310,
+          "description": "导览页面端口",
+          "order": 5
+        },
+        "jm.notificationChannels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["窗口进度", "通知弹窗", "通知进度条", "状态栏进度", "输出面板", "视图树", "状态栏步骤提示"]
+          },
+          "uniqueItems": true,
+          "default": ["状态栏进度", "输出面板", "状态栏步骤提示"],
+          "description": "消息推送途径（多选，修改后立即生效）",
+          "scope": "application",
+          "order": 6
+        },
+        "jm.comicViewer": {
+          "type": "string",
+          "default": "C:\\Program Files\\ComicRack\\ComicRack.exe",
+          "description": "漫画阅读器路径",
+          "scope": "application",
+          "order": 7
+        },
+        "jm.timeout": {
+          "type": "number",
+          "default": 86400000,
+          "description": "请求超时（毫秒）",
+          "order": 8
+        },
+        "jm.cookie": {
+          "type": "string",
+          "description": "登录Cookie（仅保存用无需修改）",
+          "order": 9
+        },
+        "jm.userAgent": {
+          "type": "string",
+          "description": "登录UseAgent（仅保存用无需修改）",
+          "order": 10
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "jm.setDataDir",
+          "when": "view == jmView",
+          "group": "navigation"
+        },
+        {
+          "command": "jm.setComicViewer",
+          "when": "view == jmView",
+          "group": "navigation"
+        },
+        {
+          "command": "jm.comic.downloadArchive",
+          "when": "view == jmView",
+          "group": "navigation"
+        },
+        {
+          "command": "jm.openBrowser",
+          "when": "view == jmView",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "npm run package && vsce package",
+    "copy:bundle": "copyfiles -u 3 ../core/dist/jm.bundle.all.js dist",
+    "vscode:prepublish": "npm run copy:bundle && npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.19.19",
+    "@types/vscode": "^1.105.1",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "copyfiles": "^2.4.1",
+    "eslint": "^9.39.3",
+    "node-loader": "^2.1.0",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1",
+    "webpack": "^5.105.3",
+    "webpack-cli": "^6.0.1"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@jm/web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@pigman17/task-manager": "^1.0.0",
+    "@vicons/ionicons5": "^0.13.0",
+    "jszip": "^3.10.1",
+    "naive-ui": "^2.42.0",
+    "pinia": "^2.3.1",
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/tsconfig": "^0.7.0",
+    "typescript": "~5.8.3",
+    "unplugin-auto-import": "^0.18.6",
+    "unplugin-vue-components": "^0.27.5",
+    "vite": "^6.0.3",
+    "vue-tsc": "^2.2.10"
+  }
+}
