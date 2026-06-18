@@ -44,7 +44,8 @@
     "tough-cookie": "^6.0.1",
     "typescript": "^5.9.3",
     "undici": "^6.21.3",
-    "p-queue": "^9.3.0"
+    "p-queue": "^9.3.0",
+    "@trayjs/trayjs": "^0.0.10"
   },
   "devDependencies": {
     "kerberos": "^2.2.2",

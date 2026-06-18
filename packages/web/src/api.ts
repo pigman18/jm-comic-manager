@@ -37,6 +37,14 @@ export async function postJson(path: string, body: any = {}) {
   }))
 }
 
+export async function putJson(path: string, body: any = {}) {
+  return parseJson(await fetch(`${API}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }))
+}
+
 export async function delJson(path: string) {
   return parseJson(await fetch(`${API}${path}`, { method: 'DELETE' }))
 }

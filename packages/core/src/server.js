@@ -384,8 +384,12 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 if (tagsRaw) {
                     tagsRaw.split(',').forEach((tag, i) => {
                         const key = `tg${i}`;
-                        parts.push(`tags LIKE @${key}`);
-                        params[key] = `%${String(tag).trim()}%`;
+                        // parts.push(`tags LIKE @${key}`);
+                        // params[key] = `%${String(tag).trim()}%`;
+                        parts.push(`(EXISTS (
+                            SELECT 1 FROM json_each(tags) WHERE value = @${key}
+                        ))`);
+                        params[key] = `${String(tag).trim()}`;
                     });
                 }
                 if (kind === 'single') {
@@ -783,6 +787,28 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         });
     }
 
+    function handleBrowse(app, api) {
+        const exec = require('node:child_process').exec;
+        app.post(`${api}/browse-dir`, (_req, res) => {
+            if (process.platform !== 'win32') { res.json({ok: false, message: '仅 Windows 支持'}); return; }
+            const script = 'Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; $f.ShowDialog() | Out-Null; Write-Output $f.SelectedPath';
+            exec(`powershell -NoProfile -Command "${script}"`, {windowsHide: true, timeout: 30000}, (err, stdout) => {
+                const p = (stdout || '').trim();
+                if (p) res.json({ok: true, path: p});
+                else res.json({ok: false, message: '未选择目录'});
+            });
+        });
+        app.post(`${api}/browse-file`, (_req, res) => {
+            if (process.platform !== 'win32') { res.json({ok: false, message: '仅 Windows 支持'}); return; }
+            const script = 'Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; $f.ShowDialog() | Out-Null; Write-Output $f.FileName';
+            exec(`powershell -NoProfile -Command "${script}"`, {windowsHide: true, timeout: 30000}, (err, stdout) => {
+                const p = (stdout || '').trim();
+                if (p) res.json({ok: true, path: p});
+                else res.json({ok: false, message: '未选择文件'});
+            });
+        });
+    }
+
     function handleOpenViewer(app, api) {
         app.post(`${api}/comics/:num/open-viewer`, async (req, res) => {
             try {
@@ -863,6 +889,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         handleBatchAdd(app, api);
         handleZipFile(app, api);
         handleOpenViewer(app, api);
+        handleBrowse(app, api);
         await new Promise((resolve, reject) => {
             _server = app.listen(port, host, () => {
                 if (typeof ctx?.log === 'function') {

@@ -35,7 +35,8 @@ let defaultConfig = {
         "https://www.cdngwc.club"
     ],
     "token": "",
-    "cookie": ""
+    "cookie": "",
+    "debug": false
 };
 
 /**

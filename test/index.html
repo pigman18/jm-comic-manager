@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>EWVJS Demo</h2>
+<button onclick="test()">调用 Node API</button>
+
+<script>
+    async function test () {
+        const platform = await window.ewvjs.api.platform()
+        const pong = await window.ewvjs.api.ping()
+        alert(`platform=${platform}, ping=${pong}`)
+    }
+</script>
+</body>
+</html>

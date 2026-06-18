@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        html,body{height:100%}
+        body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;background:#101014;color:#e0e0e6;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+        .header{padding:20px 28px 12px;flex-shrink:0}
+        .header h1{font-size:18px;font-weight:700;letter-spacing:-.3px;color:#f0f0f6;margin-bottom:2px}
+        .header p{font-size:12px;color:#7a7a8a}
+        .panel{flex:1;display:flex;flex-direction:column;margin:0 28px 20px;background:#1e1e22;border-radius:8px;border:1px solid rgba(46,46,53,.95);overflow:hidden}
+        .tabs{display:flex;gap:0;padding:0 20px;border-bottom:1px solid rgba(46,46,53,.95);flex-shrink:0;background:#16161a;border-radius:8px 8px 0 0}
+        .tab{padding:10px 20px;font-size:12px;font-weight:500;color:#7a7a8a;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s,border-color .12s}
+        .tab:hover{color:#b0b0c0}
+        .tab.active{color:#2563eb;border-bottom-color:#2563eb;font-weight:600}
+        .form-scroll{flex:1;overflow-y:auto;padding:0}
+        .tab-content{display:none;padding:20px 24px 16px}
+        .tab-content.active{display:block}
+        .form-row{display:flex;gap:14px;margin-bottom:14px}
+        .form-row:last-child{margin-bottom:0}
+        .form-group{flex:1;min-width:0}
+        .form-group.full{width:100%}
+        label{display:block;font-size:11px;font-weight:600;color:#9b9bb4;margin-bottom:4px;letter-spacing:.3px;text-transform:uppercase}
+        input,textarea{width:100%;padding:8px 10px;border-radius:6px;border:1px solid rgba(46,46,53,.95);background:#16161a;color:#e0e0e6;font-size:13px;outline:none;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+        input:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.15);background:#1a1a20}
+        input::placeholder,textarea::placeholder{color:#5a5a68}
+        textarea{resize:vertical;min-height:44px;font-size:12px;line-height:1.45;tab-size:2}
+        .input-row{display:flex;gap:5px}
+        .input-row input{flex:1}
+        .input-row button{padding:0 12px;border-radius:6px;border:1px solid rgba(46,46,53,.95);background:#2a2a30;color:#b0b0c0;font-size:11px;font-weight:500;cursor:pointer;transition:background .12s,border-color .12s;white-space:nowrap}
+        .input-row button:hover{background:#35353d;border-color:#3d3d4a;color:#e0e0e6}
+        .input-row button:active{background:#2e2e35}
+        .footer{flex-shrink:0;border-top:1px solid rgba(46,46,53,.95);padding:12px 24px;display:flex;justify-content:space-between;background:#16161a;border-radius:0 0 8px 8px}
+        .footer .left{display:flex}
+        .footer .right{display:flex}
+        .footer button{padding:8px 28px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:transform .08s,box-shadow .15s}
+        .footer button:active{transform:scale(.97)}
+        .footer .btn-quit{background:#2a2a30;color:#b0b0c0}
+        .footer .btn-quit:hover{background:#3d3d3d;color:#e0e0e6}
+        .footer .btn-save{background:#2563eb;color:#fff}
+        .footer .btn-save:hover{background:#3b82f6;box-shadow:0 2px 10px rgba(37,99,235,.3)}
+        ::-webkit-scrollbar{width:6px;height:6px}
+        ::-webkit-scrollbar-track{background:transparent}
+        ::-webkit-scrollbar-thumb{background:#2e2e35;border-radius:999px}
+        ::-webkit-scrollbar-thumb:hover{background:#3d3d4a}
+    </style></head><body>
+<div class="header">
+    <p>首次使用，请填写以下配置信息</p>
+</div>
+
+<div class="panel">
+    <div class="tabs">
+        <div class="tab active" data-tab="basic" onclick="switchTab('basic')">基本设置</div>
+        <div class="tab" data-tab="network" onclick="switchTab('network')">网络设置</div>
+        <div class="tab" data-tab="advanced" onclick="switchTab('advanced')">高级设置</div>
+    </div>
+
+    <div class="form-scroll">
+        <div class="tab-content active" id="tab-basic">
+            <div class="form-row">
+                <div class="form-group"><label>用户名 <span style="color:#ef4444">*</span></label><input id="username" required placeholder="输入 JM 账号" /></div>
+                <div class="form-group"><label>密码 <span style="color:#ef4444">*</span></label><input id="password" type="password" required placeholder="输入 JM 密码" /></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>数据目录</label>
+                    <div class="input-row"><input id="dataDir" placeholder="如 D:\JM_Data" /><button onclick="browseDir('dataDir')">浏览</button></div>
+                </div>
+                <div class="form-group"><label>端口</label><input id="port" type="number" value="47310" /></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group full"><label>漫画阅读器</label>
+                    <div class="input-row"><input id="comicViewer" placeholder="C:\Program Files\ComicRack\ComicRack.exe" /><button onclick="browseFile('comicViewer')">浏览</button></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab-network">
+            <div class="form-group full" style="margin-bottom:14px"><label>JM 主站</label><input id="host" value="https://18comic.vip" /></div>
+            <div class="form-row">
+                <div class="form-group"><label>CDN 域名（每行一个）</label><textarea id="cdnHosts">https://cdn-msp.18comic.vip
+https://cdn-msp2.18comic.vip
+https://cdn-msp3.18comic.vip</textarea></div>
+                <div class="form-group"><label>API 域名（每行一个）</label><textarea id="apiHosts">https://www.cdnhjk.net
+https://www.cdngwc.cc
+https://www.cdngwc.net
+https://www.cdngwc.club</textarea></div>
+            </div>
+            <div class="form-group full"><label>请求超时（ms）</label><input id="timeout" type="number" value="86400000" /></div>
+        </div>
+
+        <div class="tab-content" id="tab-advanced">
+            <div class="form-group full"><label>调试模式</label>
+                <label style="display:flex;align-items:center;gap:10px;margin-top:6px;text-transform:none;cursor:pointer;color:#b0b0c0;font-size:13px">
+                    <input id="debug" type="checkbox" style="width:auto;accent-color:#2563eb;scale:1.2;cursor:pointer" />
+                    启用调试日志
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="left"><button id="quitBtn" class="btn-quit" onclick="quit()" style="display:none">退出</button></div>
+        <div class="right"><button class="btn-save" onclick="save()">保存配置</button></div>
+    </div>
+</div>
+
+<script>
+    function switchTab(name) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+    }
+
+    async function browseDir(id) {
+        const p = await window.ewvjs.api.browseDir();
+        if (p) document.getElementById(id).value = p;
+    }
+
+    async function browseFile(id) {
+        const p = await window.ewvjs.api.browseFile();
+        if (p) document.getElementById(id).value = p;
+    }
+
+    function splitLines(v) {
+        return v.split('\n').map(s => s.trim()).filter(Boolean);
+    }
+
+    async function loadConfig() {
+        const cfg = await window.ewvjs.api.loadConfig();
+        const hasExisting = cfg && cfg.username;
+        // Show quit button only when no existing config (first-run mode)
+        document.getElementById('quitBtn').style.display = hasExisting ? 'none' : '';
+        if (!cfg || Object.keys(cfg).length === 0) return;
+        if (cfg.username) document.getElementById('username').value = cfg.username;
+        if (cfg.password) document.getElementById('password').value = cfg.password;
+        if (cfg.dataDir) document.getElementById('dataDir').value = cfg.dataDir;
+        if (cfg.port) document.getElementById('port').value = cfg.port;
+        if (cfg.comicViewer) document.getElementById('comicViewer').value = cfg.comicViewer;
+        if (cfg.host) document.getElementById('host').value = cfg.host;
+        if (cfg.timeout) document.getElementById('timeout').value = cfg.timeout;
+        if (Array.isArray(cfg.cdnHosts)) document.getElementById('cdnHosts').value = cfg.cdnHosts.join('\n');
+        if (Array.isArray(cfg.apiHosts)) document.getElementById('apiHosts').value = cfg.apiHosts.join('\n');
+        if (cfg.debug !== undefined) document.getElementById('debug').checked = cfg.debug;
+        // Update header for non-first-run
+        if (hasExisting) document.querySelector('.header p').textContent = '';
+    }
+
+    async function quit() {
+        await window.ewvjs.api.configExited();
+    }
+
+    async function save() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        if (!username || !password) { alert('用户名和密码为必填项'); return; }
+        const cfg = {
+            username, password,
+            dataDir: document.getElementById('dataDir').value.trim() || undefined,
+            port: Number(document.getElementById('port').value) || 47310,
+            comicViewer: document.getElementById('comicViewer').value.trim() || undefined,
+            timeout: Number(document.getElementById('timeout').value) || 86400000,
+            debug: document.getElementById('debug').checked,
+            host: document.getElementById('host').value.trim() || undefined,
+            cdnHosts: splitLines(document.getElementById('cdnHosts').value),
+            apiHosts: splitLines(document.getElementById('apiHosts').value),
+        };
+        if (cfg.cdnHosts.length === 0) delete cfg.cdnHosts;
+        if (cfg.apiHosts.length === 0) delete cfg.apiHosts;
+        for (const k of Object.keys(cfg)) { if (cfg[k] === '') cfg[k] = undefined; }
+        const result = await window.ewvjs.api.saveConfig(cfg);
+        if (result && result.ok) {
+            await window.ewvjs.api.configSaved();
+        } else {
+            alert(result?.message || '保存失败');
+        }
+    }
+
+    loadConfig();
+</script>
+</body></html>
