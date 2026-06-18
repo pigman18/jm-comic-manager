@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { dispatchOnMessage, LABEL_TO_ID, type ChannelId } from './progress';
+import { dispatchOnMessage, LABEL_TO_ID, ChannelId } from './progress';
 
 export function registerMessageDispatcher(context: vscode.ExtensionContext, jmBundle: any) {
     if (!jmBundle?.message) return;

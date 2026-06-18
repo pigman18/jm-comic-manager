@@ -38,7 +38,6 @@
     "tunnel": "^0.0.6",
     "abort-controller": "^3.0.0",
     "axios": "^1.16.1",
-    "better-sqlite3": "^12.10.0",
     "cheerio": "^1.2.0",
     "commander": "^14.0.3",
     "jimp": "^1.6.1",

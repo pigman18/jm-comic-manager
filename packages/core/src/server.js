@@ -174,6 +174,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
     function handleStatic(app) {
         const emb = webEmbedded && typeof webEmbedded === 'object' && Object.keys(webEmbedded).length > 0;
         if (emb) {
+            staticMounted = true;
             app.use((req, res, next) => {
                 // ✅ API 直接跳过
                 if (req.path.startsWith('/api/')) {
@@ -195,8 +196,12 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
             return;
         }
 
-        // ✅ 兜底：使用磁盘 web/dist
-        app.use(express.static(path.join(workspace, 'web', 'dist')));
+        // ✅ 兜底：使用磁盘 web/dist（兼容 monorepo 和 flat 结构）
+        staticMounted = true;
+        const webDist = fs.existsSync(path.join(workspace, 'packages', 'web', 'dist'))
+            ? path.join(workspace, 'packages', 'web', 'dist')
+            : path.join(workspace, 'web', 'dist');
+        app.use(express.static(webDist));
         app.get(hp, (_req, res) => {
             res.status(503).type('text/plain; charset=utf-8').send(
                 'JM 前端未安装：请用 npm run build:bundles 重新发布，或从镜像重新下载。'
@@ -837,9 +842,6 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         app.use(compression());
         app.use(express.json({limit: '2mb'}));
         const api = '/api';
-        app.get('/', (_, res) => {
-            res.send('<html><body>ok</body></html>');
-        });
         handleStatic(app);
         handleStaticFile(app);
         handleProgressWs(app, api);

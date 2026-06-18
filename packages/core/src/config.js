@@ -7,7 +7,7 @@ const os = require('node:os');
 const CHANGE = 'handleChangeConfig';
 
 function appDataDir() {
-    const app = 'jm-comic-manager';
+    const app = 'JmComicManager';
     switch (process.platform) {
         case 'win32': return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), app);
         case 'darwin': return path.join(os.homedir(), 'Library', 'Application Support', app);
@@ -34,7 +34,6 @@ let defaultConfig = {
         "https://www.cdngwc.net",
         "https://www.cdngwc.club"
     ],
-    "headless": false,
     "token": "",
     "cookie": ""
 };
