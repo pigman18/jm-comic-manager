@@ -541,6 +541,11 @@ const orderOptions = [
 .jmz-search-row .n-checkbox {
   flex: none;
   white-space: nowrap;
+  min-width: 80px;
+  justify-content: center;
+}
+.jmz-sort-row .n-button {
+  min-width: 80px;
 }
 .jmz-sort-row {
   display: flex;
