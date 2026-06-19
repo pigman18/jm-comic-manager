@@ -391,7 +391,11 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
   }
 
   function getTasks() {
-    return tasks.filter(t => t.status !== 'removed').map(t => ({ ...t, stepStatus: stepStatusLabel(t.step, t.stepState, stepLabels, t.payload) }));
+    return tasks.filter(t => t.status !== 'removed')
+        .map(t => ({ ...t, stepStatus: stepStatusLabel(t.step, t.stepState, stepLabels, t.payload) }))
+        .sort((t1, t2) => {
+          return (t2.completedDate || t2.addedDate) - (t1.completedDate || t1.addedDate);
+        })
   }
 
   function getStatuses() {

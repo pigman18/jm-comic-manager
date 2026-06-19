@@ -44,3 +44,6 @@
 
 ## Naive UI 样式覆盖
 - **禁止** 用 CSS class + `!important` 和 Naive UI 的组件样式打架——Naive UI 内部有复杂的 hover/active 状态管理，用 `!important` 会导致鼠标移开才生效等诡异行为。需要让 Naive UI 组件的某个子元素呈现不同颜色时，直接通过子元素的内联 style 或组件 prop（如 `n-icon` 的 `color` prop）控制，不要试图在父级用 `!important` 覆盖
+
+## Naive UI 离散 API
+- **禁止** 在包含 `n-message-provider`/`n-notification-provider`/`n-dialog-provider` 的根组件（如 `App.vue`）里调用 `useMessage`/`useNotification`/`useDialog`——这些 hook 需要 provider 在祖先节点，而根组件自己是 provider 的父级，inject 找不到。必须使用 `createDiscreteApi` 并传入完整的 `configProviderProps: { theme, themeOverrides, locale, dateLocale }`，否则离散 API 会使用默认浅色主题，和 app 的暗色主题不一致
