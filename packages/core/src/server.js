@@ -455,14 +455,15 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 });
                 const singleDone = allSeries.length === 0 && isNotEmptySync(path.join(comicDir, `${n}.zip`));
                 const allDone = (allSeries.length > 0 && allSeries.every(e => e.done)) || singleDone;
+                const zipStatus = {};
+                for (const ep of allSeries) {
+                    zipStatus[String(ep.id)] = { exists: ep.done };
+                }
                 res.json({
                     ok: true,
-                    id: comic.id,
-                    name: comic.name,
-                    cover: comic.cover || '',
-                    series: allSeries,
+                    comic,
+                    zipStatus,
                     allDone,
-                    tags: comic.tags || [],
                 });
             } catch (e) {
                 res.status(500).json({ok: false, message: String(e.message || e)});

@@ -550,8 +550,11 @@ const orderOptions = [
   min-height: 200px;
 }
 .jmz-list-reload-mask {
-  position: absolute;
-  inset: 0;
+  position: fixed;
+  left: 180px;
+  right: 0;
+  top: 44px;
+  bottom: 0;
   z-index: 4;
   display: flex;
   align-items: center;
