@@ -619,12 +619,15 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         app.get(`${api}/favorites/comics`, async (req, res) => {
             try {
                 const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
-                const data = await crawler.account.getFavorites(page);
+                const folderId = String(req.query.folder_id || '');
+                const data = await crawler.account.getFavorites(page, folderId);
                 const items = Array.isArray(data) ? data : (data?.list || data?.rows || []);
+                const folders = data?.folder_list || [];
                 const comicDir = path.join(config.dataDir, 'comic');
                 const list = await Promise.all(items.map(async (item) => {
                     const id = Number(item.aid || item.id);
                     const o = {
+                        ...item,
                         id,
                         name: String(item.title || item.name || ''),
                         cover: String(item.cover || item.image || ''),
@@ -641,7 +644,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     merged.canRead = isNotEmptySync(path.join(comicDir, `${id}.zip`));
                     return merged;
                 }));
-                res.json({ok: true, list, total: list.length});
+                res.json({ok: true, list, total: list.length, folders});
             } catch (e) {
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
@@ -660,6 +663,51 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     await crawler.account.removeFavorite(num);
                 }
                 res.json({ok: true, favorite});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.post(`${api}/favorites/folder`, async (req, res) => {
+            try {
+                const { action, folder_id, folder_name } = req.body || {};
+                if (action === 'add') {
+                    if (!folder_name) { res.status(400).json({ok: false, message: '请输入文件夹名称'}); return; }
+                    await crawler.account.createFolder(folder_name);
+                    res.json({ok: true});
+                } else if (action === 'rename') {
+                    if (!folder_id || !folder_name) { res.status(400).json({ok: false, message: '参数不完整'}); return; }
+                    await crawler.account.renameFolder(folder_id, folder_name);
+                    res.json({ok: true});
+                } else if (action === 'del') {
+                    if (!folder_id) { res.status(400).json({ok: false, message: '参数不完整'}); return; }
+                    await crawler.account.deleteFolder(folder_id);
+                    res.json({ok: true});
+                } else {
+                    res.status(400).json({ok: false, message: '无效操作'});
+                }
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.post(`${api}/favorites/comics/move`, async (req, res) => {
+            try {
+                const { album_id, source_folder_id, target_folder_id } = req.body || {};
+                if (!album_id || !target_folder_id) {
+                    res.status(400).json({ok: false, message: '参数不完整'});
+                    return;
+                }
+                let source = source_folder_id;
+                if (!source) {
+                    const allData = await crawler.account.getFavorites(1);
+                    const folders = allData?.folder_list || [];
+                    source = folders[0]?.FID;
+                }
+                if (!source) {
+                    res.status(400).json({ok: false, message: '请先创建收藏夹'});
+                    return;
+                }
+                await crawler.account.moveToFolder(album_id, source, target_folder_id);
+                res.json({ok: true});
             } catch (e) {
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
