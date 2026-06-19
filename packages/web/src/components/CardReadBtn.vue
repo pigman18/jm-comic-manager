@@ -23,7 +23,11 @@
         </div>
       </div>
       <div class="jmt-ep-list">
-        <div v-for="ep in dlInfo.series" :key="ep.id" class="jmt-ep-row">
+        <div class="jmt-ep-head">
+          <n-checkbox v-model:checked="showReadable" size="small">可读</n-checkbox>
+          <n-input v-model:value="filterText" placeholder="筛选章节" size="tiny" clearable class="jmt-ep-filter" />
+        </div>
+        <div v-for="ep in filteredSeries" :key="ep.id" class="jmt-ep-row">
           <span class="jmt-ep-num">JM{{ ep.id }}</span>
           <span class="jmt-ep-title" :class="{ 'jmz-read-ep-name--done': isRead(ep.id) }">{{ ep.name }}</span>
           <span v-if="isRead(ep.id)" class="jmz-read-tag">已读</span>
@@ -36,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { EyeOutline } from '@vicons/ionicons5'
 import { postJson } from '@/api'
 import { useMessage } from 'naive-ui'
@@ -51,6 +55,22 @@ const fetching = ref(false)
 const modalShow = ref(false)
 const dlInfo = ref<any>(null)
 const readEps = ref<string[]>([])
+const filterText = ref('')
+const showReadable = ref(false)
+
+const filteredSeries = computed(() => {
+  let eps = dlInfo.value?.series || []
+  if (showReadable.value) {
+    eps = eps.filter((e: any) => e.done)
+  }
+  if (filterText.value) {
+    const q = filterText.value.toLowerCase()
+    eps = eps.filter((e: any) =>
+      String(e.name).toLowerCase().includes(q) || String(e.id).includes(q)
+    )
+  }
+  return eps
+})
 
 watch(modalShow, (v) => {
   if (v) {
@@ -74,13 +94,16 @@ async function handleClick() {
   try {
     const j = await postJson(`/comics/${c.id}/fetch-meta`)
     if (!j.ok) { message.warning(j.message || '获取信息失败'); return }
-    if (!j.series || j.series.length <= 1) {
+    const series = j.comic?.series || j.series || []
+    if (series.length <= 1) {
       if (!c.canRead) { message.warning('请先下载后再阅读'); return }
       markRead(String(c.id))
       openComic(c.id, String(c.id), c.name || `JM${c.id}`)
       return
     }
-    dlInfo.value = j
+    dlInfo.value = j.comic || j
+    filterText.value = ''
+    showReadable.value = false
     modalShow.value = true
   } catch (e: any) { message.error(String(e?.message || e)) }
   finally { fetching.value = false }
@@ -170,6 +193,21 @@ function readEpisode(ep: any) {
   background: #1e1e22;
   max-height: 180px;
   overflow-y: auto;
+}
+.jmt-ep-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #2e2e35;
+  background: #1a1a20;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.jmt-ep-filter {
+  flex: 1;
+  min-width: 0;
 }
 .jmt-ep-row {
   display: flex;

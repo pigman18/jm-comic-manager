@@ -30,6 +30,10 @@
               <span class="jmz-nav-icon">📆</span>
               <span>每日连载</span>
             </router-link>
+            <router-link :to="{ name: 'favorites' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'favorites' }">
+              <span class="jmz-nav-icon">⭐</span>
+              <span>收藏列表</span>
+            </router-link>
           </nav>
           <div class="jmz-sidebar-foot">
             <UserBar />
@@ -93,7 +97,7 @@
           </header>
           <main class="jmz-app-main">
             <router-view v-slot="{ Component }">
-              <keep-alive :include="['CatalogPage', 'SearchPage', 'WeekPage', 'CategoryPage', 'SerialPage']">
+              <keep-alive :include="['CatalogPage', 'SearchPage', 'WeekPage', 'CategoryPage', 'SerialPage', 'FavoritesPage']">
                 <component :is="Component" />
               </keep-alive>
             </router-view>
@@ -136,6 +140,7 @@ const pageTitle = computed(() => {
     week: '每周必看',
     category: '分类排行',
     serial: '每日连载',
+    favorites: '收藏列表',
     detail: '漫画详情',
     meta: '漫画元数据',
   }

@@ -1,24 +1,14 @@
 <template>
-  <div class="jmz-page jmz-serial-page">
-    <div class="jmz-serial-header">
-      <section class="jmz-panel jmz-panel--pad jmz-serial-bar">
-        <div class="jmz-serial-days">
-          <button
-            v-for="d in dayOptions"
-            :key="d.value"
-            class="jmz-serial-day-btn"
-            :class="{ 'jmz-serial-day-btn--active': d.value === activeDay }"
-            :disabled="loading"
-            @click="onDayClick(d.value)"
-          >{{ d.label }}</button>
-        </div>
-      <div v-if="loading" class="jmz-cat-bar-track"><div class="jmz-cat-bar-fill" /></div>
-      <div v-if="loading" class="jmz-cat-bar-indicator">加载中...</div>
+  <div class="jmz-page jmz-fav-page">
+    <div class="jmz-fav-header">
+      <section class="jmz-panel jmz-panel--pad jmz-fav-bar">
+        <div v-if="loading" class="jmz-cat-bar-track"><div class="jmz-cat-bar-fill" /></div>
+        <div v-if="loading" class="jmz-cat-bar-indicator">加载中...</div>
       </section>
     </div>
 
-    <div class="jmz-serial-main" ref="mainScrollRef">
-      <n-empty v-if="!loading && !list.length" description="暂无内容" />
+    <div class="jmz-fav-main" ref="mainScrollRef">
+      <n-empty v-if="!loading && !list.length" description="暂无收藏" />
       <div v-else class="jmz-card-grid-wrap">
         <div v-if="loading" class="jmz-card-grid jmz-skel-grid" aria-hidden="true">
           <div v-for="i in 10" :key="'sk' + i" :class="['jmz-card', 'jmz-skel-card', cardToneClass(i - 1)]">
@@ -59,7 +49,7 @@
               />
               <CardDownloadBtn :comic="c" />
               <CardReadBtn :comic="c" />
-              <CardFavBtn :comic="c" :favorited="!!c.is_favorite" />
+              <CardFavBtn :comic="c" :favorited="true" />
             </div>
             <div class="jmz-card-body">
               <div class="jmz-card-num">JM{{ c.id }}</div>
@@ -81,8 +71,14 @@
       </div>
     </div>
 
-    <div v-if="total > 0" class="jmz-serial-footer">
-      <div class="jmz-serial-info">共 {{ total }} 条</div>
+    <div v-if="total > 0" class="jmz-fav-footer">
+      <n-pagination
+        v-model:page="currentPage"
+        :page-count="pageCount"
+        :page-slot="5"
+        size="small"
+        @update:page="onPageChange"
+      />
     </div>
   </div>
   <MetaPageDialog v-model:show="metaDialogShow" :num="metaDialogNum" />
@@ -92,25 +88,12 @@
 import { ref, shallowRef, reactive, computed, nextTick, watch, onActivated, inject, type Ref } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { getJson, postJson } from '@/api'
+import { getJson } from '@/api'
 import type { Comic } from '@/types'
 import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
 import CardReadBtn from '@/components/CardReadBtn.vue'
 import CardFavBtn from '@/components/CardFavBtn.vue'
 import MetaPageDialog from '@/components/MetaPageDialog.vue'
-
-interface DayOption { label: string; value: number }
-
-const dayOptions: DayOption[] = [
-  { label: '周一', value: 1 },
-  { label: '周二', value: 2 },
-  { label: '周三', value: 3 },
-  { label: '周四', value: 4 },
-  { label: '周五', value: 5 },
-  { label: '周六', value: 6 },
-  { label: '周日', value: 7 },
-  { label: '已完结', value: 0 },
-]
 
 const router = useRouter()
 const route = useRoute()
@@ -119,13 +102,16 @@ const message = useMessage()
 const loading = ref(false)
 const fetching = ref<Record<number, boolean>>({})
 const list = shallowRef<Comic[]>([])
-const activeDay = ref(0)
+const total = ref(0)
+const currentPage = ref(1)
+const pageSize = 20
 
 const currentPageComics = inject<Ref<Comic[]>>('currentPageComics')!
 watch(list, (v) => { currentPageComics.value = v }, { immediate: true })
 
 const cachedList = shallowRef<Comic[]>([])
-const cachedDay = ref(0)
+const cachedTotal = ref(0)
+const cachedPage = ref(1)
 const scrollTop = ref(0)
 const mainScrollRef = ref<HTMLElement | null>(null)
 const metaDialogNum = ref(0)
@@ -133,21 +119,18 @@ const metaDialogShow = ref(false)
 function metaOpen(id: number) { metaDialogNum.value = id; metaDialogShow.value = true }
 
 const coverLoaded = reactive<Record<number, boolean>>({})
-const total = computed(() => list.value.length)
+const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
-let _syncingUrl = false
 let _loaded = false
 
 watch(() => route.query, (q) => {
-  if (route.name !== 'serial' || _syncingUrl) return
-  const d = parseInt(String(q.day || ''), 10)
-  if (Number.isFinite(d)) {
-    activeDay.value = d
-    if (!cachedList.value.length) {
-      _loaded = true
-      loadComics()
-    }
+  if (route.name !== 'favorites' || _loaded) return
+  const p = parseInt(String(q.page || ''), 10)
+  if (Number.isFinite(p) && p > 0) {
+    currentPage.value = p
   }
+  _loaded = true
+  loadFavorites()
 }, { immediate: true })
 
 function cardToneClass(index: number) { return `tone-${(index % 4) + 1}` }
@@ -163,7 +146,8 @@ function onCoverErr(e: Event, id: number) {
 onBeforeRouteLeave((_to, _from, next) => {
   if (list.value.length) {
     cachedList.value = [...list.value]
-    cachedDay.value = activeDay.value
+    cachedTotal.value = total.value
+    cachedPage.value = currentPage.value
     scrollTop.value = mainScrollRef.value?.scrollTop || 0
   }
   next()
@@ -172,63 +156,63 @@ onBeforeRouteLeave((_to, _from, next) => {
 onActivated(() => {
   if (cachedList.value.length > 0) {
     list.value = cachedList.value
-    activeDay.value = cachedDay.value
+    total.value = cachedTotal.value
+    currentPage.value = cachedPage.value
     syncUrl()
     nextTick(() => {
       if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value
     })
   } else if (!_loaded) {
     _loaded = true
-    loadComics()
+    loadFavorites()
   }
 })
 
 function syncUrl() {
-  _syncingUrl = true
-  try { router.replace({ name: 'serial', query: { day: String(activeDay.value) } }) } catch {}
-  _syncingUrl = false
+  try { router.replace({ name: 'favorites', query: { page: String(currentPage.value) } }) } catch {}
 }
 
-async function loadComics() {
+async function loadFavorites() {
   loading.value = true
   list.value = []
   coverLoaded.value = {}
   try {
-    const j = await getJson(`/serial/comics?day=${activeDay.value}`)
-    if (!j.ok) throw new Error(j.message || '获取失败')
+    const j = await getJson(`/favorites/comics?page=${currentPage.value}`)
+    if (!j.ok) throw new Error(j.message || '获取收藏失败')
     list.value = j.list || []
+    total.value = j.total || 0
   } catch (e: any) {
-    message.error(e.message || '获取每日连载失败')
+    message.error(e.message || '获取收藏列表失败')
   } finally {
     loading.value = false
   }
 }
 
-function onDayClick(day: number) {
-  if (day === activeDay.value) return
-  activeDay.value = day
+function onPageChange(p: number) {
+  currentPage.value = p
   cachedList.value = []
   syncUrl()
-  loadComics()
+  nextTick(() => {
+    if (mainScrollRef.value) mainScrollRef.value.scrollTop = 0
+  })
+  loadFavorites()
 }
-
-
 </script>
 
 <style scoped>
-.jmz-serial-page {
+.jmz-fav-page {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-.jmz-serial-header {
+.jmz-fav-header {
   flex-shrink: 0;
   margin: 12px;
 }
 
-.jmz-serial-bar {
+.jmz-fav-bar {
   position: relative;
 }
 .jmz-cat-bar-track {
@@ -258,52 +242,19 @@ function onDayClick(day: number) {
   color: #3b82f6;
   font-weight: 600;
 }
-.jmz-serial-days {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.jmz-serial-day-btn {
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid rgba(46, 46, 53, 0.7);
-  background: transparent;
-  color: #9b9bb4;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.jmz-serial-day-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.jmz-serial-day-btn:hover {
-  background: rgba(46, 46, 53, 0.8);
-  color: #c4c4d6;
-}
-.jmz-serial-day-btn--active {
-  background: #1a5cdb;
-  color: #fff;
-}
 
-.jmz-serial-main {
+.jmz-fav-main {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: 0 12px;
 }
 
-.jmz-serial-footer {
+.jmz-fav-footer {
   flex-shrink: 0;
   padding: 12px;
   display: flex;
   justify-content: center;
-}
-
-.jmz-serial-info {
-  text-align: center;
-  font-size: 13px;
-  color: #7a7a8a;
 }
 
 .jmz-card-grid-wrap {

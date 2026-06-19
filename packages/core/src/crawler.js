@@ -78,6 +78,9 @@ function createCrawler(manifest, ctx, message, config) {
                 ...cfg.headers,
                 ...headers
             };
+            if (!!config?.token && config?.memberInfo?.uid) {
+                cfg.headers['Authorization'] = 'Bearer ' + config.token;
+            }
             cfg.__jm_ts = ts;
             return cfg;
         });
@@ -490,7 +493,64 @@ function createCrawler(manifest, ctx, message, config) {
 
     let account = {
         login: login,
-        sign: sign
+        sign: sign,
+        getFavorites: async (page = 1) => {
+            if (!config.token || !config?.memberInfo?.uid) {
+                await login();
+            }
+            return await expireRetry(async () => {
+                let resp = await apiClient.get(`${getApiHost()}/favorite`, {
+                    params: { page },
+                    headers: {
+                        'Authorization': 'Bearer ' + config.token
+                    }
+                });
+                if (200 !== resp.data.code) {
+                    throw new Error(resp.data.msg || '获取收藏失败');
+                }
+                return resp.data.data;
+            });
+        },
+        addFavorite: async (albumId) => {
+            if (!config.token || !config?.memberInfo?.uid) {
+                await login();
+            }
+            return await expireRetry(async () => {
+                let formData = new URLSearchParams();
+                formData.append('aid', String(albumId));
+                formData.append('type', 'add');
+                let resp = await apiClient.post(`${getApiHost()}/favorite`, formData.toString(), {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Authorization': 'Bearer ' + config.token
+                    }
+                });
+                if (resp.data.data?.status !== 'ok') {
+                    throw new Error(resp.data.data?.msg || '添加收藏失败');
+                }
+                return resp.data.data;
+            });
+        },
+        removeFavorite: async (albumId) => {
+            if (!config.token || !config?.memberInfo?.uid) {
+                await login();
+            }
+            return await expireRetry(async () => {
+                let formData = new URLSearchParams();
+                formData.append('aid', String(albumId));
+                formData.append('type', 'del');
+                let resp = await apiClient.post(`${getApiHost()}/favorite`, formData.toString(), {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Authorization': 'Bearer ' + config.token
+                    }
+                });
+                if (resp.data.data?.status !== 'ok') {
+                    throw new Error(resp.data.data?.msg || '取消收藏失败');
+                }
+                return resp.data.data;
+            });
+        }
     };
 
     let comic = {
@@ -700,15 +760,20 @@ function createCrawler(manifest, ctx, message, config) {
          * 分类与排行
          */
         serialization: async (date) => {
-            let resp = await expireRetry(async () => {
-                return await apiClient.get(`${getApiHost()}/serialization?date=${date}`);
+            let data = await expireRetry(async () => {
+                let resp = await apiClient.get(`${getApiHost()}/serialization?date=${date}`);
+                let {
+                    list
+                } = resp.data.data;
+                return {
+                    list
+                }
             });
-            let {
-                list
-            } = resp.data.data;
-            return {
-                list
-            };
+            // 手动兼容 is_favorite
+            (data?.list || []).forEach((obj) => {
+                obj.is_favorite = obj.favorite;
+            });
+            return data;
         },
         /**
          * 分类与排行

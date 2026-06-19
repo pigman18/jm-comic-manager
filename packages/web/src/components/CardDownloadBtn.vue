@@ -25,8 +25,9 @@
       <div class="jmt-ep-list">
         <div class="jmt-ep-head">
           <n-checkbox v-model:checked="allChecked" :indeterminate="epSomeChecked" />全选
+          <n-input v-model:value="filterText" placeholder="筛选章节" size="tiny" clearable class="jmt-ep-filter" />
         </div>
-        <div v-for="ep in dlInfo.series" :key="ep.id" class="jmt-ep-row">
+        <div v-for="ep in filteredSeries" :key="ep.id" class="jmt-ep-row">
           <n-checkbox v-model:checked="dlChecked[ep.id]" />
           <span class="jmt-ep-num">JM{{ ep.id }}</span>
           <span class="jmt-ep-title">{{ ep.name }}</span>
@@ -59,20 +60,30 @@ const modalShow = ref(false)
 const dlInfo = ref<any>(null)
 const dlChecked = reactive<Record<string, boolean>>({})
 const dlWithMeta = ref(true)
+const filterText = ref('')
+
+const filteredSeries = computed(() => {
+  const eps = dlInfo.value?.series || []
+  if (!filterText.value) return eps
+  const q = filterText.value.toLowerCase()
+  return eps.filter((e: any) =>
+    String(e.name).toLowerCase().includes(q) || String(e.id).includes(q)
+  )
+})
 
 const epAllChecked = computed(() => {
-  const eps = dlInfo.value?.series
-  return eps ? eps.every((e: any) => dlChecked[e.id]) : false
+  const eps = filteredSeries.value
+  return eps.length > 0 && eps.every((e: any) => dlChecked[e.id])
 })
 const epSomeChecked = computed(() => {
-  const eps = dlInfo.value?.series
-  return eps ? eps.some((e: any) => dlChecked[e.id]) && !epAllChecked.value : false
+  const eps = filteredSeries.value
+  return eps.some((e: any) => dlChecked[e.id]) && !epAllChecked.value
 })
 const allChecked = computed({
   get: () => epAllChecked.value,
   set: (val: boolean) => {
-    const eps = dlInfo.value?.series
-    if (!eps) return
+    const eps = filteredSeries.value
+    if (!eps.length) return
     for (const ep of eps) dlChecked[ep.id] = val
   },
 })
@@ -83,7 +94,8 @@ async function handleClick() {
   try {
     const j = await postJson(`/comics/${c.id}/fetch-meta`)
     if (!j.ok) { message.warning(j.message || '获取信息失败'); return }
-    const isMulti = j.series && j.series.length > 1
+    const series = j.comic?.series || j.series || []
+    const isMulti = series.length > 1
     if (c.canRead && !isMulti) {
       message.warning(`#${c.id} 已可读，无需重复下载`)
       return
@@ -94,10 +106,11 @@ async function handleClick() {
       message.success(`已添加下载: #${c.id}`)
       return
     }
-    dlInfo.value = j
+    dlInfo.value = j.comic || j
     for (const key of Object.keys(dlChecked)) delete dlChecked[key]
-    for (const ep of j.series) dlChecked[ep.id] = !ep.done
+    for (const ep of series) dlChecked[ep.id] = !ep.done
     dlWithMeta.value = true
+    filterText.value = ''
     modalShow.value = true
   } catch (e: any) { message.error(String(e?.message || e)) }
   finally { fetching.value = false }
@@ -199,6 +212,10 @@ async function doAddDownload() {
   position: sticky;
   top: 0;
   z-index: 1;
+}
+.jmt-ep-filter {
+  flex: 1;
+  min-width: 0;
 }
 .jmt-ep-row {
   display: flex;

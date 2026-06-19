@@ -9,6 +9,7 @@ export const router = createRouter({
     { path: '/week', name: 'week', component: () => import('@/pages/WeekPage.vue') },
     { path: '/category', name: 'category', component: () => import('@/pages/CategoryPage.vue') },
     { path: '/serial', name: 'serial', component: () => import('@/pages/SerialPage.vue') },
+    { path: '/favorites', name: 'favorites', component: () => import('@/pages/FavoritesPage.vue') },
     {
       path: '/detail/:num',
       name: 'detail',
@@ -29,12 +30,13 @@ export const router = createRouter({
 })
 
 router.afterEach((to) => {
-  if (to.name === 'catalog') document.title = 'JM 目录'
-  else if (to.name === 'search') document.title = 'JM 搜索'
-  else if (to.name === 'week') document.title = 'JM 每周必看'
-  else if (to.name === 'category') document.title = 'JM 分类排行'
-  else if (to.name === 'serial') document.title = 'JM 每日连载'
-  else if (to.name === 'detail') document.title = `JM #${to.params.num}`
-  else if (to.name === 'meta') document.title = `JM #${to.params.num} 元数据`
+  if (to.name === 'catalog') document.title = '本地管理'
+  else if (to.name === 'search') document.title = '漫画搜索'
+  else if (to.name === 'week') document.title = '每周必看'
+  else if (to.name === 'category') document.title = '分类排行'
+  else if (to.name === 'serial') document.title = '每日连载'
+  else if (to.name === 'favorites') document.title = '收藏列表'
+  else if (to.name === 'detail') document.title = `JM${to.params.num}`
+  else if (to.name === 'meta') document.title = `JM${to.params.num} 元数据`
   else document.title = 'JM'
 })
