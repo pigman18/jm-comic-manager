@@ -4,6 +4,8 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useMessage, type MessageApi } from 'naive-ui'
 import { SearchOutline, RefreshOutline } from '@vicons/ionicons5'
+import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
+import CardReadBtn from '@/components/CardReadBtn.vue'
 import { buildQuery, getJson, postJson } from '@/api'
 import { saveCatalogReturnQuery } from '@/utils/catalogReturn'
 import { useJmLiveStore } from '@/stores/jmLive'
@@ -419,6 +421,8 @@ const orderOptions = [
                 @error="onCoverErr($event, c.id)"
               />
               <span v-if="c.canRead" class="jmz-card-ribbon">可读</span>
+              <CardDownloadBtn :comic="c" />
+              <CardReadBtn :comic="c" />
             </div>
             <div class="jmz-card-body">
               <div class="jmz-card-num">JM{{ c.id }}</div>
