@@ -59,6 +59,7 @@
               />
               <CardDownloadBtn :comic="c" />
               <CardReadBtn :comic="c" />
+              <CardFavBtn :comic="c" :favorited="!!c.is_favorite" />
             </div>
             <div class="jmz-card-body">
               <div class="jmz-card-num">JM{{ c.id }}</div>
@@ -95,6 +96,7 @@ import { getJson, postJson } from '@/api'
 import type { Comic } from '@/types'
 import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
 import CardReadBtn from '@/components/CardReadBtn.vue'
+import CardFavBtn from '@/components/CardFavBtn.vue'
 import MetaPageDialog from '@/components/MetaPageDialog.vue'
 
 interface DayOption { label: string; value: number }

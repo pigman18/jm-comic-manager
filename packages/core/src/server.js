@@ -453,6 +453,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                         done: isNotEmptySync(path.join(comicDir, `${en}.zip`))
                     };
                 });
+                comic.series = allSeries;
                 const singleDone = allSeries.length === 0 && isNotEmptySync(path.join(comicDir, `${n}.zip`));
                 const allDone = (allSeries.length > 0 && allSeries.every(e => e.done)) || singleDone;
                 const zipStatus = {};
@@ -502,11 +503,10 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const result = await crawler.search.byKeyword(keyword, page, sort);
                 const comicDir = path.join(config.dataDir, 'comic');
                 const list = await Promise.all((result.content || []).map(async (item) => {
-                    const cat = item.category || {};
-                    const sub = item.category_sub || {};
                     const id = Number(item.id);
                     const dbRow = await store.comicMeta.get(id);
                     const o = {
+                        ...item,
                         id,
                         name: String(item.name || ''),
                         cover: String(item.image || ''),
@@ -515,8 +515,8 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                         description: String(item.description || ''),
                         total_views: String(item.total_views ?? ''),
                         likes: String(item.likes ?? ''),
-                        kind: String(cat.title || sub.title || ''),
-                        displayKindLabel: String(sub.title || cat.title || ''),
+                        kind: String((item.category || {}).title || (item.category_sub || {}).title || ''),
+                        displayKindLabel: String((item.category_sub || {}).title || (item.category || {}).title || ''),
                         updateDate: item.update_at ? fmtDate(item.update_at) : '',
                         inStore: !!dbRow,
                         canRead: isNotEmptySync(path.join(comicDir, `${id}.zip`)),
@@ -555,6 +555,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const list = (result?.list || []).map((item) => {
                     const id = Number(item.id);
                     const o = {
+                        ...item,
                         id,
                         name: String(item.name || ''),
                         cover: String(item.image || ''),
@@ -589,6 +590,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const list = (result?.list || []).map((item) => {
                     const id = Number(item.aid || item.id);
                     const o = {
+                        ...item,
                         id,
                         name: String(item.title || item.name || ''),
                         cover: String(item.cover || item.image || ''),
@@ -607,6 +609,57 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     o.canRead = isNotEmptySync(path.join(comicDir, `${o.id}.zip`));
                 }));
                 res.json({ok: true, list});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+    }
+
+    function handleFavorites(app, api) {
+        app.get(`${api}/favorites/comics`, async (req, res) => {
+            try {
+                const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
+                const data = await crawler.account.getFavorites(page);
+                const items = Array.isArray(data) ? data : (data?.list || data?.rows || []);
+                const comicDir = path.join(config.dataDir, 'comic');
+                const list = await Promise.all(items.map(async (item) => {
+                    const id = Number(item.aid || item.id);
+                    const o = {
+                        id,
+                        name: String(item.title || item.name || ''),
+                        cover: String(item.cover || item.image || ''),
+                        author: Array.isArray(item.author) ? item.author : (item.author ? [String(item.author)] : []),
+                        tags: Array.isArray(item.tags) ? item.tags.map(String) : [],
+                        total_views: String(item.views ?? item.total_views ?? ''),
+                        likes: String(item.likes ?? ''),
+                        inStore: false,
+                        canRead: false,
+                    };
+                    const merged = rewriteComicMediaUrls(o);
+                    const dbRow = await store.comicMeta.get(id);
+                    merged.inStore = !!dbRow;
+                    merged.canRead = isNotEmptySync(path.join(comicDir, `${id}.zip`));
+                    return merged;
+                }));
+                res.json({ok: true, list, total: list.length});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.post(`${api}/favorites/comics/:num/toggle`, async (req, res) => {
+            try {
+                const num = Math.floor(Number(req.params.num));
+                if (!Number.isFinite(num) || num < 1) {
+                    res.status(400).json({ok: false, message: '无效编码'});
+                    return;
+                }
+                const favorite = req.body?.favorite === true;
+                if (favorite) {
+                    await crawler.account.addFavorite(num);
+                } else {
+                    await crawler.account.removeFavorite(num);
+                }
+                res.json({ok: true, favorite});
             } catch (e) {
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
@@ -647,6 +700,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const list = (result?.content || []).map((item) => {
                     const id = Number(item.id);
                     const o = {
+                        ...item,
                         id,
                         name: String(item.name || ''),
                         cover: String(item.image || ''),
@@ -885,6 +939,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         handleSerialComics(app, api);
         handleCategoryInfo(app, api);
         handleCategoryFilter(app, api);
+        handleFavorites(app, api);
         handleAccountSign(app, api);
         handleDownload(app, api);
         handleBatchAdd(app, api);
