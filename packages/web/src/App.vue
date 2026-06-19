@@ -7,7 +7,7 @@
         <aside class="jmz-sidebar" v-if="!isDetail">
           <div class="jmz-sidebar-head">
             <img src="/icon.ico" class="jmz-app-logo" alt="" />
-            <span class="jmz-app-title">JM</span>
+            <span class="jmz-app-title">JM漫画管理器</span>
           </div>
           <nav class="jmz-sidebar-nav">
             <router-link :to="{ name: 'catalog' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'catalog' }">
