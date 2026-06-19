@@ -9,7 +9,7 @@
     </div>
 
     <div class="jmz-meta-body">
-      <n-spin :show="loading && !comic">
+      <n-spin :show="loading">
         <template v-if="comic">
           <div class="jmt-meta-hero">
             <img class="jmt-meta-cover" :src="comic.cover || ''" :alt="comic.name" />
@@ -60,9 +60,8 @@
             <n-empty v-else description="无 ZIP 项" style="padding:20px 0" />
           </section>
         </template>
-        <template v-else-if="!loading">
-          <n-empty description="未找到该漫画" />
-        </template>
+        <div v-else-if="loading" class="jmt-meta-loading" />
+        <n-empty v-else description="未找到该漫画" />
       </n-spin>
     </div>
   </div>
@@ -127,7 +126,7 @@ async function loadDetail(silent = false) {
   if (!Number.isFinite(n) || n < 1) return
   if (!silent) loading.value = true
   try {
-    const j = await getJson(`/comics/${n}`)
+    const j = await postJson(`/comics/${n}/fetch-meta`)
     if (!j.ok) throw new Error(j.message || '加载失败')
     comic.value = j.comic
     zipStatus.value = j.zipStatus || {}
@@ -321,6 +320,9 @@ function fmtBytes(n: number) {
 </script>
 
 <style scoped>
+.jmt-meta-loading {
+  min-height: 250px;
+}
 /* --- layout --- */
 .jmz-meta {
   display: flex;
