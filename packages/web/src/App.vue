@@ -63,11 +63,17 @@
                 <template #icon><n-icon :component="DownloadOutline" /></template>
                 <span>下载全部</span>
               </n-button>
-              <n-checkbox v-if="!isDetail" v-model:checked="harmonyEnabled" size="small" class="jmz-harmony-checkbox">和谐化</n-checkbox>
-              <n-button text size="small" class="jmz-header-btn" @click="doSign" :loading="signLoading">签到</n-button>
+              <n-button text size="small" class="jmz-header-btn" @click="harmonyEnabled = !harmonyEnabled">
+                <template #icon><n-icon :component="harmonyEnabled ? EyeOutline : EyeOffOutline" :color="harmonyEnabled ? '#34d399' : undefined" /></template>
+                <span :style="harmonyEnabled ? { color: '#34d399' } : {}">和谐模式</span>
+              </n-button>
+              <n-button text size="small" class="jmz-header-btn" @click="doSign" :loading="signLoading">
+                <template #icon><n-icon :component="CalendarOutline" /></template>
+                <span>每日签到</span>
+              </n-button>
               <n-button text size="small" class="jmz-header-btn" @click="openTasks">
                 <template #icon><n-icon :component="ListOutline" /></template>
-                <span>任务</span>
+                <span>下载任务</span>
                 <span v-if="live.queueCount > 0" class="jmz-task-badge">{{ live.queueCount }}</span>
               </n-button>
             </div>
@@ -91,7 +97,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, provide, onMounted, onUnmounted, nextTick } from 'vue'
 import { zhCN, dateZhCN, darkTheme } from 'naive-ui'
-import { ArrowBack, CloudUploadOutline, CloudDownloadOutline, ListOutline, DownloadOutline } from '@vicons/ionicons5'
+import { ArrowBack, CloudUploadOutline, CloudDownloadOutline, ListOutline, DownloadOutline, CalendarOutline, EyeOffOutline, EyeOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import { useJmLiveStore } from '@/stores/jmLive'
 import { useJmTasksStore } from '@/stores/jmTasks'

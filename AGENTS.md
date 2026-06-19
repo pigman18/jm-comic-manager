@@ -41,3 +41,6 @@
 - **禁止** 一个 CSS 属性值调整带出多余属性——只改需要改的属性，不添加未经验证的无关声明（如给 sticky 元素加 `left:0;right:0`）
 - **禁止** 为清理一行代码使用批处理脚本操作多个文件——始终用 `edit` 工具逐文件精确修改，不要用 `-replace` 做批量正则替换
 - **禁止** 只改条件不改后果——`n-spin :show` 从 `loading && !comic` 变成 `loading` 后，必须验证 `n-spin` 包装型组件在各种状态下（空内容时遮罩层是否有高度）的行为；任何条件/属性的变更都需要通读目标组件的全部渲染分支和第三方库的行为约束
+
+## Naive UI 样式覆盖
+- **禁止** 用 CSS class + `!important` 和 Naive UI 的组件样式打架——Naive UI 内部有复杂的 hover/active 状态管理，用 `!important` 会导致鼠标移开才生效等诡异行为。需要让 Naive UI 组件的某个子元素呈现不同颜色时，直接通过子元素的内联 style 或组件 prop（如 `n-icon` 的 `color` prop）控制，不要试图在父级用 `!important` 覆盖

@@ -4,7 +4,7 @@
       <n-button quaternary @click="goBack">
         <template #icon><n-icon :component="ArrowBackOutline" /></template>
       </n-button>
-      <span class="jmz-meta-head-title" v-if="comic">JM{{ comic.id }} {{ comic.name }}</span>
+      <span class="jmz-meta-head-title xxx-text" v-if="comic">JM{{ comic.id }} {{ comic.name }}</span>
       <span class="jmz-meta-head-title" v-else>漫画元数据</span>
     </div>
 
@@ -12,19 +12,19 @@
       <n-spin :show="loading">
         <template v-if="comic">
           <div class="jmt-meta-hero">
-            <img class="jmt-meta-cover" :src="comic.cover || ''" :alt="comic.name" />
+            <div class="jmt-meta-cover-wrap"><img class="jmt-meta-cover xxx-img" :src="comic.cover || ''" :alt="comic.name" /></div>
             <div class="jmt-meta-info">
               <p class="jmt-meta-tags">
                 <span class="xxx-text">JM{{ comic.id }}</span>
                 <span class="xxx-text">{{ comic.displayKindLabel }}</span>
               </p>
-              <p v-if="comic.author && comic.author[0]" class="jmt-meta-author">作者：<span class="jmz-author-link" role="link" tabindex="0" @click="filterByAuthor(comic.author[0], $event)" @keyup.enter="filterByAuthor(comic.author[0], $event)">{{ comic.author[0] }}</span></p>
+              <p v-if="comic.author && comic.author[0]" class="jmt-meta-author">作者：<span class="jmz-author-link xxx-text" role="link" tabindex="0" @click="filterByAuthor(comic.author[0], $event)" @keyup.enter="filterByAuthor(comic.author[0], $event)">{{ comic.author[0] }}</span></p>
               <div v-if="comic.tags?.length" class="jmt-meta-chips">
                 <span v-for="t in comic.tags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByTag(t, $event)" @keyup.enter="filterByTag(t, $event)">{{ t }}</span>
               </div>
-              <p v-if="comic.description" class="jmt-meta-desc">{{ comic.description }}</p>
+              <p v-if="comic.description" class="jmt-meta-desc xxx-text">{{ comic.description }}</p>
               <div v-if="asideRows.length" class="jmt-meta-stats">
-                <span v-for="r in asideRows" :key="r.label">{{ r.label }}：{{ r.val }}</span>
+                <span v-for="r in asideRows" :key="r.label" class="xxx-text">{{ r.label }}：{{ r.val }}</span>
               </div>
             </div>
           </div>
@@ -38,8 +38,8 @@
             </div>
             <div v-if="zipRows.length" class="jmt-ep-list">
               <div v-for="row in zipRows" :key="row.zipKey" class="jmt-ep-row">
-                <span class="jmt-ep-num">{{ row.zipLabel }}</span>
-                <span class="jmt-ep-title">{{ row.epTitle }}</span>
+                <span class="jmt-ep-num xxx-text">{{ row.zipLabel }}</span>
+                <span class="jmt-ep-title xxx-text">{{ row.epTitle }}</span>
                 <n-tag v-if="dlUi(row).kind === 'ready' && isRead(row.zipKey)" size="small" type="success" bordered>已读</n-tag>
                 <n-button v-if="dlUi(row).kind === 'ready'" size="tiny" type="success" @click="onRead(row)">阅读</n-button>
                 <n-button v-else-if="dlUi(row).kind === 'idle'" size="tiny" type="primary" @click="postDownload(row.zipKey, row.label)">下载</n-button>
@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, inject, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { ArrowBackOutline } from '@vicons/ionicons5'
@@ -84,6 +84,7 @@ const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 
+const applyHarmony = inject<(() => void) | undefined>('applyHarmony', undefined)
 const live = useJmLiveStore()
 const { openComic } = useZipReader()
 const withMeta = ref(true)
@@ -139,6 +140,8 @@ async function loadDetail(silent = false) {
     if (!silent) { message.error(String(e?.message || e)); comic.value = null }
   } finally {
     if (!silent) loading.value = false
+    await nextTick()
+    applyHarmony?.()
   }
 }
 
@@ -363,14 +366,19 @@ function fmtBytes(n: number) {
   align-items: flex-start;
   margin-bottom: 12px;
 }
-.jmt-meta-cover {
+.jmt-meta-cover-wrap {
   width: 120px;
   height: 160px;
-  object-fit: cover;
-  border-radius: 4px;
   flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
   border: 1px solid #2e2e35;
   background: #1e1e22;
+}
+.jmt-meta-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .jmt-meta-info {
   flex: 1;
