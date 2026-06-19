@@ -56,7 +56,7 @@ watch(() => route.query, (q) => {
 // 离开前保存滚动位置和列表
 onBeforeRouteLeave((_to, _from, next) => {
   if (list.value.length) {
-    cachedList.value = list.value
+    cachedList.value = [...list.value]
     cachedTotal.value = total.value
     cachedPages.value = pages.value
     scrollTop.value = mainScrollRef.value?.scrollTop || 0

@@ -138,7 +138,7 @@ async function loadList() {
 }
 
 onBeforeRouteLeave(() => {
-  cachedList.value = list.value
+  cachedList.value = [...list.value]
   cachedTotal.value = total.value
   scrollTop.value = mainScrollRef.value?.scrollTop || 0
 })

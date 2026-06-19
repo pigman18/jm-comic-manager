@@ -75,7 +75,7 @@ function onCoverErr(e: Event, id: number) {
 
 onBeforeRouteLeave((_to, _from, next) => {
   if (list.value.length) {
-    cachedList.value = list.value
+    cachedList.value = [...list.value]
     cachedTotal.value = total.value
     cachedCategory.value = activeCategory.value
     cachedType.value = activeType.value

@@ -42,6 +42,7 @@
                 <template #icon><n-icon :component="ArrowBack" /></template>
                 返回
               </n-button>
+              <span class="jmz-header-title">{{ pageTitle }}</span>
             </div>
             <div class="jmz-header-right">
               <template v-if="!isDetail">
@@ -58,24 +59,36 @@
                     {{ store.syncLocalToDb.complete }}/{{ store.syncLocalToDb.total || store.syncDbToLocal.complete }}/{{ store.syncDbToLocal.total }}
                   </span>
                 </div>
+                <div class="jmz-header-divider" />
+                <div class="jmz-header-actions">
+                  <n-button text size="small" class="jmz-header-btn" @click="showBatchDownload = true" v-if="currentPageComics.length > 0">
+                    <template #icon><n-icon :component="DownloadOutline" /></template>
+                    <span>下载全部</span>
+                  </n-button>
+                  <n-button text size="small" class="jmz-header-btn" @click="harmonyEnabled = !harmonyEnabled">
+                    <template #icon><n-icon :component="harmonyEnabled ? EyeOutline : EyeOffOutline" :color="harmonyEnabled ? '#34d399' : undefined" /></template>
+                    <span :style="harmonyEnabled ? { color: '#34d399' } : {}">和谐模式</span>
+                  </n-button>
+                  <n-button text size="small" class="jmz-header-btn" @click="doSign" :loading="signLoading">
+                    <template #icon><n-icon :component="CalendarOutline" /></template>
+                    <span>每日签到</span>
+                  </n-button>
+                  <n-button text size="small" class="jmz-header-btn" @click="openTasks">
+                    <template #icon><n-icon :component="ListOutline" /></template>
+                    <span>下载任务</span>
+                    <span v-if="live.queueCount > 0" class="jmz-task-badge">{{ live.queueCount }}</span>
+                  </n-button>
+                </div>
               </template>
-              <n-button text size="small" class="jmz-header-btn" @click="showBatchDownload = true" v-if="!isDetail && currentPageComics.length > 0">
-                <template #icon><n-icon :component="DownloadOutline" /></template>
-                <span>下载全部</span>
-              </n-button>
-              <n-button text size="small" class="jmz-header-btn" @click="harmonyEnabled = !harmonyEnabled">
-                <template #icon><n-icon :component="harmonyEnabled ? EyeOutline : EyeOffOutline" :color="harmonyEnabled ? '#34d399' : undefined" /></template>
-                <span :style="harmonyEnabled ? { color: '#34d399' } : {}">和谐模式</span>
-              </n-button>
-              <n-button text size="small" class="jmz-header-btn" @click="doSign" :loading="signLoading">
-                <template #icon><n-icon :component="CalendarOutline" /></template>
-                <span>每日签到</span>
-              </n-button>
-              <n-button text size="small" class="jmz-header-btn" @click="openTasks">
-                <template #icon><n-icon :component="ListOutline" /></template>
-                <span>下载任务</span>
-                <span v-if="live.queueCount > 0" class="jmz-task-badge">{{ live.queueCount }}</span>
-              </n-button>
+              <template v-else>
+                <div class="jmz-header-actions">
+                  <n-button text size="small" class="jmz-header-btn" @click="openTasks">
+                    <template #icon><n-icon :component="ListOutline" /></template>
+                    <span>下载任务</span>
+                    <span v-if="live.queueCount > 0" class="jmz-task-badge">{{ live.queueCount }}</span>
+                  </n-button>
+                </div>
+              </template>
             </div>
           </header>
           <main class="jmz-app-main">
@@ -116,6 +129,18 @@ const live = useJmLiveStore()
 const tasksStore = useJmTasksStore()
 const showTasks = ref(false)
 const isDetail = computed(() => route.name === 'detail')
+const pageTitle = computed(() => {
+  const map: Record<string, string> = {
+    catalog: '本地管理',
+    search: '漫画搜索',
+    week: '每周必看',
+    category: '分类排行',
+    serial: '每日连载',
+    detail: '漫画详情',
+    meta: '漫画元数据',
+  }
+  return map[String(route.name)] || ''
+})
 provide('jmzOpenTasks', () => { showTasks.value = true })
 provide('sendWs', (msg: string) => { try { ws?.send(msg) } catch {} })
 
@@ -360,6 +385,23 @@ onUnmounted(() => {
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+}
+.jmz-header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8e8f0;
+  white-space: nowrap;
+}
+.jmz-header-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(46, 46, 53, 0.6);
+  flex-shrink: 0;
+}
+.jmz-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .jmz-header-right {

@@ -98,7 +98,7 @@ watch(() => route.query, (q) => {
 
 onBeforeRouteLeave((_to, _from, next) => {
   if (list.value.length) {
-    cachedList.value = list.value
+    cachedList.value = [...list.value]
     cachedTotal.value = total.value
     cachedPages.value = pages.value
     cachedTab.value = activeTab.value
