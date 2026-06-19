@@ -249,8 +249,11 @@ function createCrawler(manifest, ctx, message, config) {
      * @param func
      * @return {Promise<object>}
      */
-    async function expireRetry(func) {
+    async function expireRetry(func, signal = null) {
         return retryAndCatch(func, async (err) => {
+            if (signal?.aborted || err.__isAbort || err.name === 'AbortError' || err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+                return true;
+            }
             if (403 === err.status) {
                 // 出现403错误，需要重新登录
                 await login(err.phase, err.phaseData);
@@ -331,7 +334,7 @@ function createCrawler(manifest, ctx, message, config) {
      * @param afterSteps
      * @return {Promise<null|*>}
      */
-    async function downloadAlbumArchive(number, filePath, phase = PHASE.FETCH_COMIC, afterSteps = null) {
+    async function downloadAlbumArchive(number, filePath, phase = PHASE.FETCH_COMIC, afterSteps = null, signal = null) {
         number = Number(number);
         // 1、执行下载流程
         return await message.doPhase(phase || PHASE.FETCH_COMIC, async (stepHandler, phaseMessageData) => {
@@ -343,7 +346,8 @@ function createCrawler(manifest, ctx, message, config) {
                         let resp = await apiClient.get(`${getApiHost()}/album_download_2/${number}`, {
                             headers: {
                                 'Authorization': 'Bearer ' + config.token
-                            }
+                            },
+                            signal,
                         });
                         if ('0' === resp?.data?.data?.status) {
                             let error = new Error(resp?.data?.data?.msg || '');
@@ -362,6 +366,7 @@ function createCrawler(manifest, ctx, message, config) {
                         let finalComplete = 0, finalTotal = 0;
                         await downloadResume(realUrl, filePath, {
                             proxy: config.proxy,
+                            signal,
                             onProgress: ({complete, total}) => {
                                 onStepProgress(complete, total);
                                 finalComplete = complete;
@@ -386,7 +391,7 @@ function createCrawler(manifest, ctx, message, config) {
                 });
                 let {complete, total} = await expireRetry(async () => {
                     return await steps[STEP.DOWNLOAD](url);
-                });
+                }, signal);
                 return {
                     number,
                     complete,
@@ -511,7 +516,7 @@ function createCrawler(manifest, ctx, message, config) {
             return meta;
         },
         // 下载漫画压缩包
-        downloadArchive: async (number, withAppendComicInfo = true, afterSteps = null) => {
+        downloadArchive: async (number, withAppendComicInfo = true, afterSteps = null, signal = null) => {
             number = parseNumber(number);
             let archiveFile = `${comicDir}/${number}.zip`;
             if (isNotEmptySync(archiveFile)) {
@@ -525,7 +530,7 @@ function createCrawler(manifest, ctx, message, config) {
             let {
                 complete,
                 total
-            } = await expireRetry(() => downloadAlbumArchive(number, archiveFile));
+            } = await expireRetry(() => downloadAlbumArchive(number, archiveFile, PHASE.FETCH_COMIC, null, signal), signal);
             if (!!total) {
                 if (afterSteps) {
                     await afterSteps({ number, file: archiveFile, complete, total });

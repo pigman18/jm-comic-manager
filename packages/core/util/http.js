@@ -371,10 +371,19 @@ function withRetry(fn, retries = 3, delay = 1000) {
  * @param options           透传至 axios，额外支持 onProgress, proxy
  * @return {Promise<string>} 最终文件路径
  */
+function createAbortError() {
+    const err = new Error('download aborted');
+    err.name = 'AbortError';
+    err.__isAbort = true;
+    return err;
+}
+
 async function downloadResume(url, filePath, options = {}) {
-    const { onProgress, proxy, ...axiosOpts } = options;
+    const { onProgress, proxy, signal, ...axiosOpts } = options;
     let resumeSize = 0;
     const tmpPath = filePath + '.tmp';
+
+    if (signal?.aborted) throw createAbortError();
 
     // 检测已有部分文件
     if (fs.existsSync(tmpPath)) {
@@ -395,32 +404,47 @@ async function downloadResume(url, filePath, options = {}) {
         ...(proxy ? { proxy: false, httpsAgent: new (require('https-proxy-agent').HttpsProxyAgent)(proxy) } : {}),
     };
 
+    if (signal?.aborted) throw createAbortError();
     const resp = await axios(axiosConfig);
+
+    if (signal?.aborted) {
+        resp.data?.destroy?.();
+        throw createAbortError();
+    }
+
     const supportRange = resp.status === 206;
     const totalLen = parseInt(resp.headers['content-length'] || '0', 10);
     const totalSize = supportRange ? resumeSize + totalLen : (totalLen || 0);
 
-    if (supportRange) {
-        // 续传：追加写入
-        const writer = fs.createWriteStream(tmpPath, { flags: 'a' });
+    const doPipe = (writer) => {
         resp.data.pipe(writer);
+        return new Promise((resolve, reject) => {
+            const onAbort = () => {
+                resp.data?.destroy?.();
+                writer?.destroy?.();
+                reject(createAbortError());
+            };
+            if (signal) {
+                if (signal.aborted) { onAbort(); return; }
+                signal.addEventListener('abort', onAbort, { once: true });
+            }
+            writer.on('finish', () => { fs.renameSync(tmpPath, filePath); resolve(); });
+            writer.on('error', (err) => { reject(err); });
+            resp.data.on('error', (err) => { reject(err); });
+        });
+    };
+
+    if (supportRange) {
+        const writer = fs.createWriteStream(tmpPath, { flags: 'a' });
         let downloaded = resumeSize;
         resp.data.on('data', chunk => { downloaded += chunk.length; onProgress?.({ complete: downloaded, total: totalSize }); });
-        await new Promise((resolve, reject) => {
-            writer.on('finish', () => { fs.renameSync(tmpPath, filePath); resolve(); });
-            writer.on('error', reject);
-        });
+        await doPipe(writer);
     } else {
-        // 不支持断点：全新下载
         if (resumeSize > 0) { try { fs.rmSync(tmpPath); } catch {} resumeSize = 0; }
         const writer = fs.createWriteStream(tmpPath);
-        resp.data.pipe(writer);
         let downloaded = 0;
         resp.data.on('data', chunk => { downloaded += chunk.length; onProgress?.({ complete: downloaded, total: totalSize }); });
-        await new Promise((resolve, reject) => {
-            writer.on('finish', () => { fs.renameSync(tmpPath, filePath); resolve(); });
-            writer.on('error', reject);
-        });
+        await doPipe(writer);
     }
     return filePath;
 }
