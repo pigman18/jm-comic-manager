@@ -479,7 +479,7 @@ const orderOptions = [
 
 .jmz-catalog-header {
   flex-shrink: 0;
-  margin: 12px 16px;
+  margin: 12px;
   background: #1e1e22;
 }
 .jmz-filter-grid {
@@ -510,7 +510,7 @@ const orderOptions = [
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 16px;
+  padding: 0 12px;
 }
 
 .jmz-card-grid-wrap {
@@ -518,7 +518,6 @@ const orderOptions = [
   width: 100%;
   min-width: 0;
   min-height: 200px;
-  margin-top: 12px;
 }
 .jmz-list-reload-mask {
   position: absolute;
@@ -748,6 +747,6 @@ const orderOptions = [
   flex-shrink: 0;
   display: flex;
   justify-content: center;
-  padding: 12px 16px 20px;
+  padding: 12px;
 }
 </style>

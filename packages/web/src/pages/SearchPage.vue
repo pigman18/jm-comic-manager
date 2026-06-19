@@ -95,9 +95,6 @@ async function doSearch(page?: number) {
   // 新搜索时清缓存
   cachedList.value = []
   loading.value = true
-  list.value = []
-  total.value = 0
-  pages.value = 0
   try {
     const j = await getJson(`/search/comics${buildQuery({ keyword: kw, sort: sort.value, page: p })}`)
     if (!j.ok) throw new Error(j.message || '搜索失败')
@@ -265,7 +262,6 @@ function onCoverErr(e: Event, id: number) {
   width: 100%;
   min-width: 0;
   min-height: 200px;
-  margin-top: 12px;
 }
 .jmz-list-reload-mask {
   position: absolute;
@@ -317,7 +313,7 @@ function onCoverErr(e: Event, id: number) {
 
 .jmz-search-header {
   flex-shrink: 0;
-  margin: 12px 16px;
+  margin: 12px;
 }
 
 .jmz-search-row {
@@ -338,12 +334,12 @@ function onCoverErr(e: Event, id: number) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 16px;
+  padding: 0 12px;
 }
 
 .jmz-search-footer {
   flex-shrink: 0;
-  padding: 12px 16px 20px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -525,7 +521,7 @@ function onCoverErr(e: Event, id: number) {
 }
 
 .jmz-search-pager {
-  margin-top: 16px;
+  margin-top: 12px;
   display: flex;
   justify-content: center;
 }

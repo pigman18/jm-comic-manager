@@ -179,8 +179,6 @@ async function loadCategory(p?: number) {
   currentPage.value = pg
   loading.value = true
   list.value = []
-  total.value = 0
-  pages.value = 0
   coverLoaded.value = {}
   syncUrl()
   try {
@@ -360,7 +358,7 @@ async function goDetail(c: Comic) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
   padding: 80px 0;
   color: #7a7a8a;
   font-size: 14px;
@@ -368,7 +366,7 @@ async function goDetail(c: Comic) {
 
 .jmz-cat-header {
   flex-shrink: 0;
-  margin: 12px 16px;
+  margin: 12px;
 }
 
 .jmz-cat-bar {
@@ -379,12 +377,12 @@ async function goDetail(c: Comic) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 16px;
+  padding: 0 12px;
 }
 
 .jmz-cat-footer {
   flex-shrink: 0;
-  padding: 12px 16px 20px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -437,7 +435,7 @@ async function goDetail(c: Comic) {
 }
 
 .jmz-cat-tab {
-  padding: 6px 16px;
+  padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid rgba(46, 46, 53, 0.7);
   background: transparent;
@@ -458,14 +456,14 @@ async function goDetail(c: Comic) {
 
 /* blocks */
 .jmz-cat-blocks {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .jmz-cat-block {
   background: rgba(26, 26, 32, 0.5);
   border: 1px solid rgba(46, 46, 53, 0.6);
   border-radius: 10px;
-  padding: 14px 16px;
+  padding: 14px 12px;
   margin-bottom: 12px;
 }
 .jmz-cat-block:last-child {
@@ -531,7 +529,6 @@ async function goDetail(c: Comic) {
   width: 100%;
   min-width: 0;
   min-height: 200px;
-  margin-top: 12px;
 }
 .jmz-list-reload-mask {
   position: absolute;

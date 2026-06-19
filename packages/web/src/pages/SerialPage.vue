@@ -230,7 +230,7 @@ async function goDetail(c: Comic) {
 
 .jmz-serial-header {
   flex-shrink: 0;
-  margin: 12px 16px;
+  margin: 12px;
 }
 
 .jmz-serial-bar {
@@ -242,7 +242,7 @@ async function goDetail(c: Comic) {
   gap: 6px;
 }
 .jmz-serial-day-btn {
-  padding: 6px 16px;
+  padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid rgba(46, 46, 53, 0.7);
   background: transparent;
@@ -268,12 +268,12 @@ async function goDetail(c: Comic) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 16px;
+  padding: 0 12px;
 }
 
 .jmz-serial-footer {
   flex-shrink: 0;
-  padding: 12px 16px 20px;
+  padding: 12px;
   display: flex;
   justify-content: center;
 }
@@ -289,7 +289,6 @@ async function goDetail(c: Comic) {
   width: 100%;
   min-width: 0;
   min-height: 200px;
-  margin-top: 12px;
 }
 .jmz-list-reload-mask {
   position: absolute;
