@@ -6,8 +6,9 @@ import { useMessage, type MessageApi } from 'naive-ui'
 import { SearchOutline, RefreshOutline } from '@vicons/ionicons5'
 import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
 import CardReadBtn from '@/components/CardReadBtn.vue'
+import MetaPageDialog from '@/components/MetaPageDialog.vue'
 import { buildQuery, getJson, postJson } from '@/api'
-import { saveCatalogReturnQuery } from '@/utils/catalogReturn'
+
 import { useJmLiveStore } from '@/stores/jmLive'
 import type { Comic } from '@/types'
 
@@ -34,6 +35,10 @@ const cachedList = shallowRef<Comic[]>([])
 const cachedTotal = ref(0)
 const scrollTop = ref(0)
 const mainScrollRef = ref<HTMLElement | null>(null)
+
+const metaDialogNum = ref(0)
+const metaDialogShow = ref(false)
+function metaOpen(id: number) { metaDialogNum.value = id; metaDialogShow.value = true }
 
 const filters = reactive({
   title: '',
@@ -187,11 +192,6 @@ function searchTags(query: string) {
     } catch { tagsOptions.value = [] }
     finally { tagsLoading.value = false }
   }, 300)
-}
-
-function goDetail(c: Comic) {
-  saveCatalogReturnQuery(route.query)
-  router.push({ name: 'detail', params: { num: String(c.id) } })
 }
 
 function fmtTime(ts: string | undefined): string {
@@ -399,8 +399,8 @@ const orderOptions = [
             :class="['jmz-card', cardToneClass(i)]"
             role="button"
             tabindex="0"
-            @click="goDetail(c)"
-            @keyup.enter="goDetail(c)"
+            @click="metaOpen(c.id)"
+            @keyup.enter="metaOpen(c.id)"
           >
             <div class="jmz-card-cover-wrap">
               <div v-show="!coverReady(c.id, c.cover)" class="jmz-cover-spinner" aria-hidden="true">
@@ -426,7 +426,7 @@ const orderOptions = [
             </div>
             <div class="jmz-card-body">
               <div class="jmz-card-num">JM{{ c.id }}</div>
-                  <h2 class="jmz-card-title xxx-text">{{ c.name }}</h2>
+                  <h2 class="jmz-card-title xxx-text" role="link" tabindex="0" @click.stop="metaOpen(c.id)" @keyup.enter.stop="metaOpen(c.id)">{{ c.name }}</h2>
               <div
                 v-if="c.author && c.author[0]"
                 class="jmz-card-author jmz-author-link"
@@ -473,6 +473,7 @@ const orderOptions = [
       />
     </div>
   </div>
+  <MetaPageDialog v-model:show="metaDialogShow" :num="metaDialogNum" />
 </template>
 
 <style scoped>

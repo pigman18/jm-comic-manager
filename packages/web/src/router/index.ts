@@ -15,6 +15,12 @@ export const router = createRouter({
       component: () => import('@/pages/DetailPage.vue'),
       props: true,
     },
+    {
+      path: '/meta/:num',
+      name: 'meta',
+      component: () => import('@/pages/MetaPage.vue'),
+      props: true,
+    },
   ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) return savedPosition
@@ -29,5 +35,6 @@ router.afterEach((to) => {
   else if (to.name === 'category') document.title = 'JM 分类排行'
   else if (to.name === 'serial') document.title = 'JM 每日连载'
   else if (to.name === 'detail') document.title = `JM #${to.params.num}`
+  else if (to.name === 'meta') document.title = `JM #${to.params.num} 元数据`
   else document.title = 'JM'
 })
