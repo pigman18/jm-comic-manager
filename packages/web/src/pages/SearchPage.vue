@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, reactive, onActivated, watch, inject, type Ref } from 'vue'
+import { ref, shallowRef, reactive, nextTick, onActivated, watch, inject, type Ref } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { SearchOutline } from '@vicons/ionicons5'
@@ -27,6 +27,7 @@ const cachedTotal = ref(0)
 const cachedPages = ref(0)
 const lastKw = ref('')
 const scrollTop = ref(0)
+const mainScrollRef = ref<HTMLElement | null>(null)
 
 let _syncingUrl = false
 // 从 URL 恢复搜索参数
@@ -52,7 +53,7 @@ onBeforeRouteLeave((_to, _from, next) => {
     cachedList.value = list.value
     cachedTotal.value = total.value
     cachedPages.value = pages.value
-    scrollTop.value = window.scrollY || 0
+    scrollTop.value = mainScrollRef.value?.scrollTop || 0
   }
   next()
 })
@@ -66,7 +67,9 @@ onActivated(() => {
     _syncingUrl = true
     try { router.replace({ name: 'search', query: { keyword: keyword.value, sort: sort.value, page: String(currentPage.value) } }) } catch {}
     _syncingUrl = false
-    setTimeout(() => window.scrollTo(0, scrollTop.value), 0)
+    nextTick(() => {
+      if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value
+    })
   }
 })
 
@@ -164,7 +167,7 @@ function onCoverErr(e: Event, id: number) {
       </div>
     </section>
 
-    <div class="jmz-search-main">
+    <div class="jmz-search-main" ref="mainScrollRef">
       <n-empty v-if="!loading && !list.length && keyword.trim()" description="未找到相关漫画" />
       <n-empty v-else-if="!loading && !list.length" description="输入关键词开始搜索" />
       <div
@@ -305,7 +308,17 @@ function onCoverErr(e: Event, id: number) {
   100% { background-position: -100% 0; }
 }
 
+.jmz-search-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 24px 48px;
+}
+
 .jmz-search-bar {
+  flex-shrink: 0;
+  margin-top: 20px;
   margin-bottom: 16px;
 }
 
@@ -324,7 +337,9 @@ function onCoverErr(e: Event, id: number) {
 }
 
 .jmz-search-main {
-  min-height: 200px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .jmz-card-grid {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, shallowRef, computed, onMounted, watch, onActivated, inject, type Ref } from 'vue'
+import { reactive, ref, shallowRef, computed, onMounted, watch, nextTick, onActivated, inject, type Ref } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useMessage, type MessageApi } from 'naive-ui'
@@ -31,6 +31,7 @@ watch(list, (v) => { currentPageComics.value = v }, { immediate: true })
 const cachedList = shallowRef<Comic[]>([])
 const cachedTotal = ref(0)
 const scrollTop = ref(0)
+const mainScrollRef = ref<HTMLElement | null>(null)
 
 const filters = reactive({
   title: '',
@@ -131,7 +132,7 @@ async function loadList() {
 onBeforeRouteLeave(() => {
   cachedList.value = list.value
   cachedTotal.value = total.value
-  scrollTop.value = window.scrollY || 0
+  scrollTop.value = mainScrollRef.value?.scrollTop || 0
 })
 
 onActivated(() => {
@@ -140,7 +141,9 @@ onActivated(() => {
     total.value = cachedTotal.value
     cachedQueryKey = JSON.stringify(filtersToQuery() || {})
     router.replace({ name: 'catalog', query: filtersToQuery() })
-    setTimeout(() => window.scrollTo(0, scrollTop.value), 0)
+    nextTick(() => {
+      if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value
+    })
   }
 })
 
@@ -364,7 +367,7 @@ const orderOptions = [
       </div>
     </section>
 
-    <div class="jmz-catalog-main">
+    <div class="jmz-catalog-main" ref="mainScrollRef">
       <n-empty v-if="!loading && !list.length" description="暂无数据" />
       <div
         v-else
@@ -467,8 +470,19 @@ const orderOptions = [
 
 <style scoped>
 
+.jmz-catalog {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 24px 48px;
+}
+
 .jmz-filter-block {
   background: #1e1e22;
+  flex-shrink: 0;
+  margin-top: 20px;
+  margin-bottom: 16px;
 }
 .jmz-filter-grid {
   display: grid;
@@ -495,6 +509,9 @@ const orderOptions = [
 }
 
 .jmz-catalog-main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   width: 100%;
   min-width: 0;
 }
