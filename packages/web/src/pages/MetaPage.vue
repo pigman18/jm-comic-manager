@@ -19,7 +19,7 @@
                   <span class="xxx-text">JM{{ comic.id }}</span>
                   <span class="xxx-text">{{ comic.displayKindLabel }}</span>
                 </p>
-                <p v-if="comic.author && comic.author[0]" class="jmt-meta-author">作者：<span class="jmz-author-link xxx-text" role="link" tabindex="0" @click="filterByAuthor(comic.author[0], $event)" @keyup.enter="filterByAuthor(comic.author[0], $event)">{{ comic.author[0] }}</span></p>
+                <div v-if="comic.author?.length" class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作者：</span><span v-for="a in comic.author" :key="a" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByAuthor(a, $event)" @keyup.enter="filterByAuthor(a, $event)">{{ a }}</span></div>
                 <div v-if="comic.tags?.length" class="jmt-meta-chips">
                   <span v-for="t in comic.tags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByTag(t, $event)" @keyup.enter="filterByTag(t, $event)">{{ t }}</span>
                 </div>

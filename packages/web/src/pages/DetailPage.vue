@@ -274,9 +274,9 @@ const detailHeroClass = computed(() => asideRows.value.length ? 'jmz-detail-hero
             <div class="jmz-detail-meta">
               <h1 class="jmz-detail-title xxx-text">{{ comic.name }}</h1>
               <p class="jmz-detail-line">JM{{ comic.id }} · {{ comic.displayKindLabel }}</p>
-              <p v-if="comic.author && comic.author[0]" class="jmz-detail-line">
+              <p v-if="comic.author?.length" class="jmz-detail-line">
                 <span class="jmz-detail-author-label">作者：</span>
-                <span class="jmz-author-link" role="link" tabindex="0" @click="filterByAuthor(comic.author[0], $event)" @keyup.enter="filterByAuthor(comic.author[0], $event)">{{ comic.author[0] }}</span>
+                <span v-for="(a, ai) in comic.author" :key="a" class="jmz-author-link xxx-text" role="link" tabindex="0" @click="filterByAuthor(a, $event)" @keyup.enter="filterByAuthor(a, $event)">{{ a }}{{ ai < comic.author.length - 1 ? ' / ' : '' }}</span>
               </p>
               <div v-if="comic.tags?.length" class="jmz-detail-tags">
                 <span v-for="t in comic.tags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByTag(t, $event)" @keyup.enter="filterByTag(t, $event)">{{ t }}</span>

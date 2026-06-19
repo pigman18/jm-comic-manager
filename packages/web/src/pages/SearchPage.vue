@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, shallowRef, reactive, nextTick, onActivated, watch, inject, type Ref } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useMessage } from 'naive-ui'
@@ -35,6 +35,7 @@ const mainScrollRef = ref<HTMLElement | null>(null)
 const metaDialogNum = ref(0)
 const metaDialogShow = ref(false)
 function metaOpen(id: number) { metaDialogNum.value = id; metaDialogShow.value = true }
+function filterByAuthor(name: string, ev?: Event) { ev?.stopPropagation?.(); const a = String(name || '').trim(); if (!a) return; router.push({ name: 'catalog', query: { author: a, page: '1' } }) }
 
 let _syncingUrl = false
 // 从 URL 恢复搜索参数
@@ -202,12 +203,11 @@ function onCoverErr(e: Event, id: number) {
             />
             <CardDownloadBtn :comic="c" />
             <CardReadBtn :comic="c" />
-            <CardFavBtn :comic="c" :favorited="!!c.is_favorite" />
           </div>
           <div class="jmz-card-body">
             <div class="jmz-card-num">JM{{ c.id }}</div>
                 <h2 class="jmz-card-title xxx-text" role="link" tabindex="0" @click.stop="metaOpen(c.id)" @keyup.enter.stop="metaOpen(c.id)">{{ c.name }}</h2>
-            <div v-if="c.author && c.author[0]" class="jmz-card-author">{{ c.author[0] }}</div>
+            <div v-if="c.author?.length" class="jmz-card-author"><template v-for="(a, ai) in c.author" :key="a"><span class="jmz-author-link" role="link" tabindex="0" @click.stop="filterByAuthor(a, $event)" @keyup.enter.stop="filterByAuthor(a, $event)">{{ a }}</span><span v-if="ai < c.author.length - 1" class="jmz-author-sep"> / </span></template></div>
             <div v-else class="jmz-card-author jmz-card-author--muted">作者未知</div>
             <div class="jmz-card-tags" aria-label="标签">
               <span
@@ -223,6 +223,7 @@ function onCoverErr(e: Event, id: number) {
               <span v-if="c.total_views" class="jmz-card-pages">{{ c.total_views }}次</span>
               <span v-if="c.likes" class="jmz-card-pages">{{ c.likes }}❤</span>
               <span v-if="c.updateDate" class="jmz-card-date">{{ c.updateDate }}</span>
+              <span style="margin-left:auto;display:flex"><CardFavBtn :comic="c" :favorited="!!c.is_favorite" /></span>
             </div>
           </div>
         </article>
@@ -484,16 +485,20 @@ function onCoverErr(e: Event, id: number) {
 }
 
 .jmz-card-author {
-  font-size: 11px;
-  color: #6b9fff;
+  font-size: 13px;
+  color: #9b9bb4;
+  font-weight: 600;
+  min-height: 1.35em;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .jmz-card-author--muted {
   color: #6a6a7a;
 }
+.jmz-author-link { color: inherit; }
+.jmz-author-sep { color: inherit; text-decoration: none; white-space: pre; }
 
 .jmz-card-tags {
   display: flex;
