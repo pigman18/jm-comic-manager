@@ -32,6 +32,7 @@ const list = shallowRef<Comic[]>([])
 const total = ref(0)
 
 const currentPageComics = inject<Ref<Comic[]>>('currentPageComics')!
+const applyHarmony = inject<(() => void) | undefined>('applyHarmony', undefined)
 watch(list, (v) => { currentPageComics.value = v }, { immediate: true })
 const pages = ref(0)
 const currentPage = ref(1)
@@ -146,6 +147,8 @@ async function loadInfo() {
     message.error(e.message || '获取分类信息失败')
   } finally {
     infoLoading.value = false
+    await nextTick()
+    applyHarmony?.()
   }
 }
 
@@ -198,6 +201,8 @@ async function loadCategory(p?: number) {
     message.error(e.message || '获取分类内容失败')
   } finally {
     loading.value = false
+    await nextTick()
+    applyHarmony?.()
   }
 }
 
@@ -220,7 +225,7 @@ function onSortChange() { cachedList.value = []; currentPage.value = 1; loadCate
           <button
             v-for="t in tabOptions"
             :key="t.value"
-            class="jmz-cat-tab"
+            class="jmz-cat-tab xxx-text"
             :class="{ 'jmz-cat-tab--active': t.value === activeTab }"
             :disabled="loading"
             @click="onTabClick(t.value)"
@@ -245,7 +250,7 @@ function onSortChange() { cachedList.value = []; currentPage.value = 1; loadCate
             <span
               v-for="tag in b.content"
               :key="tag"
-              class="jmz-chip jmz-chip--click"
+              class="jmz-chip jmz-chip--click xxx-text"
               @click="onTagClick(tag)"
             >{{ tag }}</span>
           </div>
