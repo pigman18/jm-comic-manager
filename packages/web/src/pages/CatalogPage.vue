@@ -455,7 +455,7 @@ const orderOptions = [
         </div>
       </div>
     </div>
-    <div v-if="total > filters.pageSize" class="jmz-catalog-footer">
+    <div v-if="total > 0" class="jmz-catalog-footer">
       <n-pagination
         v-model:page="filters.page"
         v-model:page-size="filters.pageSize"

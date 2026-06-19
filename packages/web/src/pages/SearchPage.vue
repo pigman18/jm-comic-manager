@@ -240,7 +240,7 @@ function onCoverErr(e: Event, id: number) {
     </div>
 
     <div v-if="(pages > 1 || total > 0) && list.length > 0" class="jmz-search-footer">
-      <div v-if="pages > 1" class="jmz-search-pager">
+      <div class="jmz-search-pager">
         <n-pagination
           v-model:page="currentPage"
           :page-count="pages"
