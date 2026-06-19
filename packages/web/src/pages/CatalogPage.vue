@@ -57,6 +57,7 @@ watch(
   () => ({ page: filters.page, pageSize: filters.pageSize }),
   () => {
     router.replace({ name: 'catalog', query: filtersToQuery() })
+    nextTick(() => mainScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' }))
   },
 )
 
@@ -374,19 +375,14 @@ const orderOptions = [
           </div>
         </div>
       </div>
+      <div v-if="loading" class="jmz-cat-bar-track"><div class="jmz-cat-bar-fill" /></div>
+      <div v-if="loading" class="jmz-cat-bar-indicator">加载中...</div>
     </section>
 
     <div class="jmz-catalog-main" ref="mainScrollRef">
       <n-empty v-if="!loading && !list.length" description="暂无数据" />
-      <div
-        v-else
-        class="jmz-card-grid-wrap"
-        :class="{ 'jmz-card-grid-wrap--dim': loading && list.length > 0 }"
-      >
-        <div v-if="loading && list.length > 0" class="jmz-list-reload-mask" aria-busy="true">
-          <n-spin size="medium" />
-        </div>
-        <div v-if="loading && !list.length" class="jmz-card-grid jmz-skel-grid" aria-hidden="true">
+      <div v-else class="jmz-card-grid-wrap">
+        <div v-if="loading" class="jmz-card-grid jmz-skel-grid" aria-hidden="true">
           <div
             v-for="i in filters.pageSize"
             :key="'sk' + i"
@@ -493,6 +489,34 @@ const orderOptions = [
   flex-shrink: 0;
   margin: 12px;
   background: #1e1e22;
+  position: relative;
+}
+.jmz-cat-bar-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: rgba(46, 46, 53, 0.4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.jmz-cat-bar-fill {
+  height: 100%;
+  width: 25%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa, #3b82f6);
+  background-size: 200% 100%;
+  animation: jmz-cat-bar-slide 1s linear infinite;
+}
+@keyframes jmz-cat-bar-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.jmz-cat-bar-indicator {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #3b82f6;
+  font-weight: 600;
 }
 .jmz-filter-body {
   display: flex;
@@ -553,24 +577,6 @@ const orderOptions = [
   min-width: 0;
   min-height: 200px;
 }
-.jmz-list-reload-mask {
-  position: fixed;
-  left: 180px;
-  right: 0;
-  top: 44px;
-  bottom: 0;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(16, 16, 20, 0.6);
-  pointer-events: none;
-}
-.jmz-card-grid-wrap--dim {
-  opacity: 0.65;
-  pointer-events: none;
-}
-
 .jmz-card-grid,
 .jmz-skel-grid {
   display: grid;

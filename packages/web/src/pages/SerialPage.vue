@@ -12,26 +12,21 @@
             @click="onDayClick(d.value)"
           >{{ d.label }}</button>
         </div>
+      <div v-if="loading" class="jmz-cat-bar-track"><div class="jmz-cat-bar-fill" /></div>
+      <div v-if="loading" class="jmz-cat-bar-indicator">加载中...</div>
       </section>
     </div>
 
     <div class="jmz-serial-main" ref="mainScrollRef">
       <n-empty v-if="!loading && !list.length" description="暂无内容" />
-      <div
-        v-else-if="list.length > 0 || loading"
-        class="jmz-card-grid-wrap"
-        :class="{ 'jmz-card-grid-wrap--dim': loading && list.length > 0 }"
-      >
-        <div v-if="loading && list.length > 0" class="jmz-list-reload-mask">
-          <n-spin size="medium" />
-        </div>
-        <div v-if="loading && !list.length" class="jmz-card-grid jmz-skel-grid">
+      <div v-else class="jmz-card-grid-wrap">
+        <div v-if="loading" class="jmz-card-grid jmz-skel-grid" aria-hidden="true">
           <div v-for="i in 10" :key="'sk' + i" :class="['jmz-card', 'jmz-skel-card', cardToneClass(i - 1)]">
             <div class="jmz-skel-cover" />
             <div class="jmz-skel-lines" />
           </div>
         </div>
-        <div v-if="list.length > 0" class="jmz-card-grid">
+        <div v-else class="jmz-card-grid">
           <article
             v-for="(c, i) in list"
             :key="c.id"
@@ -234,6 +229,33 @@ function onDayClick(day: number) {
 .jmz-serial-bar {
   position: relative;
 }
+.jmz-cat-bar-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: rgba(46, 46, 53, 0.4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.jmz-cat-bar-fill {
+  height: 100%;
+  width: 25%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa, #3b82f6);
+  background-size: 200% 100%;
+  animation: jmz-cat-bar-slide 1s linear infinite;
+}
+@keyframes jmz-cat-bar-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.jmz-cat-bar-indicator {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #3b82f6;
+  font-weight: 600;
+}
 .jmz-serial-days {
   display: flex;
   flex-wrap: wrap;
@@ -287,23 +309,6 @@ function onDayClick(day: number) {
   width: 100%;
   min-width: 0;
   min-height: 200px;
-}
-.jmz-list-reload-mask {
-  position: fixed;
-  left: 180px;
-  right: 0;
-  top: 44px;
-  bottom: 0;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(16, 16, 20, 0.6);
-  pointer-events: none;
-}
-.jmz-card-grid-wrap--dim {
-  opacity: 0.65;
-  pointer-events: none;
 }
 .jmz-skel-grid {
   gap: 14px;
