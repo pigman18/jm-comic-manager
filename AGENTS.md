@@ -47,3 +47,8 @@
 
 ## Naive UI 离散 API
 - **禁止** 在包含 `n-message-provider`/`n-notification-provider`/`n-dialog-provider` 的根组件（如 `App.vue`）里调用 `useMessage`/`useNotification`/`useDialog`——这些 hook 需要 provider 在祖先节点，而根组件自己是 provider 的父级，inject 找不到。必须使用 `createDiscreteApi` 并传入完整的 `configProviderProps: { theme, themeOverrides, locale, dateLocale }`，否则离散 API 会使用默认浅色主题，和 app 的暗色主题不一致
+
+## 弹窗/提示规范
+- **禁止** 使用浏览器原生 `alert`/`confirm`/`prompt`——项目中已使用 Naive UI，有 `useMessage`/`useDialog`/`n-modal` 等组件可用。列表页等非根组件直接用 `useMessage()`/`useDialog()`；根组件用 `createDiscreteApi`。所有用户交互提示必须用 Naive UI 组件实现
+- **禁止** 在弹窗内容中使用原生 HTML 标签（`<p>`、`<span>` 等）做文字展示——应该使用 Naive UI 的 `<n-text>` 等组件，以保持字体、颜色、间距与整体主题一致
+- **禁止** 自行编造 API 行为描述——对于第三方接口（如 JM 主站），未验证的返回信息不要写在 UI 上。修改提交前必须查阅接口文档或实测确认行为

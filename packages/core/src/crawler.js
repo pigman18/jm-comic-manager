@@ -494,13 +494,15 @@ function createCrawler(manifest, ctx, message, config) {
     let account = {
         login: login,
         sign: sign,
-        getFavorites: async (page = 1) => {
+        getFavorites: async (page = 1, folderId = '') => {
             if (!config.token || !config?.memberInfo?.uid) {
                 await login();
             }
             return await expireRetry(async () => {
+                const params = { page };
+                if (folderId) params.folder_id = folderId;
                 let resp = await apiClient.get(`${getApiHost()}/favorite`, {
-                    params: { page },
+                    params,
                     headers: {
                         'Authorization': 'Bearer ' + config.token
                     }
@@ -548,6 +550,61 @@ function createCrawler(manifest, ctx, message, config) {
                 if (resp.data.data?.status !== 'ok') {
                     throw new Error(resp.data.data?.msg || '取消收藏失败');
                 }
+                return resp.data.data;
+            });
+        },
+        createFolder: async (name) => {
+            if (!config.token || !config?.memberInfo?.uid) await login();
+            return await expireRetry(async () => {
+                let fd = new URLSearchParams();
+                fd.append('type', 'add');
+                fd.append('folder_name', name);
+                let resp = await apiClient.post(`${getApiHost()}/favorite_folder`, fd.toString(), {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer ' + config.token }
+                });
+                if (resp.data.data?.status !== 'ok') throw new Error(resp.data.data?.msg || '创建收藏夹失败');
+                return resp.data.data;
+            });
+        },
+        renameFolder: async (folderId, name) => {
+            if (!config.token || !config?.memberInfo?.uid) await login();
+            return await expireRetry(async () => {
+                let fd = new URLSearchParams();
+                fd.append('type', 'edit');
+                fd.append('folder_id', folderId);
+                fd.append('folder_name', name);
+                let resp = await apiClient.post(`${getApiHost()}/favorite_folder`, fd.toString(), {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer ' + config.token }
+                });
+                if (resp.data.data?.status !== 'ok') throw new Error(resp.data.data?.msg || '重命名收藏夹失败');
+                return resp.data.data;
+            });
+        },
+        deleteFolder: async (folderId) => {
+            if (!config.token || !config?.memberInfo?.uid) await login();
+            return await expireRetry(async () => {
+                let fd = new URLSearchParams();
+                fd.append('type', 'del');
+                fd.append('folder_id', folderId);
+                let resp = await apiClient.post(`${getApiHost()}/favorite_folder`, fd.toString(), {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer ' + config.token }
+                });
+                if (resp.data.data?.status !== 'ok') throw new Error(resp.data.data?.msg || '删除收藏夹失败');
+                return resp.data.data;
+            });
+        },
+        moveToFolder: async (albumId, sourceFolderId, targetFolderId) => {
+            if (!config.token || !config?.memberInfo?.uid) await login();
+            return await expireRetry(async () => {
+                let fd = new URLSearchParams();
+                fd.append('type', 'move');
+                fd.append('folder_id', sourceFolderId);
+                fd.append('aid', String(albumId));
+                fd.append('o', targetFolderId);
+                let resp = await apiClient.post(`${getApiHost()}/favorite_folder`, fd.toString(), {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer ' + config.token }
+                });
+                if (resp.data.data?.status !== 'ok') throw new Error(resp.data.data?.msg || '移动收藏失败');
                 return resp.data.data;
             });
         }

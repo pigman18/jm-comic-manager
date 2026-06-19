@@ -2,6 +2,30 @@
   <div class="jmz-page jmz-fav-page">
     <div class="jmz-fav-header">
       <section class="jmz-panel jmz-panel--pad jmz-fav-bar">
+        <div class="jmz-fav-toolbar">
+          <div class="jmz-fav-tabs">
+            <button
+              class="jmz-fav-tab"
+              :class="{ 'jmz-fav-tab--active': !folderId }"
+              @click="onFolderClick('')"
+            >全部</button>
+            <button
+              v-for="f in folderList"
+              :key="f.FID"
+              class="jmz-fav-tab"
+              :class="{ 'jmz-fav-tab--active': folderId === f.FID }"
+              @click="onFolderClick(f.FID)"
+            >{{ f.name }}</button>
+          </div>
+          <div class="jmz-fav-actions">
+            <button v-if="folderId" class="jmz-fav-action-btn" :disabled="folderBusy" title="删除收藏夹" @click="onClickDelete">
+              <span v-if="folderBusy" class="jmz-fav-action-spin" /><span v-else>−</span>
+            </button>
+            <button class="jmz-fav-action-btn" :disabled="folderBusy" title="新建收藏夹" @click="showCreateFolder = true">
+              <span v-if="folderBusy" class="jmz-fav-action-spin" /><span v-else>+</span>
+            </button>
+          </div>
+        </div>
         <div v-if="loading" class="jmz-cat-bar-track"><div class="jmz-cat-bar-fill" /></div>
         <div v-if="loading" class="jmz-cat-bar-indicator">加载中...</div>
       </section>
@@ -65,6 +89,12 @@
                 <span v-if="c.total_views" class="jmz-card-pages">{{ c.total_views }}次</span>
                 <span v-if="c.likes" class="jmz-card-pages">{{ c.likes }}❤</span>
               </div>
+              <div class="jmz-card-move-row">
+                <button class="jmz-card-move-btn" @click.stop="openMoveDialog(c)">
+                  <n-icon :component="FolderOpenOutline" size="14" />
+                  移动
+                </button>
+              </div>
             </div>
           </article>
         </div>
@@ -82,18 +112,46 @@
     </div>
   </div>
   <MetaPageDialog v-model:show="metaDialogShow" :num="metaDialogNum" />
+  <n-modal v-model:show="showCreateFolder" title="新建收藏夹" preset="card" style="width:400px" :bordered="false" closable>
+    <n-input v-model:value="newFolderName" placeholder="收藏夹名称" clearable @keyup.enter="onCreateFolder" />
+    <template #footer>
+      <n-space justify="end">
+        <n-button @click="showCreateFolder = false">取消</n-button>
+        <n-button :loading="folderBusy" :disabled="folderBusy" type="primary" @click="onCreateFolder">创建</n-button>
+      </n-space>
+    </template>
+  </n-modal>
+  <n-modal v-model:show="showDeleteFolder" title="删除收藏夹" preset="card" style="width:400px" :bordered="false" closable>
+    <n-text depth="3">请先将该收藏夹内的漫画移出或删除，再删除收藏夹</n-text>
+    <template #footer>
+      <n-space justify="end">
+        <n-button @click="showDeleteFolder = false">取消</n-button>
+        <n-button :loading="folderBusy" :disabled="folderBusy" type="error" @click="onDeleteFolder">删除</n-button>
+      </n-space>
+    </template>
+  </n-modal>
+  <n-modal v-model:show="showMoveDialog" title="移动到收藏夹" preset="card" style="width:400px" :bordered="false" closable>
+    <n-select v-model:value="moveTargetId" :options="allFolderOptions" placeholder="选择目标收藏夹" />
+    <template #footer>
+      <n-space justify="end">
+        <n-button @click="showMoveDialog = false">取消</n-button>
+        <n-button type="primary" :disabled="!moveTargetId" @click="onMoveConfirm">移动</n-button>
+      </n-space>
+    </template>
+  </n-modal>
 </template>
 
 <script setup lang="ts">
 import { ref, shallowRef, reactive, computed, nextTick, watch, onActivated, inject, type Ref } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { getJson } from '@/api'
+import { getJson, postJson } from '@/api'
 import type { Comic } from '@/types'
 import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
 import CardReadBtn from '@/components/CardReadBtn.vue'
 import CardFavBtn from '@/components/CardFavBtn.vue'
 import MetaPageDialog from '@/components/MetaPageDialog.vue'
+import { FolderOpenOutline } from '@vicons/ionicons5'
 
 const router = useRouter()
 const route = useRoute()
@@ -118,8 +176,29 @@ const metaDialogNum = ref(0)
 const metaDialogShow = ref(false)
 function metaOpen(id: number) { metaDialogNum.value = id; metaDialogShow.value = true }
 
+function onClickDelete() {
+  const f = folderList.value.find(x => x.FID === folderId.value)
+  if (!f) return
+  deleteFolderName.value = f.name
+  showDeleteFolder.value = true
+}
+
 const coverLoaded = reactive<Record<number, boolean>>({})
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+
+const folderId = ref('')
+const folderList = ref<{FID: string; name: string}[]>([])
+const showCreateFolder = ref(false)
+const newFolderName = ref('')
+const showDeleteFolder = ref(false)
+const deleteFolderName = ref('')
+const folderBusy = ref(false)
+const showMoveDialog = ref(false)
+const moveComicId = ref(0)
+const moveTargetId = ref('')
+const allFolderOptions = computed(() =>
+  folderList.value.filter(f => f.FID !== folderId.value).map(f => ({ label: f.name, value: f.FID }))
+)
 
 let _loaded = false
 
@@ -129,6 +208,8 @@ watch(() => route.query, (q) => {
   if (Number.isFinite(p) && p > 0) {
     currentPage.value = p
   }
+  const f = String(q.folder_id || '')
+  if (f) folderId.value = f
   _loaded = true
   loadFavorites()
 }, { immediate: true })
@@ -169,7 +250,9 @@ onActivated(() => {
 })
 
 function syncUrl() {
-  try { router.replace({ name: 'favorites', query: { page: String(currentPage.value) } }) } catch {}
+  const q: Record<string, string> = { page: String(currentPage.value) }
+  if (folderId.value) q.folder_id = folderId.value
+  try { router.replace({ name: 'favorites', query: q }) } catch {}
 }
 
 async function loadFavorites() {
@@ -177,10 +260,12 @@ async function loadFavorites() {
   list.value = []
   coverLoaded.value = {}
   try {
-    const j = await getJson(`/favorites/comics?page=${currentPage.value}`)
+    const q = `page=${currentPage.value}${folderId.value ? `&folder_id=${folderId.value}` : ''}`
+    const j = await getJson(`/favorites/comics?${q}`)
     if (!j.ok) throw new Error(j.message || '获取收藏失败')
     list.value = j.list || []
     total.value = j.total || 0
+    folderList.value = j.folders || []
   } catch (e: any) {
     message.error(e.message || '获取收藏列表失败')
   } finally {
@@ -196,6 +281,68 @@ function onPageChange(p: number) {
     if (mainScrollRef.value) mainScrollRef.value.scrollTop = 0
   })
   loadFavorites()
+}
+
+function onFolderClick(fid: string) {
+  if (fid === folderId.value) return
+  folderId.value = fid
+  cachedList.value = []
+  currentPage.value = 1
+  syncUrl()
+  loadFavorites()
+}
+
+async function onCreateFolder() {
+  const name = newFolderName.value.trim()
+  if (!name) { message.warning('请输入收藏夹名称'); return }
+  folderBusy.value = true
+  try {
+    const j = await postJson('/favorites/folder', { action: 'add', folder_name: name })
+    if (!j.ok) throw new Error(j.message || '创建失败')
+    message.success('已创建')
+    showCreateFolder.value = false
+    newFolderName.value = ''
+    loadFavorites()
+  } catch (e: any) { message.error(e.message || '创建收藏夹失败') }
+  finally { folderBusy.value = false }
+}
+
+function openMoveDialog(c: any) {
+  moveComicId.value = c.id
+  moveTargetId.value = ''
+  showMoveDialog.value = true
+}
+
+async function onMoveConfirm() {
+  if (!moveTargetId.value || moveTargetId.value === folderId.value) { message.warning('请选择不同的收藏夹'); return }
+  if (!moveComicId.value) return
+  try {
+    const j = await postJson('/favorites/comics/move', {
+      album_id: moveComicId.value,
+      source_folder_id: folderId.value || undefined,
+      target_folder_id: moveTargetId.value,
+    })
+    if (!j.ok) throw new Error(j.message || '移动失败')
+    message.success('已移动')
+    showMoveDialog.value = false
+    loadFavorites()
+  } catch (e: any) { message.error(e.message || '移动收藏失败') }
+}
+
+async function onDeleteFolder() {
+  folderBusy.value = true
+  try {
+    const j = await postJson('/favorites/folder', { action: 'del', folder_id: folderId.value })
+    if (!j.ok) throw new Error(j.message || '删除失败')
+    message.success('已删除')
+    showDeleteFolder.value = false
+    folderId.value = ''
+    cachedList.value = []
+    currentPage.value = 1
+    syncUrl()
+    loadFavorites()
+  } catch (e: any) { message.error(e.message || '删除收藏夹失败') }
+  finally { folderBusy.value = false }
 }
 </script>
 
@@ -214,6 +361,99 @@ function onPageChange(p: number) {
 
 .jmz-fav-bar {
   position: relative;
+}
+.jmz-fav-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.jmz-fav-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+}
+.jmz-fav-tab {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(46, 46, 53, 0.7);
+  background: transparent;
+  color: #9b9bb4;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.jmz-fav-tab:hover {
+  background: rgba(46, 46, 53, 0.8);
+  color: #c4c4d6;
+}
+.jmz-fav-tab--active {
+  background: #1a5cdb;
+  color: #fff;
+  border-color: #1a5cdb;
+}
+.jmz-fav-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.jmz-fav-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(46, 46, 53, 0.7);
+  background: transparent;
+  color: #9b9bb4;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.jmz-fav-action-btn:hover {
+  background: rgba(46, 46, 53, 0.8);
+  color: #e0e0e6;
+}
+.jmz-fav-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.jmz-fav-action-spin {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #7a7a8a;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: jmz-fav-spin 0.6s linear infinite;
+}
+@keyframes jmz-fav-spin {
+  to { transform: rotate(360deg); }
+}
+.jmz-card-move-row {
+  border-top: 1px solid #2a2a30;
+  margin-top: 4px;
+  padding-top: 4px;
+}
+.jmz-card-move-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: #7a7a8a;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.jmz-card-move-btn:hover {
+  color: #e0e0e6;
+  background: rgba(46, 46, 53, 0.5);
 }
 .jmz-cat-bar-track {
   position: absolute;
