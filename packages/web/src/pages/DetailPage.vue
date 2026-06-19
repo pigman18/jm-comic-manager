@@ -355,6 +355,7 @@ const detailHeroClass = computed(() => asideRows.value.length ? 'jmz-detail-hero
 <style scoped>
 .jmz-detail-wrap {
   min-height: 40vh;
+  padding: 20px 24px 48px;
 }
 .jmz-detail-empty {
   padding: 32px 0;

@@ -222,124 +222,126 @@ async function goDetail(c: Comic) {
       <span>加载中...</span>
     </div>
     <template v-else>
-    <section class="jmz-panel jmz-panel--pad jmz-cat-bar" :class="{ 'jmz-cat-bar--loading': loading }">
-      <div class="jmz-cat-tabs">
-        <button
-          v-for="t in tabOptions"
-          :key="t.value"
-          class="jmz-cat-tab"
-          :class="{ 'jmz-cat-tab--active': t.value === activeTab }"
-          :disabled="loading"
-          @click="onTabClick(t.value)"
-        >{{ t.label }}</button>
-      </div>
-      <div v-if="loading" class="jmz-cat-bar-track"><div class="jmz-cat-bar-fill" /></div>
-      <div v-if="loading" class="jmz-cat-bar-indicator">加载中...</div>
-    </section>
-
-    <div class="jmz-cat-scroll" ref="mainScrollRef">
-    <!-- 分类 tab: 显示 blocks 标签 -->
-    <section v-if="activeTab === '_blocks'" class="jmz-panel jmz-panel--pad jmz-cat-blocks">
-      <div v-for="b in blocks" :key="b.title" class="jmz-cat-block">
-        <h3 class="jmz-cat-block-title">{{ b.title }}</h3>
-        <div class="jmz-cat-block-tags">
-          <span
-            v-for="tag in b.content"
-            :key="tag"
-            class="jmz-chip jmz-chip--click"
-            @click="onTagClick(tag)"
-          >{{ tag }}</span>
+    <div class="jmz-cat-header">
+      <section class="jmz-panel jmz-panel--pad jmz-cat-bar" :class="{ 'jmz-cat-bar--loading': loading }">
+        <div class="jmz-cat-tabs">
+          <button
+            v-for="t in tabOptions"
+            :key="t.value"
+            class="jmz-cat-tab"
+            :class="{ 'jmz-cat-tab--active': t.value === activeTab }"
+            :disabled="loading"
+            @click="onTabClick(t.value)"
+          >{{ t.label }}</button>
         </div>
-      </div>
-    </section>
-
-    <!-- 分类筛选 tab -->
-    <template v-if="activeTab && activeTab !== '_blocks'">
-      <section class="jmz-panel jmz-panel--pad jmz-cat-filter-bar">
+        <div v-if="loading" class="jmz-cat-bar-track"><div class="jmz-cat-bar-fill" /></div>
+        <div v-if="loading" class="jmz-cat-bar-indicator">加载中...</div>
+      </section>
+      <section v-if="activeTab && activeTab !== '_blocks'" class="jmz-panel jmz-panel--pad jmz-cat-filter-bar">
         <div class="jmz-cat-filter-row">
           <n-select v-model:value="timeFilter" :options="timeOptions" class="jmz-cat-filter-select" @update:value="onTimeChange" />
           <n-select v-model:value="sortFilter" :options="sortOptions" class="jmz-cat-filter-select" @update:value="onSortChange" />
         </div>
       </section>
+    </div>
 
-      <div class="jmz-cat-main">
-        <n-empty v-if="!loading && !list.length" description="暂无内容" />
-        <div
-          v-else-if="list.length > 0 || loading"
-          class="jmz-card-grid-wrap"
-          :class="{ 'jmz-card-grid-wrap--dim': loading && list.length > 0 }"
-        >
-          <div v-if="loading && list.length > 0" class="jmz-list-reload-mask">
-            <n-spin size="medium" />
+    <div class="jmz-cat-main" ref="mainScrollRef">
+      <section v-if="activeTab === '_blocks'" class="jmz-panel jmz-panel--pad jmz-cat-blocks">
+        <div v-for="b in blocks" :key="b.title" class="jmz-cat-block">
+          <h3 class="jmz-cat-block-title">{{ b.title }}</h3>
+          <div class="jmz-cat-block-tags">
+            <span
+              v-for="tag in b.content"
+              :key="tag"
+              class="jmz-chip jmz-chip--click"
+              @click="onTagClick(tag)"
+            >{{ tag }}</span>
           </div>
-          <div v-if="loading && !list.length" class="jmz-card-grid jmz-skel-grid">
-            <div v-for="i in 10" :key="'sk' + i" :class="['jmz-card', 'jmz-skel-card', cardToneClass(i - 1)]">
-              <div class="jmz-skel-cover" />
-              <div class="jmz-skel-lines" />
+        </div>
+      </section>
+
+      <template v-if="activeTab && activeTab !== '_blocks'">
+        <div class="jmz-cat-cards">
+          <n-empty v-if="!loading && !list.length" description="暂无内容" />
+          <div
+            v-else-if="list.length > 0 || loading"
+            class="jmz-card-grid-wrap"
+            :class="{ 'jmz-card-grid-wrap--dim': loading && list.length > 0 }"
+          >
+            <div v-if="loading && list.length > 0" class="jmz-list-reload-mask">
+              <n-spin size="medium" />
+            </div>
+            <div v-if="loading && !list.length" class="jmz-card-grid jmz-skel-grid">
+              <div v-for="i in 10" :key="'sk' + i" :class="['jmz-card', 'jmz-skel-card', cardToneClass(i - 1)]">
+                <div class="jmz-skel-cover" />
+                <div class="jmz-skel-lines" />
+              </div>
+            </div>
+            <div v-if="list.length > 0" class="jmz-card-grid">
+              <article
+                v-for="(c, i) in list"
+                :key="c.id"
+                :class="['jmz-card', cardToneClass(i), fetching[c.id] ? 'jmz-card--fetching' : '']"
+                role="button"
+                tabindex="0"
+                @click="goDetail(c)"
+                @keyup.enter="goDetail(c)"
+              >
+                <div class="jmz-card-cover-wrap">
+                  <div v-show="!coverReady(c.id, c.cover) && !fetching[c.id]" class="jmz-cover-spinner">
+                    <n-spin size="small" />
+                  </div>
+                  <div v-if="fetching[c.id]" class="jmz-card-fetching-mask">
+                    <n-spin size="small" />
+                  </div>
+                  <div v-if="c.inStore" class="jmz-card-ribbon">已收录</div>
+                  <div v-else class="jmz-card-ribbon jmz-card-ribbon--new">未收录</div>
+                  <span v-if="c.canRead" class="jmz-card-ribbon jmz-card-ribbon--read">可读</span>
+                  <img
+                    class="jmz-card-cover xxx-img"
+                    :class="{ 'jmz-card-cover--show': coverReady(c.id, c.cover) }"
+                    :src="c.cover || ''"
+                    :alt="c.name"
+                    loading="lazy"
+                    width="240"
+                    height="320"
+                    @load="onCoverLoad(c.id)"
+                    @error="onCoverErr($event, c.id)"
+                  />
+                </div>
+                <div class="jmz-card-body">
+                  <div class="jmz-card-num">JM{{ c.id }}</div>
+                    <h2 class="jmz-card-title xxx-text">{{ c.name }}</h2>
+                  <div v-if="c.author && c.author[0]" class="jmz-card-author">{{ c.author[0] }}</div>
+                  <div v-else class="jmz-card-author jmz-card-author--muted">作者未知</div>
+                  <div class="jmz-card-tags">
+                    <span v-for="t in (c.tags || []).slice(0, 5)" :key="t" class="jmz-chip xxx-text">{{ t }}</span>
+                    <span v-if="(c.tags || []).length > 5" class="jmz-chip jmz-chip--more">+{{ (c.tags || []).length - 5 }}</span>
+                    <span v-if="!c.tags || !c.tags.length" class="jmz-chip jmz-chip--ghost">无标签</span>
+                  </div>
+                  <div class="jmz-card-foot">
+                    <span v-if="c.total_views" class="jmz-card-pages">{{ c.total_views }}次</span>
+                    <span v-if="c.likes" class="jmz-card-pages">{{ c.likes }}❤</span>
+                  </div>
+                </div>
+              </article>
             </div>
           </div>
-          <div v-if="list.length > 0" class="jmz-card-grid">
-            <article
-              v-for="(c, i) in list"
-              :key="c.id"
-              :class="['jmz-card', cardToneClass(i), fetching[c.id] ? 'jmz-card--fetching' : '']"
-              role="button"
-              tabindex="0"
-              @click="goDetail(c)"
-              @keyup.enter="goDetail(c)"
-            >
-              <div class="jmz-card-cover-wrap">
-                <div v-show="!coverReady(c.id, c.cover) && !fetching[c.id]" class="jmz-cover-spinner">
-                  <n-spin size="small" />
-                </div>
-                <div v-if="fetching[c.id]" class="jmz-card-fetching-mask">
-                  <n-spin size="small" />
-                </div>
-                <div v-if="c.inStore" class="jmz-card-ribbon">已收录</div>
-                <div v-else class="jmz-card-ribbon jmz-card-ribbon--new">未收录</div>
-                <span v-if="c.canRead" class="jmz-card-ribbon jmz-card-ribbon--read">可读</span>
-                <img
-                  class="jmz-card-cover xxx-img"
-                  :class="{ 'jmz-card-cover--show': coverReady(c.id, c.cover) }"
-                  :src="c.cover || ''"
-                  :alt="c.name"
-                  loading="lazy"
-                  width="240"
-                  height="320"
-                  @load="onCoverLoad(c.id)"
-                  @error="onCoverErr($event, c.id)"
-                />
-              </div>
-              <div class="jmz-card-body">
-                <div class="jmz-card-num">JM{{ c.id }}</div>
-                  <h2 class="jmz-card-title xxx-text">{{ c.name }}</h2>
-                <div v-if="c.author && c.author[0]" class="jmz-card-author">{{ c.author[0] }}</div>
-                <div v-else class="jmz-card-author jmz-card-author--muted">作者未知</div>
-                <div class="jmz-card-tags">
-                  <span v-for="t in (c.tags || []).slice(0, 5)" :key="t" class="jmz-chip xxx-text">{{ t }}</span>
-                  <span v-if="(c.tags || []).length > 5" class="jmz-chip jmz-chip--more">+{{ (c.tags || []).length - 5 }}</span>
-                  <span v-if="!c.tags || !c.tags.length" class="jmz-chip jmz-chip--ghost">无标签</span>
-                </div>
-                <div class="jmz-card-foot">
-                  <span v-if="c.total_views" class="jmz-card-pages">{{ c.total_views }}次</span>
-                  <span v-if="c.likes" class="jmz-card-pages">{{ c.likes }}❤</span>
-                </div>
-              </div>
-            </article>
-          </div>
         </div>
-        <div v-if="pages > 1" class="jmz-cat-pager">
-          <n-pagination
-            v-model:page="currentPage"
-            :page-count="pages"
-            :show-size-picker="false"
-            :disabled="loading"
-            @update:page="loadCategory"
-          />
-        </div>
-        <div v-if="total > 0" class="jmz-cat-info">共 {{ total }} 条</div>
+      </template>
+    </div>
+
+    <div v-if="activeTab && activeTab !== '_blocks'" class="jmz-cat-footer">
+      <div v-if="pages > 1" class="jmz-cat-pager">
+        <n-pagination
+          v-model:page="currentPage"
+          :page-count="pages"
+          :show-size-picker="false"
+          :disabled="loading"
+          @update:page="loadCategory"
+        />
       </div>
-    </template>
+      <div v-if="total > 0" class="jmz-cat-info">共 {{ total }} 条</div>
     </div>
     </template>
   </div>
@@ -351,7 +353,6 @@ async function goDetail(c: Comic) {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 0 24px 48px;
 }
 
 .jmz-cat-init-loading {
@@ -365,16 +366,29 @@ async function goDetail(c: Comic) {
   font-size: 14px;
 }
 
-.jmz-cat-bar {
+.jmz-cat-header {
   flex-shrink: 0;
-  margin-top: 20px;
-  margin-bottom: 16px;
+  margin: 20px 24px 16px;
 }
 
-.jmz-cat-scroll {
+.jmz-cat-bar {
+  position: relative;
+}
+
+.jmz-cat-main {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: 0 24px;
+}
+
+.jmz-cat-footer {
+  flex-shrink: 0;
+  padding: 16px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .jmz-cat-tabs {
@@ -386,9 +400,6 @@ async function goDetail(c: Comic) {
   border-radius: 10px;
   padding: 4px;
   border: 1px solid rgba(46, 46, 53, 0.5);
-}
-.jmz-cat-bar {
-  position: relative;
 }
 .jmz-cat-bar--loading {
   opacity: 0.65;
@@ -490,7 +501,7 @@ async function goDetail(c: Comic) {
 
 /* filter bar */
 .jmz-cat-filter-bar {
-  margin-bottom: 16px;
+  margin-top: 12px;
 }
 
 .jmz-cat-filter-row {
@@ -503,17 +514,12 @@ async function goDetail(c: Comic) {
 }
 
 /* main */
-.jmz-cat-main {
-}
-
 .jmz-cat-pager {
-  margin-top: 16px;
   display: flex;
   justify-content: center;
 }
 
 .jmz-cat-info {
-  margin-top: 12px;
   text-align: center;
   font-size: 13px;
   color: #7a7a8a;

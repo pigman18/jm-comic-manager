@@ -47,7 +47,7 @@ body {
 }
 
 .jmz-page {
-  padding: 20px 24px 48px;
+  padding: 0;
 }
 
 .jmz-panel {
@@ -98,10 +98,4 @@ body {
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-
-@media (max-width: 768px) {
-  .jmz-page {
-    padding: 12px 12px 32px;
-  }
 }

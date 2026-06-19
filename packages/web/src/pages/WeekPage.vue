@@ -175,7 +175,8 @@ async function goDetail(c: Comic) {
 
 <template>
   <div class="jmz-page jmz-week-page">
-    <section class="jmz-panel jmz-panel--pad jmz-week-bar">
+    <div class="jmz-week-header">
+      <section class="jmz-panel jmz-panel--pad jmz-week-bar">
       <div class="jmz-week-bar-track-wrap">
       <div class="jmz-week-categories">
         <n-select
@@ -202,6 +203,7 @@ async function goDetail(c: Comic) {
       </div>
       <div v-if="loading" class="jmz-week-bar-indicator">加载中...</div>
     </section>
+    </div>
 
     <div class="jmz-week-main" ref="mainScrollRef">
       <n-empty v-if="!loading && !list.length" description="该期暂无内容" />
@@ -269,7 +271,10 @@ async function goDetail(c: Comic) {
         </article>
       </div>
       </div>
-      <div v-if="total > 0" class="jmz-week-info">共 {{ total }} 条</div>
+    </div>
+
+    <div v-if="total > 0" class="jmz-week-footer">
+      <div class="jmz-week-info">共 {{ total }} 条</div>
     </div>
   </div>
 </template>
@@ -280,16 +285,11 @@ async function goDetail(c: Comic) {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 0 24px 48px;
 }
 
-.jmz-week-bar {
+.jmz-week-header {
   flex-shrink: 0;
-  margin-top: 20px;
-  margin-bottom: 16px;
-}
-
-.jmz-week-bar {
+  margin: 20px 24px 16px;
   position: relative;
 }
 .jmz-week-bar-track-wrap {
@@ -406,13 +406,14 @@ async function goDetail(c: Comic) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: 0 24px;
 }
 
-.jmz-week-info {
-  margin-top: 12px;
-  text-align: center;
-  font-size: 13px;
-  color: #7a7a8a;
+.jmz-week-footer {
+  flex-shrink: 0;
+  padding: 12px 24px 48px;
+  display: flex;
+  justify-content: center;
 }
 
 .jmz-card-grid {

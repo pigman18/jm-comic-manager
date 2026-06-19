@@ -334,7 +334,7 @@ const orderOptions = [
 
 <template>
   <div class="jmz-page jmz-catalog">
-    <section class="jmz-panel jmz-panel--pad jmz-filter-block">
+    <section class="jmz-panel jmz-panel--pad jmz-catalog-header">
       <div class="jmz-filter-grid">
         <n-input v-model:value="filters.title" clearable placeholder="标题" @clear="resetPage" @keyup.enter="resetPage">
           <template #prefix><n-icon :component="SearchOutline" /></template>
@@ -454,16 +454,16 @@ const orderOptions = [
           </article>
         </div>
       </div>
-      <div v-if="total > filters.pageSize" class="jmz-pager">
-        <n-pagination
-          v-model:page="filters.page"
-          v-model:page-size="filters.pageSize"
-          :page-count="Math.ceil(total / filters.pageSize)"
-          :page-sizes="[10, 20, 30, 40, 50]"
-          :show-size-picker="true"
-          :simple="false"
-        />
-      </div>
+    </div>
+    <div v-if="total > filters.pageSize" class="jmz-catalog-footer">
+      <n-pagination
+        v-model:page="filters.page"
+        v-model:page-size="filters.pageSize"
+        :page-count="Math.ceil(total / filters.pageSize)"
+        :page-sizes="[10, 20, 30, 40, 50]"
+        :show-size-picker="true"
+        :simple="false"
+      />
     </div>
   </div>
 </template>
@@ -475,14 +475,12 @@ const orderOptions = [
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 0 24px 48px;
 }
 
-.jmz-filter-block {
-  background: #1e1e22;
+.jmz-catalog-header {
   flex-shrink: 0;
-  margin-top: 20px;
-  margin-bottom: 16px;
+  margin: 20px 24px 16px;
+  background: #1e1e22;
 }
 .jmz-filter-grid {
   display: grid;
@@ -512,8 +510,7 @@ const orderOptions = [
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  width: 100%;
-  min-width: 0;
+  padding: 0 24px;
 }
 
 .jmz-card-grid-wrap {
@@ -747,9 +744,10 @@ const orderOptions = [
   font-weight: 600;
   color: #6a6a7a;
 }
-.jmz-pager {
+.jmz-catalog-footer {
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
-  margin-top: 22px;
+  padding: 22px 24px 48px;
 }
 </style>
