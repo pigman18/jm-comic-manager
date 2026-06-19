@@ -109,7 +109,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, provide, onMounted, onUnmounted, nextTick } from 'vue'
-import { zhCN, dateZhCN, darkTheme } from 'naive-ui'
+import { zhCN, dateZhCN, darkTheme, createDiscreteApi } from 'naive-ui'
 import { ArrowBack, CloudUploadOutline, CloudDownloadOutline, ListOutline, DownloadOutline, CalendarOutline, EyeOffOutline, EyeOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import { useJmLiveStore } from '@/stores/jmLive'
@@ -188,10 +188,10 @@ async function doSign() {
   signLoading.value = true
   try {
     const j = await postJson('/account/sign')
-    if (j.ok) alert(j.msg || '签到成功')
-    else alert(j.message || '签到失败')
+    if (j.ok) message.success(j.msg || '签到成功')
+    else message.error(j.message || '签到失败')
   } catch (e: any) {
-    alert(e.message || '签到失败')
+    message.error(e.message || '签到失败')
   } finally {
     signLoading.value = false
   }
@@ -222,6 +222,10 @@ const themeOverrides = {
     primaryColorPressed: '#1d4ed8',
   },
 }
+
+const { message } = createDiscreteApi(['message'], {
+  configProviderProps: { theme: darkTheme, themeOverrides },
+})
 
 let ws: WebSocket | null = null
 let pingTimer: ReturnType<typeof setInterval> | null = null
