@@ -10,8 +10,8 @@
           <n-checkbox v-model:checked="selected[c.id]" />
           <span class="jm-bd-num">JM{{ c.id }}</span>
           <span class="jm-bd-title">{{ c.name || '未知标题' }}</span>
-          <span v-if="c.inStore" class="jm-bd-tag jm-bd-tag--store">已收录</span>
-          <span v-else-if="c.canRead" class="jm-bd-tag jm-bd-tag--read">可读</span>
+          <span v-if="c.canRead" class="jm-bd-tag jm-bd-tag--read">可读</span>
+          <span v-else-if="c.inStore" class="jm-bd-tag jm-bd-tag--store">已收录</span>
         </div>
       </div>
     </div>

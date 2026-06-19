@@ -160,7 +160,7 @@ function onCoverErr(e: Event, id: number) {
 
 onBeforeRouteLeave((_to, _from, next) => {
   if (list.value.length) {
-    cachedList.value = list.value
+    cachedList.value = [...list.value]
     cachedDay.value = activeDay.value
     scrollTop.value = mainScrollRef.value?.scrollTop || 0
   }
