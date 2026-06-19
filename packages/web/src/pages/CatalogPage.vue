@@ -365,7 +365,7 @@ const orderOptions = [
               @update:value="resetPage"
             />
             <n-select v-model:value="filters.kind" placeholder="类型" clearable :options="kindOptions" @update:value="resetPage" />
-            <n-checkbox v-model:checked="filters.available" @update:checked="resetPage">仅显示可读</n-checkbox>
+            <n-checkbox v-model:checked="filters.available" @update:checked="resetPage">可读</n-checkbox>
           </div>
           <div class="jmz-sort-row">
             <n-select v-model:value="filters.sort" :options="sortOptions" @update:value="resetPage" />
@@ -696,8 +696,8 @@ const orderOptions = [
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 12px 14px 14px;
-  gap: 6px;
+  padding: 9px 11px 11px;
+  gap: 4px;
   min-height: 0;
 }
 .jmz-card-num {
@@ -737,7 +737,7 @@ const orderOptions = [
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  min-height: 28px;
+  min-height: 24px;
   align-content: flex-start;
 }
 .jmz-card-dates {
@@ -746,7 +746,7 @@ const orderOptions = [
   gap: 2px;
   font-size: 11px;
   color: #7a7a8a;
-  min-height: 2.6em;
+  min-height: 2.2em;
 }
 .jmz-date b {
   color: #9b9bb4;
