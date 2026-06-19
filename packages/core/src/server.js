@@ -130,7 +130,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         const eps = Array.isArray(comicJson.series) && comicJson.series.length ? comicJson.series : null;
         const nums = eps
             ? eps.map((e) => Number(e.id)).filter((n) => Number.isFinite(n))
-            : [Number(comicJson.id)].filter((n) => Number.isFinite(n));
+            : [];
         const comicDir = path.join(config.dataDir, 'comic');
         for (const n of nums) {
             const sk = String(n);
@@ -139,6 +139,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
             z[sk] = {
                 exists: isNotEmptySync(zipPath),
                 download: dl,
+            };
+        }
+        if (!eps) {
+            const sk = String(comicJson.id);
+            z[sk] = {
+                exists: isNotEmptySync(path.join(comicDir, `${comicJson.id}.zip`)),
+                download: taskManager ? taskManager.getZipDownloadStatus(Number(comicJson.id)) : null,
             };
         }
         return z;
@@ -459,6 +466,9 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const zipStatus = {};
                 for (const ep of allSeries) {
                     zipStatus[String(ep.id)] = { exists: ep.done };
+                }
+                if (allSeries.length === 0) {
+                    zipStatus[String(n)] = { exists: singleDone };
                 }
                 res.json({
                     ok: true,

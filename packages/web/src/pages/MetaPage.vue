@@ -32,12 +32,16 @@
             <section class="jmt-meta-zip">
               <div class="jmt-ep-list-header">
                 <div class="jmt-ep-list-header-left">
+                  <n-checkbox v-model:checked="showReadable" size="small">可读</n-checkbox>
+                  <n-input v-model:value="filterText" placeholder="筛选章节" size="tiny" clearable class="jmt-ep-filter" />
+                </div>
+                <div class="jmt-ep-list-header-right">
                   <n-checkbox v-model:checked="withMeta">附带作品信息</n-checkbox>
+                  <n-button v-if="showDownloadAll" type="primary" size="tiny" @click="downloadAllMissing">全部下载</n-button>
+                </div>
               </div>
-              <n-button v-if="showDownloadAll" type="primary" size="tiny" @click="downloadAllMissing">全部下载</n-button>
-            </div>
-            <div v-if="zipRows.length" class="jmt-ep-list">
-              <div v-for="row in zipRows" :key="row.zipKey" class="jmt-ep-row">
+            <div v-if="filteredRows.length" class="jmt-ep-list">
+              <div v-for="row in filteredRows" :key="row.zipKey" class="jmt-ep-row">
                 <span class="jmt-ep-num xxx-text">{{ row.zipLabel }}</span>
                 <span class="jmt-ep-title xxx-text">{{ row.epTitle }}</span>
                 <n-tag v-if="dlUi(row).kind === 'ready' && isRead(row.zipKey)" size="small" type="success" bordered>已读</n-tag>
@@ -89,6 +93,21 @@ const applyHarmony = inject<(() => void) | undefined>('applyHarmony', undefined)
 const live = useJmLiveStore()
 const { openComic } = useZipReader()
 const withMeta = ref(true)
+
+const filterText = ref('')
+const showReadable = ref(false)
+
+const filteredRows = computed(() => {
+  let rows = zipRows.value
+  if (showReadable.value) {
+    rows = rows.filter(r => r.st?.exists)
+  }
+  if (filterText.value) {
+    const q = filterText.value.toLowerCase()
+    rows = rows.filter(r => r.epTitle.toLowerCase().includes(q) || r.zipKey.includes(q))
+  }
+  return rows
+})
 
 const albumNum = computed(() => Math.floor(Number(props.num || route.params.num)))
 const storageKey = computed(() => `jm_read_${albumNum.value}`)
@@ -421,8 +440,7 @@ function fmtBytes(n: number) {
   padding-bottom: 8px;
 }
 .jmz-meta--dialog .jmt-meta-cover-wrap {
-  width: 250px;
-  height: 250px;
+  width: 30%;
   flex-shrink: 0;
   border-radius: 4px;
   overflow: hidden;
@@ -430,8 +448,7 @@ function fmtBytes(n: number) {
   background: #1e1e22;
 }
 .jmz-meta--page .jmt-meta-cover-wrap {
-  width: 445px;
-  height: 445px;
+  width: 20%;
   flex-shrink: 0;
   border-radius: 6px;
   overflow: hidden;
@@ -504,6 +521,19 @@ function fmtBytes(n: number) {
 .jmt-ep-list-header-left {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.jmt-ep-filter {
+  flex: 1;
+  min-width: 0;
+}
+.jmt-ep-list-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 .jmt-ep-row {
   display: flex;
