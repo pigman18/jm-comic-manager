@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, reactive, computed, watch, onActivated, inject, type Ref } from 'vue'
+import { ref, shallowRef, reactive, computed, nextTick, watch, onActivated, inject, type Ref } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { getJson, postJson } from '@/api'
@@ -43,6 +43,7 @@ const cachedTime = ref('a')
 const cachedSort = ref('mv')
 const cachedPageNum = ref(1)
 const scrollTop = ref(0)
+const mainScrollRef = ref<HTMLElement | null>(null)
 
 const coverLoaded = reactive<Record<number, boolean>>({})
 
@@ -97,7 +98,7 @@ onBeforeRouteLeave((_to, _from, next) => {
     cachedTime.value = timeFilter.value
     cachedSort.value = sortFilter.value
     cachedPageNum.value = currentPage.value
-    scrollTop.value = window.scrollY || 0
+    scrollTop.value = mainScrollRef.value?.scrollTop || 0
   }
   next()
 })
@@ -112,7 +113,9 @@ onActivated(() => {
     sortFilter.value = cachedSort.value
     currentPage.value = cachedPageNum.value
     syncUrl()
-    setTimeout(() => window.scrollTo(0, scrollTop.value), 0)
+    nextTick(() => {
+      if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value
+    })
   } else if (!categories.value.length) {
     loadInfo()
   }
@@ -234,6 +237,7 @@ async function goDetail(c: Comic) {
       <div v-if="loading" class="jmz-cat-bar-indicator">加载中...</div>
     </section>
 
+    <div class="jmz-cat-scroll" ref="mainScrollRef">
     <!-- 分类 tab: 显示 blocks 标签 -->
     <section v-if="activeTab === '_blocks'" class="jmz-panel jmz-panel--pad jmz-cat-blocks">
       <div v-for="b in blocks" :key="b.title" class="jmz-cat-block">
@@ -250,7 +254,7 @@ async function goDetail(c: Comic) {
     </section>
 
     <!-- 分类筛选 tab -->
-    <template v-else-if="activeTab && activeTab !== '_blocks'">
+    <template v-if="activeTab && activeTab !== '_blocks'">
       <section class="jmz-panel jmz-panel--pad jmz-cat-filter-bar">
         <div class="jmz-cat-filter-row">
           <n-select v-model:value="timeFilter" :options="timeOptions" class="jmz-cat-filter-select" @update:value="onTimeChange" />
@@ -336,12 +340,18 @@ async function goDetail(c: Comic) {
         <div v-if="total > 0" class="jmz-cat-info">共 {{ total }} 条</div>
       </div>
     </template>
+    </div>
     </template>
   </div>
 </template>
 
 <style scoped>
 .jmz-cat-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 24px 48px;
 }
 
 .jmz-cat-init-loading {
@@ -356,7 +366,15 @@ async function goDetail(c: Comic) {
 }
 
 .jmz-cat-bar {
+  flex-shrink: 0;
+  margin-top: 20px;
   margin-bottom: 16px;
+}
+
+.jmz-cat-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .jmz-cat-tabs {
@@ -486,7 +504,6 @@ async function goDetail(c: Comic) {
 
 /* main */
 .jmz-cat-main {
-  min-height: 200px;
 }
 
 .jmz-cat-pager {

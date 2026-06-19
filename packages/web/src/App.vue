@@ -242,7 +242,7 @@ onUnmounted(() => {
 
 <style>
 #jm-app-root {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
 }
 
@@ -420,7 +420,9 @@ onUnmounted(() => {
 
 .jmz-app-main {
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .jmz-harmony-checkbox {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, shallowRef, reactive, watch, onActivated, inject, type Ref } from 'vue'
+import { ref, shallowRef, reactive, nextTick, watch, onActivated, inject, type Ref } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { getJson, postJson } from '@/api'
@@ -36,6 +36,7 @@ const cachedTotal = ref(0)
 const cachedCategory = ref('')
 const cachedType = ref('')
 const scrollTop = ref(0)
+const mainScrollRef = ref<HTMLElement | null>(null)
 
 const coverLoaded = reactive<Record<number, boolean>>({})
 
@@ -72,7 +73,7 @@ onBeforeRouteLeave((_to, _from, next) => {
     cachedTotal.value = total.value
     cachedCategory.value = activeCategory.value
     cachedType.value = activeType.value
-    scrollTop.value = window.scrollY || 0
+    scrollTop.value = mainScrollRef.value?.scrollTop || 0
   }
   next()
 })
@@ -84,7 +85,9 @@ onActivated(() => {
     activeCategory.value = cachedCategory.value
     activeType.value = cachedType.value
     syncUrl()
-    setTimeout(() => window.scrollTo(0, scrollTop.value), 0)
+    nextTick(() => {
+      if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value
+    })
   } else if (!categories.value.length) {
     loadWeekInfo()
   }
@@ -200,7 +203,7 @@ async function goDetail(c: Comic) {
       <div v-if="loading" class="jmz-week-bar-indicator">加载中...</div>
     </section>
 
-    <div class="jmz-week-main">
+    <div class="jmz-week-main" ref="mainScrollRef">
       <n-empty v-if="!loading && !list.length" description="该期暂无内容" />
       <div
         v-else-if="list.length > 0 || loading"
@@ -273,9 +276,16 @@ async function goDetail(c: Comic) {
 
 <style scoped>
 .jmz-week-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 24px 48px;
 }
 
 .jmz-week-bar {
+  flex-shrink: 0;
+  margin-top: 20px;
   margin-bottom: 16px;
 }
 
@@ -393,7 +403,9 @@ async function goDetail(c: Comic) {
 }
 
 .jmz-week-main {
-  min-height: 200px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .jmz-week-info {

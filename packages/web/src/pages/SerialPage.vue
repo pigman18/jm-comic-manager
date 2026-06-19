@@ -13,7 +13,7 @@
       </div>
     </section>
 
-    <div class="jmz-serial-main">
+    <div class="jmz-serial-main" ref="mainScrollRef">
       <n-empty v-if="!loading && !list.length" description="暂无内容" />
       <div
         v-else-if="list.length > 0 || loading"
@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, reactive, watch, onActivated, inject, type Ref } from 'vue'
+import { ref, shallowRef, reactive, nextTick, watch, onActivated, inject, type Ref } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { getJson, postJson } from '@/api'
@@ -118,6 +118,7 @@ watch(list, (v) => { currentPageComics.value = v }, { immediate: true })
 const cachedList = shallowRef<Comic[]>([])
 const cachedDay = ref(0)
 const scrollTop = ref(0)
+const mainScrollRef = ref<HTMLElement | null>(null)
 const coverLoaded = reactive<Record<number, boolean>>({})
 
 let _syncingUrl = false
@@ -149,7 +150,7 @@ onBeforeRouteLeave((_to, _from, next) => {
   if (list.value.length) {
     cachedList.value = list.value
     cachedDay.value = activeDay.value
-    scrollTop.value = window.scrollY || 0
+    scrollTop.value = mainScrollRef.value?.scrollTop || 0
   }
   next()
 })
@@ -159,7 +160,9 @@ onActivated(() => {
     list.value = cachedList.value
     activeDay.value = cachedDay.value
     syncUrl()
-    setTimeout(() => window.scrollTo(0, scrollTop.value), 0)
+    nextTick(() => {
+      if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value
+    })
   } else if (!_loaded) {
     _loaded = true
     loadComics()
@@ -212,9 +215,16 @@ async function goDetail(c: Comic) {
 
 <style scoped>
 .jmz-serial-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 24px 48px;
 }
 
 .jmz-serial-bar {
+  flex-shrink: 0;
+  margin-top: 20px;
   margin-bottom: 16px;
 }
 .jmz-serial-days {
@@ -246,7 +256,9 @@ async function goDetail(c: Comic) {
 }
 
 .jmz-serial-main {
-  min-height: 200px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .jmz-card-grid-wrap {
