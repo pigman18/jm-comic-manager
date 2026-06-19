@@ -289,7 +289,7 @@ async function goDetail(c: Comic) {
 
 .jmz-week-header {
   flex-shrink: 0;
-  margin: 20px 24px 16px;
+  margin: 12px 16px;
   position: relative;
 }
 .jmz-week-bar-track-wrap {
@@ -359,7 +359,7 @@ async function goDetail(c: Comic) {
   width: 100%;
   min-width: 0;
   min-height: 200px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 .jmz-list-reload-mask {
   position: absolute;
@@ -406,14 +406,16 @@ async function goDetail(c: Comic) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 24px;
+  padding: 0 16px;
 }
 
 .jmz-week-footer {
   flex-shrink: 0;
-  padding: 12px 24px 48px;
+  padding: 12px 16px 20px;
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 12px;
 }
 
 .jmz-card-grid {

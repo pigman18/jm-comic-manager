@@ -265,7 +265,7 @@ function onCoverErr(e: Event, id: number) {
   width: 100%;
   min-width: 0;
   min-height: 200px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 .jmz-list-reload-mask {
   position: absolute;
@@ -317,7 +317,7 @@ function onCoverErr(e: Event, id: number) {
 
 .jmz-search-header {
   flex-shrink: 0;
-  margin: 20px 24px 16px;
+  margin: 12px 16px;
 }
 
 .jmz-search-row {
@@ -338,12 +338,12 @@ function onCoverErr(e: Event, id: number) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 24px;
+  padding: 0 16px;
 }
 
 .jmz-search-footer {
   flex-shrink: 0;
-  padding: 16px 24px 48px;
+  padding: 12px 16px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;

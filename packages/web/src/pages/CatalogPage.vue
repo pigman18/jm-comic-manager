@@ -479,7 +479,7 @@ const orderOptions = [
 
 .jmz-catalog-header {
   flex-shrink: 0;
-  margin: 20px 24px 16px;
+  margin: 12px 16px;
   background: #1e1e22;
 }
 .jmz-filter-grid {
@@ -510,7 +510,7 @@ const orderOptions = [
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 24px;
+  padding: 0 16px;
 }
 
 .jmz-card-grid-wrap {
@@ -518,7 +518,7 @@ const orderOptions = [
   width: 100%;
   min-width: 0;
   min-height: 200px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 .jmz-list-reload-mask {
   position: absolute;
@@ -538,7 +538,7 @@ const orderOptions = [
 .jmz-card-grid,
 .jmz-skel-grid {
   display: grid;
-  gap: 18px;
+  gap: 14px;
   width: 100%;
   box-sizing: border-box;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -748,6 +748,6 @@ const orderOptions = [
   flex-shrink: 0;
   display: flex;
   justify-content: center;
-  padding: 22px 24px 48px;
+  padding: 12px 16px 20px;
 }
 </style>

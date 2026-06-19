@@ -83,12 +83,14 @@
       </div>
     </div>
 
-    <div class="jmz-serial-footer"></div>
+    <div v-if="total > 0" class="jmz-serial-footer">
+      <div class="jmz-serial-info">共 {{ total }} 条</div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, shallowRef, reactive, nextTick, watch, onActivated, inject, type Ref } from 'vue'
+import { ref, shallowRef, reactive, computed, nextTick, watch, onActivated, inject, type Ref } from 'vue'
 import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { getJson, postJson } from '@/api'
@@ -124,6 +126,7 @@ const cachedDay = ref(0)
 const scrollTop = ref(0)
 const mainScrollRef = ref<HTMLElement | null>(null)
 const coverLoaded = reactive<Record<number, boolean>>({})
+const total = computed(() => list.value.length)
 
 let _syncingUrl = false
 let _loaded = false
@@ -227,7 +230,7 @@ async function goDetail(c: Comic) {
 
 .jmz-serial-header {
   flex-shrink: 0;
-  margin: 20px 24px 16px;
+  margin: 12px 16px;
 }
 
 .jmz-serial-bar {
@@ -265,12 +268,20 @@ async function goDetail(c: Comic) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 24px;
+  padding: 0 16px;
 }
 
 .jmz-serial-footer {
   flex-shrink: 0;
-  padding: 0 24px 48px;
+  padding: 12px 16px 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.jmz-serial-info {
+  text-align: center;
+  font-size: 13px;
+  color: #7a7a8a;
 }
 
 .jmz-card-grid-wrap {
@@ -278,7 +289,7 @@ async function goDetail(c: Comic) {
   width: 100%;
   min-width: 0;
   min-height: 200px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 .jmz-list-reload-mask {
   position: absolute;
