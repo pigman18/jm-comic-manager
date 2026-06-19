@@ -5,6 +5,8 @@ import { useMessage } from 'naive-ui'
 import { SearchOutline } from '@vicons/ionicons5'
 import { buildQuery, getJson, postJson } from '@/api'
 import type { Comic } from '@/types'
+import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
+import CardReadBtn from '@/components/CardReadBtn.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -212,6 +214,8 @@ function onCoverErr(e: Event, id: number) {
               @load="onCoverLoad(c.id)"
               @error="onCoverErr($event, c.id)"
             />
+            <CardDownloadBtn :comic="c" />
+            <CardReadBtn :comic="c" />
           </div>
           <div class="jmz-card-body">
             <div class="jmz-card-num">JM{{ c.id }}</div>

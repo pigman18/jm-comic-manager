@@ -4,6 +4,8 @@ import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { getJson, postJson } from '@/api'
 import type { Comic } from '@/types'
+import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
+import CardReadBtn from '@/components/CardReadBtn.vue'
 
 interface WeekCategory {
   id: string
@@ -251,6 +253,8 @@ async function goDetail(c: Comic) {
               @load="onCoverLoad(c.id)"
               @error="onCoverErr($event, c.id)"
             />
+            <CardDownloadBtn :comic="c" />
+            <CardReadBtn :comic="c" />
           </div>
           <div class="jmz-card-body">
             <div class="jmz-card-num">JM{{ c.id }}</div>
