@@ -3,7 +3,7 @@ import { reactive, ref, shallowRef, computed, onMounted, watch, nextTick, onActi
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useMessage, type MessageApi } from 'naive-ui'
-import { SearchOutline, RefreshOutline } from '@vicons/ionicons5'
+import { SearchOutline, RefreshOutline, HeartOutline, EyeOutline } from '@vicons/ionicons5'
 import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
 import CardReadBtn from '@/components/CardReadBtn.vue'
 import MetaPageDialog from '@/components/MetaPageDialog.vue'
@@ -448,7 +448,12 @@ const orderOptions = [
               </div>
               <div class="jmz-card-foot">
                 <span class="jmz-card-kind">{{ c.displayKindLabel }}</span>
-                <span v-if="c.total_views" class="jmz-card-pages">{{ c.total_views }}次</span>
+                <span v-if="c.total_views" class="jmz-card-pages">
+                  <n-icon :component="EyeOutline" size="13" style="vertical-align:-2px;margin-right:2px" />{{ c.total_views }}
+                </span>
+                <span v-if="c.likes" class="jmz-card-pages" style="margin-left:6px">
+                  <n-icon :component="HeartOutline" size="13" style="vertical-align:-2px;margin-right:2px" />{{ c.likes }}
+                </span>
               </div>
             </div>
           </article>
@@ -767,7 +772,6 @@ const orderOptions = [
   border-top: 1px solid #2e2e35;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   font-size: 12px;
   color: #7a7a8a;
