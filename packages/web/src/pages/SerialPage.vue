@@ -38,8 +38,8 @@
             :class="['jmz-card', cardToneClass(i), fetching[c.id] ? 'jmz-card--fetching' : '']"
             role="button"
             tabindex="0"
-            @click="goDetail(c)"
-            @keyup.enter="goDetail(c)"
+            @click="metaOpen(c.id)"
+            @keyup.enter="metaOpen(c.id)"
           >
             <div class="jmz-card-cover-wrap">
               <div v-show="!coverReady(c.id, c.cover) && !fetching[c.id]" class="jmz-cover-spinner">
@@ -67,7 +67,7 @@
             </div>
             <div class="jmz-card-body">
               <div class="jmz-card-num">JM{{ c.id }}</div>
-              <h2 class="jmz-card-title xxx-text">{{ c.name }}</h2>
+              <h2 class="jmz-card-title xxx-text" role="link" tabindex="0" @click.stop="metaOpen(c.id)" @keyup.enter.stop="metaOpen(c.id)">{{ c.name }}</h2>
               <div v-if="c.author && c.author[0]" class="jmz-card-author">{{ c.author[0] }}</div>
               <div v-else class="jmz-card-author jmz-card-author--muted">作者未知</div>
               <div class="jmz-card-tags">
@@ -89,6 +89,7 @@
       <div class="jmz-serial-info">共 {{ total }} 条</div>
     </div>
   </div>
+  <MetaPageDialog v-model:show="metaDialogShow" :num="metaDialogNum" />
 </template>
 
 <script setup lang="ts">
@@ -99,6 +100,7 @@ import { getJson, postJson } from '@/api'
 import type { Comic } from '@/types'
 import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
 import CardReadBtn from '@/components/CardReadBtn.vue'
+import MetaPageDialog from '@/components/MetaPageDialog.vue'
 
 interface DayOption { label: string; value: number }
 
@@ -129,6 +131,10 @@ const cachedList = shallowRef<Comic[]>([])
 const cachedDay = ref(0)
 const scrollTop = ref(0)
 const mainScrollRef = ref<HTMLElement | null>(null)
+const metaDialogNum = ref(0)
+const metaDialogShow = ref(false)
+function metaOpen(id: number) { metaDialogNum.value = id; metaDialogShow.value = true }
+
 const coverLoaded = reactive<Record<number, boolean>>({})
 const total = computed(() => list.value.length)
 
@@ -209,19 +215,7 @@ function onDayClick(day: number) {
   loadComics()
 }
 
-async function goDetail(c: Comic) {
-  if (!c.id) return
-  fetching.value = { ...fetching.value, [c.id]: true }
-  try {
-    const j = await postJson(`/comics/${c.id}/fetch-meta`)
-    if (!j.ok) throw new Error(j.message || '获取信息失败')
-    router.push({ name: 'detail', params: { num: String(c.id) }, query: { from: 'serial' } })
-  } catch (e: any) {
-    message.error(e.message || '获取信息失败')
-  } finally {
-    fetching.value = { ...fetching.value, [c.id]: false }
-  }
-}
+
 </script>
 
 <style scoped>
