@@ -158,6 +158,10 @@ function resetPage() {
   filters.page = 1
   router.replace({ name: 'catalog', query: filtersToQuery() })
 }
+function clearNumber() {
+  filters.number = ''
+  resetPage()
+}
 
 let cachedQueryKey = ''
 
@@ -348,7 +352,7 @@ const orderOptions = [
               <template #prefix><n-icon :component="SearchOutline" /></template>
             </n-input>
             <n-input v-model:value="filters.author" clearable placeholder="作者" @clear="resetPage" @keyup.enter="resetPage" />
-            <n-input v-model:value="filters.number" clearable placeholder="JM 编码" @clear="resetPage" @keyup.enter="resetPage" />
+            <n-input v-model:value="filters.number" clearable placeholder="JM 编码" @clear="clearNumber" @keyup.enter="resetPage" />
             <n-select
               v-model:value="filters.tags"
               multiple filterable tag
