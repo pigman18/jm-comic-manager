@@ -335,34 +335,37 @@ const orderOptions = [
 <template>
   <div class="jmz-page jmz-catalog">
     <section class="jmz-panel jmz-panel--pad jmz-catalog-header">
-      <div class="jmz-filter-grid">
-        <n-input v-model:value="filters.title" clearable placeholder="标题" @clear="resetPage" @keyup.enter="resetPage">
-          <template #prefix><n-icon :component="SearchOutline" /></template>
-        </n-input>
-        <n-input v-model:value="filters.author" clearable placeholder="作者（精确）" @clear="resetPage" @keyup.enter="resetPage" />
-        <n-input v-model:value="filters.number" clearable placeholder="JM 编码" @clear="resetPage" @keyup.enter="resetPage" />
-        <n-select
-          v-model:value="filters.tags"
-          multiple
-          filterable
-          tag
-          placeholder="标签（输入关键词搜索）"
-          clearable
-          :options="tagsOptions.map(t => ({ label: t, value: t }))"
-          :loading="tagsLoading"
-          class="jmz-filter-span2"
-          @search="searchTags"
-          @clear="resetPage"
-          @update:value="resetPage"
-        />
-        <n-select v-model:value="filters.kind" placeholder="类型" clearable :options="kindOptions" @update:value="resetPage" />
-        <n-checkbox v-model:checked="filters.available" @update:checked="resetPage">仅显示本地已下载</n-checkbox>
-        <n-select v-model:value="filters.sort" :options="sortOptions" @update:value="resetPage" />
-        <n-select v-model:value="filters.order" :options="orderOptions" @update:value="resetPage" />
-        <div class="jmz-fetch-row">
-          <n-input v-model:value="fetchNum" placeholder="JM 编码拉取入库" clearable @keyup.enter="fetchByNumber" />
-          <n-button type="primary" :loading="fetchBusy" @click="fetchByNumber">拉取</n-button>
-          <n-button type="primary" :loading="loading" @click="resetPage">搜索</n-button>
+      <div class="jmz-filter-body">
+        <div class="jmz-filter-fetch">
+          <n-input v-model:value="fetchNum" placeholder="JM 编码" clearable @keyup.enter="fetchByNumber" />
+          <n-button :loading="fetchBusy" @click="fetchByNumber" block>拉取</n-button>
+        </div>
+        <div class="jmz-filter-left">
+          <div class="jmz-search-row">
+            <n-input v-model:value="filters.title" clearable placeholder="标题" @clear="resetPage" @keyup.enter="resetPage">
+              <template #prefix><n-icon :component="SearchOutline" /></template>
+            </n-input>
+            <n-input v-model:value="filters.author" clearable placeholder="作者" @clear="resetPage" @keyup.enter="resetPage" />
+            <n-input v-model:value="filters.number" clearable placeholder="JM 编码" @clear="resetPage" @keyup.enter="resetPage" />
+            <n-select
+              v-model:value="filters.tags"
+              multiple filterable tag
+              placeholder="标签"
+              clearable
+              :options="tagsOptions.map(t => ({ label: t, value: t }))"
+              :loading="tagsLoading"
+              @search="searchTags"
+              @clear="resetPage"
+              @update:value="resetPage"
+            />
+            <n-select v-model:value="filters.kind" placeholder="类型" clearable :options="kindOptions" @update:value="resetPage" />
+            <n-checkbox v-model:checked="filters.available" @update:checked="resetPage">仅显示可读</n-checkbox>
+          </div>
+          <div class="jmz-sort-row">
+            <n-select v-model:value="filters.sort" :options="sortOptions" @update:value="resetPage" />
+            <n-select v-model:value="filters.order" :options="orderOptions" @update:value="resetPage" />
+            <n-button type="primary" :loading="loading" @click="resetPage">搜索</n-button>
+          </div>
         </div>
       </div>
     </section>
@@ -482,29 +485,51 @@ const orderOptions = [
   margin: 12px;
   background: #1e1e22;
 }
-.jmz-filter-grid {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, 1fr);
+.jmz-filter-body {
+  display: flex;
 }
-@media (min-width: 720px) {
-  .jmz-filter-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  .jmz-filter-span2 {
-    grid-column: span 2;
-  }
+.jmz-filter-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.jmz-fetch-row {
-  grid-column: 1 / -1;
+.jmz-search-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.jmz-search-row > * {
+  flex: 1;
+  min-width: 0;
+}
+.jmz-search-row .n-checkbox {
+  flex: none;
+  white-space: nowrap;
+}
+.jmz-sort-row {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
 }
-.jmz-fetch-row .n-input {
-  flex: 1;
-  min-width: 180px;
+.jmz-filter-fetch {
+  width: 180px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding-right: 16px;
+  margin-right: 16px;
+  justify-content: center;
 }
+.jmz-filter-fetch .n-input {
+  width: 100%;
+}
+
 
 .jmz-catalog-main {
   flex: 1;
