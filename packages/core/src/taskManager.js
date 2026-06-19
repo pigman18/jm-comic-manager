@@ -143,6 +143,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
   let runningCount = 0;
   const MAX_CONCURRENT = 5;
   const _lastProgress = {};
+  const abortControllers = new Map();
 
   function _updateSpeed(task, complete) {
     const elapsed = Date.now() - task.addedDate;
@@ -199,6 +200,10 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
   }
 
   async function runTask(task) {
+    const ac = new AbortController();
+    abortControllers.set(task.id, ac);
+    const signal = ac.signal;
+
     task.status = 'downloading';
     saveTasks();
     broadcast({ type: 'started', id: task.id, task: { status: 'downloading', stepStatus: stepStatusLabel(task.step, task.stepState, stepLabels, task.payload) } });
@@ -231,7 +236,11 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
       } catch (_) {}
     }
 
-    await startDownload(task, task._afterSteps);
+    try {
+      await startDownload(task, task._afterSteps, signal);
+    } finally {
+      abortControllers.delete(task.id);
+    }
     runningCount--;
     processQueue();
   }
@@ -255,9 +264,9 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
     return { ok: true };
   }
 
-  async function startDownload(task, afterSteps = null) {
+  async function startDownload(task, afterSteps = null, signal = null) {
     try {
-      const result = await crawler.comic.downloadArchive(task.number, true, null);
+      const result = await crawler.comic.downloadArchive(task.number, true, null, signal);
       if (result?.file) {
         // 注入元信息步骤（仅当 withMeta 为 true 且有 afterSteps）
         if (task.withMeta && afterSteps) {
@@ -296,6 +305,11 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
   function removeTask(id, deleteFiles) {
     const idx = tasks.findIndex(t => t.id === id);
     if (idx === -1) return;
+    const ac = abortControllers.get(id);
+    if (ac) {
+      ac.abort();
+      abortControllers.delete(id);
+    }
     const task = tasks[idx];
     task.status = 'removed';
     if (deleteFiles) {
@@ -329,6 +343,11 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
     const task = findTaskById(id);
     if (!task || task.status !== 'downloading') return;
     task.status = 'paused';
+    const ac = abortControllers.get(id);
+    if (ac) {
+      ac.abort();
+      abortControllers.delete(id);
+    }
     saveTasks();
     broadcast({ type: 'paused', id });
   }
