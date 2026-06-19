@@ -10,29 +10,29 @@
 
     <div class="jmz-meta-body">
       <n-spin :show="loading">
-        <template v-if="comic">
-          <div class="jmt-meta-hero">
-            <div class="jmt-meta-cover-wrap"><img class="jmt-meta-cover xxx-img" :src="comic.cover || ''" :alt="comic.name" /></div>
-            <div class="jmt-meta-info">
-              <p class="jmt-meta-tags">
-                <span class="xxx-text">JM{{ comic.id }}</span>
-                <span class="xxx-text">{{ comic.displayKindLabel }}</span>
-              </p>
-              <p v-if="comic.author && comic.author[0]" class="jmt-meta-author">作者：<span class="jmz-author-link xxx-text" role="link" tabindex="0" @click="filterByAuthor(comic.author[0], $event)" @keyup.enter="filterByAuthor(comic.author[0], $event)">{{ comic.author[0] }}</span></p>
-              <div v-if="comic.tags?.length" class="jmt-meta-chips">
-                <span v-for="t in comic.tags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByTag(t, $event)" @keyup.enter="filterByTag(t, $event)">{{ t }}</span>
-              </div>
-              <p v-if="comic.description" class="jmt-meta-desc xxx-text">{{ comic.description }}</p>
-              <div v-if="asideRows.length" class="jmt-meta-stats">
-                <span v-for="r in asideRows" :key="r.label" class="xxx-text">{{ r.label }}：{{ r.val }}</span>
+        <div class="jmt-meta-inner">
+          <template v-if="comic">
+            <div class="jmt-meta-hero">
+              <div class="jmt-meta-cover-wrap"><img class="jmt-meta-cover xxx-img" :src="comic.cover || ''" :alt="comic.name" /></div>
+              <div class="jmt-meta-info">
+                <p class="jmt-meta-tags">
+                  <span class="xxx-text">JM{{ comic.id }}</span>
+                  <span class="xxx-text">{{ comic.displayKindLabel }}</span>
+                </p>
+                <p v-if="comic.author && comic.author[0]" class="jmt-meta-author">作者：<span class="jmz-author-link xxx-text" role="link" tabindex="0" @click="filterByAuthor(comic.author[0], $event)" @keyup.enter="filterByAuthor(comic.author[0], $event)">{{ comic.author[0] }}</span></p>
+                <div v-if="comic.tags?.length" class="jmt-meta-chips">
+                  <span v-for="t in comic.tags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByTag(t, $event)" @keyup.enter="filterByTag(t, $event)">{{ t }}</span>
+                </div>
+                <p v-if="comic.description" class="jmt-meta-desc xxx-text">{{ comic.description }}</p>
+                <div v-if="asideRows.length" class="jmt-meta-stats">
+                  <span v-for="r in asideRows" :key="r.label" class="xxx-text">{{ r.label }}：{{ r.val }}</span>
+                </div>
               </div>
             </div>
-          </div>
-
-          <section class="jmt-meta-zip">
-            <div class="jmt-ep-list-header">
-              <div class="jmt-ep-list-header-left">
-                <n-checkbox v-model:checked="withMeta">附带作品信息</n-checkbox>
+            <section class="jmt-meta-zip">
+              <div class="jmt-ep-list-header">
+                <div class="jmt-ep-list-header-left">
+                  <n-checkbox v-model:checked="withMeta">附带作品信息</n-checkbox>
               </div>
               <n-button v-if="showDownloadAll" type="primary" size="tiny" @click="downloadAllMissing">全部下载</n-button>
             </div>
@@ -62,6 +62,7 @@
         </template>
         <div v-else-if="loading" class="jmt-meta-loading" />
         <n-empty v-else description="未找到该漫画" />
+      </div>
       </n-spin>
     </div>
   </div>
@@ -332,12 +333,18 @@ function fmtBytes(n: number) {
   flex-direction: column;
 }
 .jmz-meta--page {
-  flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 12px;
+  overflow: hidden;
 }
 .jmz-meta--dialog {
   min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .jmz-meta-head {
   display: flex;
@@ -356,21 +363,77 @@ function fmtBytes(n: number) {
 }
 .jmz-meta-body {
   min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+:deep(.jmz-meta-body > .n-spin-container) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+:deep(.jmz-meta-body > .n-spin-container > .n-spin-content) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.jmt-meta-inner {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.jmz-meta--page .jmt-meta-zip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.jmz-meta--page .jmt-ep-list {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  border: 1px solid #2e2e35;
+  border-radius: 6px;
+  background: #1e1e22;
+}
+.jmz-meta--dialog .jmt-ep-list {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #2e2e35;
+  border-radius: 6px;
+  background: #1e1e22;
 }
 
-/* --- hero --- */
 .jmt-meta-hero {
   display: flex;
   gap: 14px;
   align-items: flex-start;
   margin-bottom: 12px;
 }
-.jmt-meta-cover-wrap {
-  width: 120px;
-  height: 160px;
+.jmz-meta--page .jmt-meta-hero {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #1a1a20;
+  padding-bottom: 8px;
+}
+.jmz-meta--dialog .jmt-meta-cover-wrap {
+  width: 250px;
+  height: 250px;
   flex-shrink: 0;
   border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #2e2e35;
+  background: #1e1e22;
+}
+.jmz-meta--page .jmt-meta-cover-wrap {
+  width: 445px;
+  height: 445px;
+  flex-shrink: 0;
+  border-radius: 6px;
   overflow: hidden;
   border: 1px solid #2e2e35;
   background: #1e1e22;
@@ -441,13 +504,6 @@ function fmtBytes(n: number) {
 .jmt-ep-list-header-left {
   flex: 1;
   min-width: 0;
-}
-.jmt-ep-list {
-  border: 1px solid #2e2e35;
-  border-radius: 6px;
-  background: #1e1e22;
-  max-height: 35vh;
-  overflow-y: auto;
 }
 .jmt-ep-row {
   display: flex;

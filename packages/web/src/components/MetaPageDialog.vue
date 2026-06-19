@@ -1,6 +1,6 @@
 <template>
   <n-modal :show="show" @update:show="emit('update:show', $event)">
-    <n-card style="width:640px;height:600px;display:flex;flex-direction:column" :bordered="false" role="dialog" closable @close="close">
+    <n-card style="width:640px;height:600px;display:flex;flex-direction:column" content-style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column" :bordered="false" role="dialog" closable @close="close">
       <template #header>
         <div class="jmt-meta-dlg-header">
           <span>漫画元数据</span>
