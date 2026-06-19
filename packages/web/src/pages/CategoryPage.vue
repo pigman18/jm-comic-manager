@@ -330,7 +330,7 @@ async function goDetail(c: Comic) {
     </div>
 
     <div v-if="activeTab && activeTab !== '_blocks'" class="jmz-cat-footer">
-      <div v-if="pages > 1" class="jmz-cat-pager">
+      <div class="jmz-cat-pager">
         <n-pagination
           v-model:page="currentPage"
           :page-count="pages"
