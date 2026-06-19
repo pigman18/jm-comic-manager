@@ -41,62 +41,30 @@
           </div>
         </div>
         <div v-else class="jmz-card-grid">
-          <article
+          <ComicCard
             v-for="(c, i) in list"
             :key="c.id"
-            :class="['jmz-card', cardToneClass(i), fetching[c.id] ? 'jmz-card--fetching' : '']"
-            role="button"
-            tabindex="0"
-            @click="metaOpen(c.id)"
-            @keyup.enter="metaOpen(c.id)"
+            :comic="c"
+            :tone-class="cardToneClass(i)"
+            :fetching="!!fetching[c.id]"
+            :cover-ready="coverReady(c.id, c.cover)"
+            :meta-open="metaOpen"
+            :filter-by-author="filterByAuthor"
+            :on-cover-load="() => onCoverLoad(c.id)"
+            :on-cover-err="(ev) => onCoverErr(ev, c.id)"
           >
-            <div class="jmz-card-cover-wrap">
-              <div v-show="!coverReady(c.id, c.cover) && !fetching[c.id]" class="jmz-cover-spinner">
-                <n-spin size="small" />
-              </div>
-              <div v-if="fetching[c.id]" class="jmz-card-fetching-mask">
-                <n-spin size="small" />
-              </div>
-              <div v-if="c.inStore" class="jmz-card-ribbon">已收录</div>
-              <div v-else class="jmz-card-ribbon jmz-card-ribbon--new">未收录</div>
-              <span v-if="c.canRead" class="jmz-card-ribbon jmz-card-ribbon--read">可读</span>
-              <img
-                class="jmz-card-cover xxx-img"
-                :class="{ 'jmz-card-cover--show': coverReady(c.id, c.cover) }"
-                :src="c.cover || ''"
-                :alt="c.name"
-                loading="lazy"
-                width="240"
-                height="320"
-                @load="onCoverLoad(c.id)"
-                @error="onCoverErr($event, c.id)"
-              />
-              <CardDownloadBtn :comic="c" />
-              <CardReadBtn :comic="c" />
-            </div>
-            <div class="jmz-card-body">
-              <div class="jmz-card-num">JM{{ c.id }}</div>
-              <h2 class="jmz-card-title xxx-text" role="link" tabindex="0" @click.stop="metaOpen(c.id)" @keyup.enter.stop="metaOpen(c.id)">{{ c.name }}</h2>
-              <div v-if="c.author?.length" class="jmz-card-author"><template v-for="(a, ai) in c.author" :key="a"><span class="jmz-author-link" role="link" tabindex="0" @click.stop="filterByAuthor(a, $event)" @keyup.enter.stop="filterByAuthor(a, $event)">{{ a }}</span><span v-if="ai < c.author.length - 1" class="jmz-author-sep"> / </span></template></div>
-              <div v-else class="jmz-card-author jmz-card-author--muted">作者未知</div>
-              <div class="jmz-card-tags">
-                <span v-for="t in (c.tags || []).slice(0, 5)" :key="t" class="jmz-chip xxx-text">{{ t }}</span>
-                <span v-if="(c.tags || []).length > 5" class="jmz-chip jmz-chip--more">+{{ (c.tags || []).length - 5 }}</span>
-                <span v-if="!c.tags || !c.tags.length" class="jmz-chip jmz-chip--ghost">无标签</span>
-              </div>
-              <div class="jmz-card-foot">
-                <span v-if="c.total_views" class="jmz-card-pages">{{ c.total_views }}次</span>
-                <span v-if="c.likes" class="jmz-card-pages">{{ c.likes }}❤</span>
-              </div>
-              <div class="jmz-card-move-row">
+            <template #footer>
+              <span v-if="c.total_views" class="jmz-card-pages">{{ c.total_views }}次</span>
+              <span v-if="c.likes" class="jmz-card-pages">{{ c.likes }}❤</span>
+              <span style="margin-left:auto;display:flex;align-items:center;gap:4px">
                 <button class="jmz-card-move-btn" @click.stop="openMoveDialog(c)">
                   <n-icon :component="FolderOpenOutline" size="14" />
                   移动
                 </button>
                 <CardFavBtn :comic="c" :favorited="true" />
-              </div>
-            </div>
-          </article>
+              </span>
+            </template>
+          </ComicCard>
         </div>
       </div>
     </div>
@@ -147,9 +115,8 @@ import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { getJson, postJson } from '@/api'
 import type { Comic } from '@/types'
-import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
-import CardReadBtn from '@/components/CardReadBtn.vue'
 import CardFavBtn from '@/components/CardFavBtn.vue'
+import ComicCard from '@/components/ComicCard.vue'
 import MetaPageDialog from '@/components/MetaPageDialog.vue'
 import { FolderOpenOutline } from '@vicons/ionicons5'
 
