@@ -146,7 +146,7 @@ function onCoverErr(e: Event, id: number) {
 
 <template>
   <div class="jmz-page jmz-search-page">
-    <section class="jmz-panel jmz-panel--pad jmz-search-bar">
+    <section class="jmz-panel jmz-panel--pad jmz-search-header">
       <div class="jmz-search-row">
         <n-input
           v-model:value="keyword"
@@ -240,6 +240,9 @@ function onCoverErr(e: Event, id: number) {
         </article>
       </div>
       </div>
+    </div>
+
+    <div v-if="(pages > 1 || total > 0) && list.length > 0" class="jmz-search-footer">
       <div v-if="pages > 1" class="jmz-search-pager">
         <n-pagination
           v-model:page="currentPage"
@@ -257,9 +260,6 @@ function onCoverErr(e: Event, id: number) {
 </template>
 
 <style scoped>
-.jmz-search-page {
-}
-
 .jmz-card-grid-wrap {
   position: relative;
   width: 100%;
@@ -313,13 +313,11 @@ function onCoverErr(e: Event, id: number) {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 0 24px 48px;
 }
 
-.jmz-search-bar {
+.jmz-search-header {
   flex-shrink: 0;
-  margin-top: 20px;
-  margin-bottom: 16px;
+  margin: 20px 24px 16px;
 }
 
 .jmz-search-row {
@@ -340,6 +338,16 @@ function onCoverErr(e: Event, id: number) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: 0 24px;
+}
+
+.jmz-search-footer {
+  flex-shrink: 0;
+  padding: 16px 24px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .jmz-card-grid {

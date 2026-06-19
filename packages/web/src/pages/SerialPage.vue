@@ -1,17 +1,19 @@
 <template>
   <div class="jmz-page jmz-serial-page">
-    <section class="jmz-panel jmz-panel--pad jmz-serial-bar">
-      <div class="jmz-serial-days">
-        <button
-          v-for="d in dayOptions"
-          :key="d.value"
-          class="jmz-serial-day-btn"
-          :class="{ 'jmz-serial-day-btn--active': d.value === activeDay }"
-          :disabled="loading"
-          @click="onDayClick(d.value)"
-        >{{ d.label }}</button>
-      </div>
-    </section>
+    <div class="jmz-serial-header">
+      <section class="jmz-panel jmz-panel--pad jmz-serial-bar">
+        <div class="jmz-serial-days">
+          <button
+            v-for="d in dayOptions"
+            :key="d.value"
+            class="jmz-serial-day-btn"
+            :class="{ 'jmz-serial-day-btn--active': d.value === activeDay }"
+            :disabled="loading"
+            @click="onDayClick(d.value)"
+          >{{ d.label }}</button>
+        </div>
+      </section>
+    </div>
 
     <div class="jmz-serial-main" ref="mainScrollRef">
       <n-empty v-if="!loading && !list.length" description="暂无内容" />
@@ -80,6 +82,8 @@
         </div>
       </div>
     </div>
+
+    <div class="jmz-serial-footer"></div>
   </div>
 </template>
 
@@ -219,13 +223,15 @@ async function goDetail(c: Comic) {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 0 24px 48px;
+}
+
+.jmz-serial-header {
+  flex-shrink: 0;
+  margin: 20px 24px 16px;
 }
 
 .jmz-serial-bar {
-  flex-shrink: 0;
-  margin-top: 20px;
-  margin-bottom: 16px;
+  position: relative;
 }
 .jmz-serial-days {
   display: flex;
@@ -259,6 +265,12 @@ async function goDetail(c: Comic) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: 0 24px;
+}
+
+.jmz-serial-footer {
+  flex-shrink: 0;
+  padding: 0 24px 48px;
 }
 
 .jmz-card-grid-wrap {
