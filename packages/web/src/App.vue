@@ -339,6 +339,9 @@ onUnmounted(() => {
   padding: 0 20px;
   height: 44px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
   background: rgba(22, 22, 26, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
