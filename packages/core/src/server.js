@@ -659,6 +659,14 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
+        app.get(`${api}/favorites/folders`, async (req, res) => {
+            try {
+                const data = await crawler.account.getFavorites(1);
+                res.json({ok: true, folders: data?.folder_list || []});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
         app.post(`${api}/favorites/comics/:num/toggle`, async (req, res) => {
             try {
                 const num = Math.floor(Number(req.params.num));
@@ -669,6 +677,10 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const favorite = req.body?.favorite === true;
                 if (favorite) {
                     await crawler.account.addFavorite(num);
+                    const folderId = String(req.body?.folder_id || '').trim();
+                    if (folderId) {
+                        await crawler.account.moveToFolder(num, folderId, folderId);
+                    }
                 } else {
                     await crawler.account.removeFavorite(num);
                 }

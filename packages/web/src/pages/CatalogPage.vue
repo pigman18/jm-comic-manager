@@ -427,14 +427,7 @@ const orderOptions = [
             <div class="jmz-card-body">
               <div class="jmz-card-num">JM{{ c.id }}</div>
                   <h2 class="jmz-card-title xxx-text" role="link" tabindex="0" @click.stop="metaOpen(c.id)" @keyup.enter.stop="metaOpen(c.id)">{{ c.name }}</h2>
-              <div
-                v-if="c.author && c.author[0]"
-                class="jmz-card-author jmz-author-link"
-                role="link"
-                tabindex="0"
-                @click.stop="filterByAuthor(c.author[0], $event)"
-                @keyup.enter.stop="filterByAuthor(c.author[0], $event)"
-              >{{ c.author[0] }}</div>
+                <div v-if="c.author?.length" class="jmz-card-author"><template v-for="(a, ai) in c.author" :key="a"><span class="jmz-author-link" role="link" tabindex="0" @click.stop="filterByAuthor(a, $event)" @keyup.enter.stop="filterByAuthor(a, $event)">{{ a }}</span><span v-if="ai < c.author.length - 1" class="jmz-author-sep"> / </span></template></div>
               <div v-else class="jmz-card-author jmz-card-author--muted">作者未知</div>
               <div class="jmz-card-tags" aria-label="标签">
                 <span
@@ -744,6 +737,8 @@ const orderOptions = [
   color: #6a6a7a;
   font-weight: 500;
 }
+.jmz-author-link { color: inherit; }
+.jmz-author-sep { color: inherit; text-decoration: none; white-space: pre; }
 .jmz-card-tags {
   display: flex;
   flex-wrap: wrap;

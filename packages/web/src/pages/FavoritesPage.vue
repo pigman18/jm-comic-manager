@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="jmz-page jmz-fav-page">
     <div class="jmz-fav-header">
       <section class="jmz-panel jmz-panel--pad jmz-fav-bar">
@@ -73,12 +73,11 @@
               />
               <CardDownloadBtn :comic="c" />
               <CardReadBtn :comic="c" />
-              <CardFavBtn :comic="c" :favorited="true" />
             </div>
             <div class="jmz-card-body">
               <div class="jmz-card-num">JM{{ c.id }}</div>
               <h2 class="jmz-card-title xxx-text" role="link" tabindex="0" @click.stop="metaOpen(c.id)" @keyup.enter.stop="metaOpen(c.id)">{{ c.name }}</h2>
-              <div v-if="c.author && c.author[0]" class="jmz-card-author">{{ c.author[0] }}</div>
+              <div v-if="c.author?.length" class="jmz-card-author"><template v-for="(a, ai) in c.author" :key="a"><span class="jmz-author-link" role="link" tabindex="0" @click.stop="filterByAuthor(a, $event)" @keyup.enter.stop="filterByAuthor(a, $event)">{{ a }}</span><span v-if="ai < c.author.length - 1" class="jmz-author-sep"> / </span></template></div>
               <div v-else class="jmz-card-author jmz-card-author--muted">作者未知</div>
               <div class="jmz-card-tags">
                 <span v-for="t in (c.tags || []).slice(0, 5)" :key="t" class="jmz-chip xxx-text">{{ t }}</span>
@@ -94,6 +93,7 @@
                   <n-icon :component="FolderOpenOutline" size="14" />
                   移动
                 </button>
+                <CardFavBtn :comic="c" :favorited="true" />
               </div>
             </div>
           </article>
@@ -175,6 +175,7 @@ const mainScrollRef = ref<HTMLElement | null>(null)
 const metaDialogNum = ref(0)
 const metaDialogShow = ref(false)
 function metaOpen(id: number) { metaDialogNum.value = id; metaDialogShow.value = true }
+function filterByAuthor(name: string, ev?: Event) { ev?.stopPropagation?.(); const a = String(name || '').trim(); if (!a) return; router.push({ name: 'catalog', query: { author: a, page: '1' } }) }
 
 function onClickDelete() {
   const f = folderList.value.find(x => x.FID === folderId.value)
@@ -437,6 +438,10 @@ async function onDeleteFolder() {
   border-top: 1px solid #2a2a30;
   margin-top: 4px;
   padding-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
 }
 .jmz-card-move-btn {
   display: inline-flex;
@@ -652,15 +657,19 @@ async function onDeleteFolder() {
   line-height: 1.3;
 }
 .jmz-card-author {
-  font-size: 11px;
-  color: #6b9fff;
+  font-size: 13px;
+  color: #9b9bb4;
+  font-weight: 600;
+  min-height: 1.35em;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .jmz-card-author--muted {
   color: #6a6a7a;
 }
+.jmz-author-link { color: inherit; }
+.jmz-author-sep { color: inherit; text-decoration: none; white-space: pre; }
 .jmz-card-tags {
   display: flex;
   flex-wrap: wrap;

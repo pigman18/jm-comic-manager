@@ -598,9 +598,9 @@ function createCrawler(manifest, ctx, message, config) {
             return await expireRetry(async () => {
                 let fd = new URLSearchParams();
                 fd.append('type', 'move');
-                fd.append('folder_id', sourceFolderId);
+                fd.append('folder_id', targetFolderId);
                 fd.append('aid', String(albumId));
-                fd.append('o', targetFolderId);
+                fd.append('o', sourceFolderId);
                 let resp = await apiClient.post(`${getApiHost()}/favorite_folder`, fd.toString(), {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Bearer ' + config.token }
                 });
