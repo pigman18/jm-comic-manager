@@ -4,7 +4,7 @@
       <n-button quaternary @click="goBack">
         <template #icon><n-icon :component="ArrowBackOutline" /></template>
       </n-button>
-      <span class="jmz-meta-head-title xxx-text" v-if="comic">JM{{ comic.id }} {{ comic.name }}</span>
+      <span class="jmz-meta-head-title xxx-text" v-if="comic">{{ comic.name }}</span>
       <span class="jmz-meta-head-title" v-else>漫画元数据</span>
     </div>
 
@@ -83,7 +83,7 @@ import { useJmLiveStore } from '@/stores/jmLive'
 import type { Comic, ZipStatus } from '@/types'
 
 const props = defineProps<{ num?: string; dialog?: boolean }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; 'title-changed': [title: string] }>()
 
 const route = useRoute()
 const router = useRouter()
@@ -150,6 +150,7 @@ async function loadDetail(silent = false) {
     const j = await postJson(`/comics/${n}/fetch-meta`)
     if (!j.ok) throw new Error(j.message || '加载失败')
     comic.value = j.comic
+    if (j.comic) emit('title-changed', `${j.comic.name || ''}`)
     zipStatus.value = j.zipStatus || {}
     const base = zipStatus.value
     const ws = live.zipByKey
