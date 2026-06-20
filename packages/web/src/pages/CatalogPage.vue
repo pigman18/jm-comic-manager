@@ -159,11 +159,7 @@ function resetPage() {
   router.replace({ name: 'catalog', query: filtersToQuery() })
 }
 function doSearch() {
-  filters.page = 1
-  cachedQueryKey = ''
-  loading.value = false
   loadList()
-  router.replace({ name: 'catalog', query: filtersToQuery() })
 }
 function clearNumber() {
   filters.number = ''
