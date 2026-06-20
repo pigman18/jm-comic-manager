@@ -194,6 +194,7 @@ async function loadCategory(p?: number) {
     list.value = j.list || []
     total.value = j.total || 0
     pages.value = j.pages || 1
+    mainScrollRef.value?.scrollTo({ top: 0 })
   } catch (e: any) {
     message.error(e.message || '获取分类内容失败')
   } finally {

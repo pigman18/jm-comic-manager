@@ -5,7 +5,8 @@
     title="阅读"
     @click.stop="handleClick"
   >
-    <n-icon :component="EyeOutline" size="18" :class="{ 'jmz-spin': fetching }" />
+    <n-icon v-if="!fetching" :component="EyeOutline" size="18" />
+    <n-spin v-else size="small" style="transform:scale(.55);transform-origin:center" />
   </button>
   <n-modal
     v-model:show="modalShow"
@@ -40,15 +41,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { EyeOutline } from '@vicons/ionicons5'
-import { postJson } from '@/api'
+import { getJson, postJson } from '@/api'
 import { useMessage } from 'naive-ui'
 import { useZipReader } from '@/composables/useZipReader'
 import { useReadStore } from '@/stores/reads'
 import type { Comic } from '@/types'
 
-const props = defineProps<{ comic: Comic }>()
+const props = defineProps<{ comic: Comic; fetchRemote?: boolean }>()
+const fetchRemote = props.fetchRemote !== false
 const message = useMessage()
 const { openComic } = useZipReader()
 const readStore = useReadStore()
@@ -73,13 +75,6 @@ const filteredSeries = computed(() => {
   return eps
 })
 
-watch(modalShow, async (v) => {
-  if (v && dlInfo.value?.series?.length) {
-    const ids = dlInfo.value.series.map((e: any) => Number(e.id))
-    await readStore.checkReads(ids)
-  }
-})
-
 function isRead(epId: string): boolean {
   return readStore.isRead(Number(epId))
 }
@@ -92,7 +87,7 @@ async function handleClick() {
   const c = props.comic
   fetching.value = true
   try {
-    const j = await postJson(`/comics/${c.id}/fetch-meta`)
+    const j = fetchRemote ? await postJson(`/comics/${c.id}/fetch-meta`) : await getJson(`/comics/${c.id}`)
     if (!j.ok) { message.warning(j.message || '获取信息失败'); return }
     const series = j.comic?.series || j.series || []
     if (series.length <= 1) {
@@ -104,6 +99,7 @@ async function handleClick() {
     dlInfo.value = j.comic || j
     filterText.value = ''
     showReadable.value = false
+    await readStore.checkReads(series.map((e: any) => Number(e.id)))
     modalShow.value = true
   } catch (e: any) { message.error(String(e?.message || e)) }
   finally { fetching.value = false }
@@ -235,10 +231,5 @@ function readEpisode(ep: any) {
   white-space: nowrap;
   color: #c4c4d6;
 }
-.jmz-spin {
-  animation: jmz-btn-spin 0.8s linear infinite;
-}
-@keyframes jmz-btn-spin {
-  to { transform: rotate(360deg); }
-}
+
 </style>

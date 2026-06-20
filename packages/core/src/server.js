@@ -492,6 +492,12 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     return;
                 }
                 const comic = rewriteComicMediaUrls(store.dbRowToJson(row));
+                const eps = Array.isArray(comic.series) && comic.series.length ? comic.series : [];
+                const comicDir = path.join(config.dataDir, 'comic');
+                comic.series = eps.map(e => {
+                    const en = Number(e.id);
+                    return { id: String(e.id), name: String(e.name || ''), done: isNotEmptySync(path.join(comicDir, `${en}.zip`)) };
+                });
                 const zipStatus = await buildZipStatusMap(comic);
                 res.json({ok: true, comic, zipStatus});
             } catch (e) {
