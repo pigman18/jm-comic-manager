@@ -96,6 +96,7 @@ async function doSearch(page?: number) {
   lastKw.value = kw
   const p = page ?? currentPage.value
   currentPage.value = p
+  mainScrollRef.value?.scrollTo({ top: 0 })
   // 写 URL 便于恢复
   _syncingUrl = true
   router.replace({ name: 'search', query: { keyword: kw, sort: sort.value, page: String(p) } }).catch(() => {}).finally(() => { _syncingUrl = false })
