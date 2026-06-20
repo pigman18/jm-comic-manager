@@ -26,6 +26,7 @@
       />
       <span v-if="comic.canRead" class="jmz-card-ribbon">可读</span>
       <CardMetaBtn :comic="comic" />
+      <CardBanBtn :comic="comic" :on-toggle="onBanToggle" />
       <CardDownloadBtn :comic="comic" :fetch-remote="fetchRemote" />
       <CardReadBtn :comic="comic" :fetch-remote="fetchRemote" />
     </div>
@@ -58,6 +59,7 @@
 <script setup lang="ts">
 import type { Comic } from '@/types'
 import CardMetaBtn from './CardMetaBtn.vue'
+import CardBanBtn from './CardBanBtn.vue'
 import CardDownloadBtn from './CardDownloadBtn.vue'
 import CardReadBtn from './CardReadBtn.vue'
 import { EyeOutline, HeartOutline } from '@vicons/ionicons5'
@@ -74,6 +76,7 @@ defineProps<{
   onCoverLoad?: () => void
   onCoverErr?: (ev: Event) => void
   fetchRemote?: boolean
+  onBanToggle?: () => void
 }>()
 </script>
 

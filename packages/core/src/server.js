@@ -405,6 +405,12 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 if (kind === 'series') {
                     parts.push("json_array_length(COALESCE(series, '[]')) > 1");
                 }
+                const banned = String(req.query.banned || '').trim();
+                if (banned === 'true') {
+                    parts.push('id IN (SELECT id FROM comic_ban)');
+                } else {
+                    parts.push('id NOT IN (SELECT id FROM comic_ban)');
+                }
                 if (req.query.available === 'true') {
                     const availDir = path.join(config.dataDir, 'comic');
                     const zipIds = listFiles(availDir)
@@ -1011,6 +1017,43 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         });
     }
 
+    function handleBans(app, api) {
+        app.post(`${api}/comics/:num/ban`, async (req, res) => {
+            try {
+                const num = Math.floor(Number(req.params.num));
+                if (!Number.isFinite(num) || num < 1) {
+                    res.status(400).json({ok: false, message: '无效编码'});
+                    return;
+                }
+                const banned = await store.comicBan.toggleBan(num);
+                res.json({ok: true, banned});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.post(`${api}/bans/check`, async (req, res) => {
+            try {
+                const ids = req.body.ids;
+                if (!Array.isArray(ids)) {
+                    res.json({ok: false, message: 'ids 必须是数组'});
+                    return;
+                }
+                const bannedIds = await store.comicBan.checkBans(ids.map((id) => Math.floor(Number(id))).filter(Number.isFinite));
+                res.json({ok: true, bannedIds});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.get(`${api}/bans`, async (_req, res) => {
+            try {
+                const ids = await store.comicBan.listBans();
+                res.json({ok: true, ids});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+    }
+
     function handleOpenViewer(app, api) {
         app.post(`${api}/comics/:num/open-viewer`, async (req, res) => {
             try {
@@ -1093,6 +1136,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         handleDownload(app, api);
         handleBatchAdd(app, api);
         handleZipFile(app, api);
+        handleBans(app, api);
         handleReads(app, api);
         handleOpenViewer(app, api);
         handleBrowse(app, api);

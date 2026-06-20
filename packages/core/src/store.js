@@ -159,6 +159,12 @@ function createStore(manifest, ctx, message, config, crawler) {
         read_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
       );
     `);
+        database.exec(`
+      CREATE TABLE IF NOT EXISTS comic_ban (
+        id INTEGER PRIMARY KEY,
+        banned_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+      );
+    `);
         return database;
     }
 
@@ -253,6 +259,53 @@ function createStore(manifest, ctx, message, config, crawler) {
     const comicRead = {
         saveRead,
         checkReads,
+    };
+
+    // ============ comicBan sub-module ============
+
+    async function addBan(comicId) {
+        const conn = await connect();
+        const existing = conn.prepare('SELECT id FROM comic_ban WHERE id = ?').get(comicId);
+        if (existing) return false;
+        conn.prepare('INSERT INTO comic_ban (id) VALUES (?)').run(comicId);
+        return true;
+    }
+
+    async function removeBan(comicId) {
+        const conn = await connect();
+        const existing = conn.prepare('SELECT id FROM comic_ban WHERE id = ?').get(comicId);
+        if (!existing) return false;
+        conn.prepare('DELETE FROM comic_ban WHERE id = ?').run(comicId);
+        return true;
+    }
+
+    async function listBans() {
+        const conn = await connect();
+        const rows = conn.prepare('SELECT id FROM comic_ban ORDER BY banned_time DESC').all({});
+        return rows.map(r => (typeof r.id === 'bigint' ? Number(r.id) : r.id));
+    }
+
+    async function checkBans(ids) {
+        if (!Array.isArray(ids) || ids.length === 0) return [];
+        const conn = await connect();
+        const placeholders = ids.map(() => '?').join(',');
+        const rows = conn.prepare(`SELECT id FROM comic_ban WHERE id IN (${placeholders})`).all(ids);
+        return rows.map(r => (typeof r.id === 'bigint' ? Number(r.id) : r.id));
+    }
+
+    async function toggleBan(comicId) {
+        const existing = await addBan(comicId);
+        if (existing) return true;
+        await removeBan(comicId);
+        return false;
+    }
+
+    const comicBan = {
+        addBan,
+        removeBan,
+        listBans,
+        checkBans,
+        toggleBan,
     };
 
     async function runLocal2Db() {
@@ -378,6 +431,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         pageComic: page,
         comicMeta,
         comicRead,
+        comicBan,
         runLocal2Db,
         runDb2Local,
         close
