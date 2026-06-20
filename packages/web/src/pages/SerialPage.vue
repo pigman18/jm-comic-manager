@@ -151,8 +151,7 @@ onActivated(() => {
 
 function syncUrl() {
   _syncingUrl = true
-  try { router.replace({ name: 'serial', query: { day: String(activeDay.value) } }) } catch {}
-  _syncingUrl = false
+  router.replace({ name: 'serial', query: { day: String(activeDay.value) } }).catch(() => {}).finally(() => { _syncingUrl = false })
 }
 
 async function loadComics() {

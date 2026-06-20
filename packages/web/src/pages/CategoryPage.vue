@@ -154,16 +154,13 @@ async function loadInfo() {
 
 function syncUrl() {
   _syncingUrl = true
-  try {
-    const q: Record<string, string> = { tab: activeTab.value }
-    if (activeTab.value !== '_blocks') {
-      q.page = String(currentPage.value)
-      q.time = timeFilter.value
-      q.sort = sortFilter.value
-    }
-    router.replace({ name: 'category', query: q })
-  } catch {}
-  _syncingUrl = false
+  const q: Record<string, string> = { tab: activeTab.value }
+  if (activeTab.value !== '_blocks') {
+    q.page = String(currentPage.value)
+    q.time = timeFilter.value
+    q.sort = sortFilter.value
+  }
+  router.replace({ name: 'category', query: q }).catch(() => {}).finally(() => { _syncingUrl = false })
 }
 
 function onTabClick(val: string) {
