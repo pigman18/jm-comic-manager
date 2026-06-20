@@ -3,9 +3,8 @@ import { reactive, ref, shallowRef, computed, onMounted, watch, nextTick, onActi
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useMessage, type MessageApi } from 'naive-ui'
-import { SearchOutline, RefreshOutline, HeartOutline, EyeOutline } from '@vicons/ionicons5'
-import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
-import CardReadBtn from '@/components/CardReadBtn.vue'
+import { SearchOutline, RefreshOutline } from '@vicons/ionicons5'
+import CatalogCard from '@/components/CatalogCard.vue'
 import MetaPageDialog from '@/components/MetaPageDialog.vue'
 import { buildQuery, getJson, postJson } from '@/api'
 
@@ -54,11 +53,11 @@ const filters = reactive({
 })
 
 watch(
-  () => ({ page: filters.page, pageSize: filters.pageSize }),
-  () => {
-    router.replace({ name: 'catalog', query: filtersToQuery() })
-    nextTick(() => mainScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' }))
-  },
+    () => ({ page: filters.page, pageSize: filters.pageSize }),
+    () => {
+      router.replace({ name: 'catalog', query: filtersToQuery() })
+      nextTick(() => mainScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' }))
+    },
 )
 
 const queryParams = computed(() => {
@@ -167,17 +166,17 @@ function clearNumber() {
 let cachedQueryKey = ''
 
 watch(
-  () => route.query,
-  (newQuery) => {
-    if (route.name !== 'catalog') return
-    const key = JSON.stringify(newQuery || {})
-    if (key === cachedQueryKey) return
-    cachedList.value = []
-    cachedTotal.value = 0
-    cachedQueryKey = key
-    readFiltersFromRoute()
-    void loadList()
-  },
+    () => route.query,
+    (newQuery) => {
+      if (route.name !== 'catalog') return
+      const key = JSON.stringify(newQuery || {})
+      if (key === cachedQueryKey) return
+      cachedList.value = []
+      cachedTotal.value = 0
+      cachedQueryKey = key
+      readFiltersFromRoute()
+      void loadList()
+    },
 )
 
 onMounted(() => {
@@ -255,7 +254,7 @@ const fetchBusy = ref(false)
 
 async function fetchByNumber() {
   const n = Math.floor(Number(fetchNum.value))
-    if (!Number.isFinite(n) || n < 1) { message.warning('请输入有效 JM 编码'); return }
+  if (!Number.isFinite(n) || n < 1) { message.warning('请输入有效 JM 编码'); return }
   fetchBusy.value = true
   try {
     const j = await postJson(`/comics/${n}/fetch-meta`)
@@ -282,16 +281,16 @@ async function syncDb2Local() {
 }
 
 watch(
-  () => [syncLocalToDb.value.busy, syncDbToLocal.value.busy],
-  (busyNow, busyPrev) => {
-    const wasL2d = busyPrev?.[0]; const wasD2l = busyPrev?.[1]
-    if (wasL2d && !busyNow[0] && live.lastPayload?.phase === 'sync_local_to_db' && live.lastPayload?.state === 'success') {
-      message.success('local → 库 已完成'); void loadList()
-    }
-    if (wasD2l && !busyNow[1] && live.lastPayload?.phase === 'sync_db_to_local' && live.lastPayload?.state === 'success') {
-      message.success('库 → local 已完成'); void loadList()
-    }
-  },
+    () => [syncLocalToDb.value.busy, syncDbToLocal.value.busy],
+    (busyNow, busyPrev) => {
+      const wasL2d = busyPrev?.[0]; const wasD2l = busyPrev?.[1]
+      if (wasL2d && !busyNow[0] && live.lastPayload?.phase === 'sync_local_to_db' && live.lastPayload?.state === 'success') {
+        message.success('local → 库 已完成'); void loadList()
+      }
+      if (wasD2l && !busyNow[1] && live.lastPayload?.phase === 'sync_db_to_local' && live.lastPayload?.state === 'success') {
+        message.success('库 → local 已完成'); void loadList()
+      }
+    },
 )
 
 
@@ -355,15 +354,15 @@ const orderOptions = [
             <n-input v-model:value="filters.author" clearable placeholder="作者" @clear="resetPage" @keyup.enter="resetPage" />
             <n-input v-model:value="filters.number" clearable placeholder="JM 编码" @clear="clearNumber" @keyup.enter="resetPage" />
             <n-select
-              v-model:value="filters.tags"
-              multiple filterable tag
-              placeholder="标签"
-              clearable
-              :options="tagsOptions.map(t => ({ label: t, value: t }))"
-              :loading="tagsLoading"
-              @search="searchTags"
-              @clear="resetPage"
-              @update:value="resetPage"
+                v-model:value="filters.tags"
+                multiple filterable tag
+                placeholder="标签"
+                clearable
+                :options="tagsOptions.map(t => ({ label: t, value: t }))"
+                :loading="tagsLoading"
+                @search="searchTags"
+                @clear="resetPage"
+                @update:value="resetPage"
             />
             <n-select v-model:value="filters.kind" placeholder="类型" clearable :options="kindOptions" @update:value="resetPage" />
             <n-checkbox v-model:checked="filters.available" @update:checked="resetPage">可读</n-checkbox>
@@ -384,53 +383,31 @@ const orderOptions = [
       <div v-else class="jmz-card-grid-wrap">
         <div v-if="loading" class="jmz-card-grid jmz-skel-grid" aria-hidden="true">
           <div
-            v-for="i in filters.pageSize"
-            :key="'sk' + i"
-            :class="['jmz-card', 'jmz-skel-card', cardToneClass(i - 1)]"
+              v-for="i in filters.pageSize"
+              :key="'sk' + i"
+              :class="['jmz-card', 'jmz-skel-card', cardToneClass(i - 1)]"
           >
             <div class="jmz-skel-cover" />
             <div class="jmz-skel-lines" />
           </div>
         </div>
         <div v-else class="jmz-card-grid">
-          <article
-            v-for="(c, i) in list"
-            :key="c.id"
-            :class="['jmz-card', cardToneClass(i)]"
-            role="button"
-            tabindex="0"
-            @click="metaOpen(c.id)"
-            @keyup.enter="metaOpen(c.id)"
+          <CatalogCard
+              v-for="(c, i) in list"
+              :key="c.id"
+              :comic="c"
+              :tone-class="cardToneClass(i)"
+              :cover-ready="coverReady(c.id, c.cover)"
+              :img-loading="imgLazy(i)"
+              :cover-priority="coverFetchPriority(i)"
+              :meta-open="metaOpen"
+              :filter-by-author="filterByAuthor"
+              :on-cover-img="onCoverImg"
+              :on-cover-load="() => onCoverLoad(c.id)"
+              :on-cover-err="(ev) => onCoverErr(ev, c.id)"
           >
-            <div class="jmz-card-cover-wrap">
-              <div v-show="!coverReady(c.id, c.cover)" class="jmz-cover-spinner" aria-hidden="true">
-                <n-spin size="small" />
-              </div>
-              <img
-                :ref="(el: any) => onCoverImg(el, c.id, c.cover)"
-                class="jmz-card-cover xxx-img"
-                :class="{ 'jmz-card-cover--show': coverReady(c.id, c.cover) }"
-                :src="c.cover || ''"
-                :alt="c.name"
-                :loading="imgLazy(i)"
-                :fetchpriority="coverFetchPriority(i)"
-                decoding="async"
-                width="240"
-                height="320"
-                @load="onCoverLoad(c.id)"
-                @error="onCoverErr($event, c.id)"
-              />
-              <span v-if="c.canRead" class="jmz-card-ribbon">可读</span>
-              <CardDownloadBtn :comic="c" />
-              <CardReadBtn :comic="c" />
-            </div>
-            <div class="jmz-card-body">
-              <div class="jmz-card-num">JM{{ c.id }}</div>
-                  <h2 class="jmz-card-title xxx-text" role="link" tabindex="0" @click.stop="metaOpen(c.id)" @keyup.enter.stop="metaOpen(c.id)">{{ c.name }}</h2>
-                <div v-if="c.author?.length" class="jmz-card-author"><template v-for="(a, ai) in c.author" :key="a"><span class="jmz-author-link" role="link" tabindex="0" @click.stop="filterByAuthor(a, $event)" @keyup.enter.stop="filterByAuthor(a, $event)">{{ a }}</span><span v-if="ai < c.author.length - 1" class="jmz-author-sep"> / </span></template></div>
-              <div v-else class="jmz-card-author jmz-card-author--muted">作者未知</div>
-              <div class="jmz-card-tags" aria-label="标签">
-                <span
+            <template #tags>
+              <span
                   v-for="t in tagsLine(c)"
                   :key="t"
                   class="jmz-chip jmz-chip--click xxx-text"
@@ -438,36 +415,26 @@ const orderOptions = [
                   tabindex="0"
                   @click.stop="filterByTag(t, $event)"
                   @keyup.enter.stop="filterByTag(t, $event)"
-                >{{ t }}</span>
-                <span v-if="tagsMore(c)" class="jmz-chip jmz-chip--more">+{{ tagsMore(c) }}</span>
-                <span v-if="!tagsLine(c).length && !tagsMore(c)" class="jmz-chip jmz-chip--ghost">无标签</span>
-              </div>
-              <div class="jmz-card-dates">
-                <span v-if="c.addtime" class="jmz-date"><b>添加</b> {{ fmtTime(c.addtime) }}</span>
-                <span v-if="!c.addtime" class="jmz-date jmz-date--muted">日期未收录</span>
-              </div>
-              <div class="jmz-card-foot">
-                <span class="jmz-card-kind">{{ c.displayKindLabel }}</span>
-                <span v-if="c.total_views" class="jmz-card-pages">
-                  <n-icon :component="EyeOutline" size="13" style="vertical-align:-2px;margin-right:2px" />{{ c.total_views }}
-                </span>
-                <span v-if="c.likes" class="jmz-card-pages" style="margin-left:6px">
-                  <n-icon :component="HeartOutline" size="13" style="vertical-align:-2px;margin-right:2px" />{{ c.likes }}
-                </span>
-              </div>
-            </div>
-          </article>
+              >{{ t }}</span>
+              <span v-if="tagsMore(c)" class="jmz-chip jmz-chip--more">+{{ tagsMore(c) }}</span>
+              <span v-if="!tagsLine(c).length && !tagsMore(c)" class="jmz-chip jmz-chip--ghost">无标签</span>
+            </template>
+            <template #dates>
+              <span v-if="c.addtime" class="jmz-date"><b>添加</b> {{ fmtTime(c.addtime) }}</span>
+              <span v-if="!c.addtime" class="jmz-date jmz-date--muted">日期未收录</span>
+            </template>
+          </CatalogCard>
         </div>
       </div>
     </div>
     <div v-if="total > 0" class="jmz-catalog-footer">
       <n-pagination
-        v-model:page="filters.page"
-        v-model:page-size="filters.pageSize"
-        :page-count="Math.ceil(total / filters.pageSize)"
-        :page-sizes="[10, 20, 30, 40, 50]"
-        :show-size-picker="true"
-        :simple="false"
+          v-model:page="filters.page"
+          v-model:page-size="filters.pageSize"
+          :page-count="Math.ceil(total / filters.pageSize)"
+          :page-sizes="[10, 20, 30, 40, 50]"
+          :show-size-picker="true"
+          :simple="false"
       />
     </div>
   </div>
