@@ -83,10 +83,10 @@ const sortOptions = [
   { label: '最多爱心', value: 'tf' },
 ]
 
-let _syncingUrl = false
+let _syncCount = 0
 
 watch(() => route.query, (q) => {
-  if (route.name !== 'category' || _syncingUrl) return
+  if (route.name !== 'category' || _syncCount > 0) return
   const tab = String(q.tab || '')
   if (!tab) return
   activeTab.value = tab
@@ -110,8 +110,24 @@ onBeforeRouteLeave((_to, _from, next) => {
   next()
 })
 
+let _firstActivation = true
+
 onActivated(() => {
-  if (cachedList.value.length > 0) {
+  if (_firstActivation) {
+    _firstActivation = false
+    if (!categories.value.length) loadInfo()
+    return
+  }
+  const q = route.query
+  if (q.tab) {
+    const tab = String(q.tab || '')
+    activeTab.value = tab
+    currentPage.value = Math.max(1, parseInt(String(q.page || '1'), 10) || 1)
+    timeFilter.value = String(q.time || 'a').slice(0, 1) || 'a'
+    sortFilter.value = String(q.sort || 'mv')
+    syncUrl()
+    if (tab !== '_blocks') loadCategory()
+  } else if (cachedList.value.length > 0) {
     list.value = cachedList.value
     total.value = cachedTotal.value
     pages.value = cachedPages.value
@@ -123,8 +139,8 @@ onActivated(() => {
     nextTick(() => {
       if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value
     })
-  } else if (!categories.value.length) {
-    loadInfo()
+  } else {
+    if (!categories.value.length) loadInfo()
   }
 })
 
@@ -153,14 +169,14 @@ async function loadInfo() {
 }
 
 function syncUrl() {
-  _syncingUrl = true
+  _syncCount++
   const q: Record<string, string> = { tab: activeTab.value }
   if (activeTab.value !== '_blocks') {
     q.page = String(currentPage.value)
     q.time = timeFilter.value
     q.sort = sortFilter.value
   }
-  router.replace({ name: 'category', query: q }).catch(() => {}).finally(() => { _syncingUrl = false })
+  router.replace({ name: 'category', query: q }).catch(() => {}).finally(() => { _syncCount-- })
 }
 
 function onTabClick(val: string) {
