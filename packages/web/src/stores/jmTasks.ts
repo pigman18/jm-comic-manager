@@ -85,6 +85,9 @@ export const useJmTasksStore = defineStore('jm-tasks', {
             if (idx !== -1) {
               this.tasks[idx].status = 'error'
               this.tasks[idx].error = msg.error || String(msg.task?.error || '下载失败')
+              this.tasks[idx].stepStatus = null
+              this.tasks[idx].step = null
+              this.tasks[idx].stepState = null
               this.syncZipByKey(this.tasks[idx], live)
             }
           }

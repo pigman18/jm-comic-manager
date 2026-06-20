@@ -333,6 +333,12 @@ function createCrawler(manifest, ctx, message, config) {
                         if ('0' === resp?.data?.data?.status) {
                             let error = new Error(resp?.data?.data?.msg || '');
                             error.status = 403;
+                            // 直接结束
+                            if ('尚未兑换' === error.message) {
+                                error.status = 404;
+                            } else if ('无效A漫连结或下载已关闭，谢谢。 !' === error.message) {
+                                error.status = 404;
+                            }
                             throw error;
                         }
                         let realUrl = resp.data.data.download_url;
