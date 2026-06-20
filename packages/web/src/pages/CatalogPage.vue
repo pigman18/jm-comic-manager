@@ -158,6 +158,13 @@ function resetPage() {
   filters.page = 1
   router.replace({ name: 'catalog', query: filtersToQuery() })
 }
+function doSearch() {
+  filters.page = 1
+  cachedQueryKey = ''
+  loading.value = false
+  loadList()
+  router.replace({ name: 'catalog', query: filtersToQuery() })
+}
 function clearNumber() {
   filters.number = ''
   resetPage()
@@ -370,7 +377,7 @@ const orderOptions = [
           <div class="jmz-sort-row">
             <n-select v-model:value="filters.sort" :options="sortOptions" @update:value="resetPage" />
             <n-select v-model:value="filters.order" :options="orderOptions" @update:value="resetPage" />
-            <n-button type="primary" :loading="loading" @click="resetPage">搜索</n-button>
+            <n-button type="primary" :loading="loading" @click="doSearch">搜索</n-button>
           </div>
         </div>
       </div>
