@@ -438,7 +438,7 @@ const orderOptions = [
       />
     </div>
   </div>
-  <MetaPageDialog v-model:show="metaDialogShow" :num="metaDialogNum" />
+  <MetaPageDialog v-model:show="metaDialogShow" :num="metaDialogNum" :fetch-remote="false" />
 </template>
 
 <style scoped>

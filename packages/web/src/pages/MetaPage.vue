@@ -91,7 +91,13 @@ import { useJmLiveStore } from '@/stores/jmLive'
 import { useReadStore } from '@/stores/reads'
 import type { Comic, ZipStatus } from '@/types'
 
-const props = defineProps<{ num?: string; dialog?: boolean }>()
+const props = withDefaults(defineProps<{
+  num?: string
+  dialog?: boolean
+  fetchRemote?: boolean
+}>(), {
+  fetchRemote: true
+})
 const emit = defineEmits<{ close: []; 'title-changed': [title: string] }>()
 
 const route = useRoute()
@@ -147,11 +153,19 @@ async function loadDetail(silent = false) {
   if (!Number.isFinite(n) || n < 1) return
   if (!silent) loading.value = true
   try {
-    const j = await postJson(`/comics/${n}/fetch-meta`)
-    if (!j.ok) throw new Error(j.message || '加载失败')
-    comic.value = j.comic
-    if (j.comic) emit('title-changed', `${j.comic.name || ''}`)
-    zipStatus.value = j.zipStatus || {}
+    if (props.fetchRemote !== false) {
+      const j = await postJson(`/comics/${n}/fetch-meta`)
+      if (!j.ok) throw new Error(j.message || '加载失败')
+      comic.value = j.comic
+      if (j.comic) emit('title-changed', `${j.comic.name || ''}`)
+      zipStatus.value = j.zipStatus || {}
+    } else {
+      const j = await getJson(`/comics/${n}`)
+      if (!j.ok || !j.comic) throw new Error(j.message || '加载失败')
+      comic.value = j.comic
+      if (j.comic) emit('title-changed', `${j.comic.name || ''}`)
+      zipStatus.value = j.zipStatus || {}
+    }
     const base = zipStatus.value
     const ws = live.zipByKey
     for (const k of new Set([...Object.keys(base), ...Object.keys(ws)])) {

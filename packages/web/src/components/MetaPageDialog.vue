@@ -10,7 +10,7 @@
           </n-button>
         </div>
       </template>
-      <MetaPage :num="String(num)" :dialog="true" @close="close" @title-changed="onTitleChanged" />
+      <MetaPage :num="String(num)" :dialog="true" :fetch-remote="fetchRemote" @close="close" @title-changed="onTitleChanged" />
     </n-card>
   </n-modal>
 </template>
@@ -21,10 +21,13 @@ import { useRouter } from 'vue-router'
 import { OpenOutline } from '@vicons/ionicons5'
 import MetaPage from '@/pages/MetaPage.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   show: boolean
   num: number
-}>()
+  fetchRemote?: boolean
+}>(), {
+  fetchRemote: true
+})
 const emit = defineEmits<{
   'update:show': [v: boolean]
 }>()
