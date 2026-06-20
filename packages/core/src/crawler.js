@@ -297,28 +297,6 @@ function createCrawler(manifest, ctx, message, config) {
     }
 
     /**
-     * 获取漫画元数据
-     * @param number
-     * @param phase
-     * @return {Promise<*|{number: Number, meta: JmMeta}>}
-     */
-    async function getMeta(number, phase = PHASE.GET_META) {
-        return await message.doPhase(phase || PHASE.GET_META, async (stepHandler) => {
-            let resp = await expireRetry(async () => {
-                return await apiClient.get(`${getApiHost()}/album?id=${number}`);
-            });
-            let meta = resp.data.data;
-            if (!meta?.id) {
-                throw ERR.INFO_NOT_FOUND;
-            }
-            return {
-                number,
-                meta: meta
-            };
-        }, {number});
-    }
-
-    /**
      * 拉取漫画
      * 原理：以 https://18comic.vip/album_download/645130 为例
      * 1、页面一进来，实际就直接请求了 https://18comic.vip/captcha/ 验证码接口
@@ -612,24 +590,24 @@ function createCrawler(manifest, ctx, message, config) {
 
     let comic = {
         // 获取漫画元信息
-        getMeta: async (number, phase = PHASE.GET_META) => {
+        getMeta: async (number, phase) => {
             number = parseNumber(number);
-            let file = `${infoDir}/${number}.json`;
-            if (isNotEmptySync(file)) {
-                // 1、本地文件存在时，解压本地文件
-               try {
-                   return JSON.parse(fs.readFileSync(file, 'utf-8'));
-               } catch (_) {}
-            }
-            // 2、请求最新内容
+            phase = phase || PHASE.GET_META;
             let {
                 meta
-            } = await expireRetry(() => getMeta(number, phase));
-            if (!meta) {
-                throw ERR.INFO_NOT_FOUND;
-            }
-            // 3、保存漫画压缩内容
-            writeToFileSync(file, JSON.stringify(meta));
+            } = await message.doPhase(phase, async (stepHandler) => {
+                let resp = await expireRetry(async () => {
+                    return await apiClient.get(`${getApiHost()}/album?id=${number}`);
+                });
+                let meta = resp.data.data;
+                if (!meta?.id) {
+                    throw ERR.INFO_NOT_FOUND;
+                }
+                return {
+                    number,
+                    meta: meta
+                };
+            }, {number});
             return meta;
         },
         // 下载漫画压缩包
