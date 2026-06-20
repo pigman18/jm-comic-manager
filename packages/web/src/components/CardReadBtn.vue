@@ -5,7 +5,7 @@
     title="阅读"
     @click.stop="handleClick"
   >
-    <n-icon :component="EyeOutline" size="18" />
+    <n-icon :component="EyeOutline" size="18" :class="{ 'jmz-spin': fetching }" />
   </button>
   <n-modal
     v-model:show="modalShow"
@@ -119,7 +119,7 @@ function readEpisode(ep: any) {
 .jmz-card-read-btn {
   position: absolute;
   bottom: 8px;
-  left: 8px;
+  right: 44px;
   z-index: 4;
   width: 32px;
   height: 32px;
@@ -234,5 +234,11 @@ function readEpisode(ep: any) {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #c4c4d6;
+}
+.jmz-spin {
+  animation: jmz-btn-spin 0.8s linear infinite;
+}
+@keyframes jmz-btn-spin {
+  to { transform: rotate(360deg); }
 }
 </style>

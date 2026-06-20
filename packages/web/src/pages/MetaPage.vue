@@ -24,8 +24,16 @@
                   <span v-for="t in comic.tags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByTag(t, $event)" @keyup.enter="filterByTag(t, $event)">{{ t }}</span>
                 </div>
                 <p v-if="comic.description" class="jmt-meta-desc xxx-text">{{ comic.description }}</p>
-                <div v-if="asideRows.length" class="jmt-meta-stats">
-                  <span v-for="r in asideRows" :key="r.label" class="xxx-text">{{ r.label }}：{{ r.val }}</span>
+                <div v-if="comic" class="jmt-meta-stats">
+                  <span v-if="comic.total_views" class="jmz-stat-item xxx-text">
+                    <n-icon :component="EyeOutline" size="14" style="vertical-align:-2px;margin-right:3px" />{{ comic.total_views }}
+                  </span>
+                  <span v-if="comic.likes" class="jmz-stat-item xxx-text" style="margin-left:8px">
+                    <n-icon :component="HeartOutline" size="14" style="vertical-align:-2px;margin-right:3px" />{{ comic.likes }}
+                  </span>
+                  <span v-if="comic.addtime" class="jmz-stat-item xxx-text" style="margin-left:8px">
+                    {{ fmtTime(comic.addtime) }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -76,7 +84,7 @@
 import { ref, computed, watch, inject, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { ArrowBackOutline } from '@vicons/ionicons5'
+import { ArrowBackOutline, EyeOutline, HeartOutline } from '@vicons/ionicons5'
 import { getJson, postJson } from '@/api'
 import { useZipReader } from '@/composables/useZipReader'
 import { useJmLiveStore } from '@/stores/jmLive'
@@ -204,20 +212,6 @@ const zipRows = computed<ZipRow[]>(() => {
     const zipLabel = `JM${num}`
     return { zipKey: sk, num, zipLabel, epTitle: siteName, label: [zipLabel, siteName].filter(Boolean).join(' '), st }
   })
-})
-
-const asideRows = computed(() => {
-  if (!comic.value) return []
-  const c = comic.value
-  const rows: { label: string; val: string }[] = []
-  const push = (label: string, val: any) => {
-    const s = val == null ? '' : String(val).trim()
-    if (s) rows.push({ label, val: s })
-  }
-  push('浏览', c.total_views)
-  push('点赞', c.likes)
-  push('时间', c.addtime ? fmtTime(c.addtime) : '')
-  return rows
 })
 
 const showDownloadAll = computed(() => {
