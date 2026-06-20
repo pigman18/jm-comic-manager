@@ -38,6 +38,9 @@ const currentPageComics = inject<Ref<Comic[]>>('currentPageComics', ref<Comic[]>
 const scrollTop = ref(0);
 const mainScrollRef = ref<HTMLElement | null>(null);
 
+const cachedList = shallowRef<Comic[]>([]);
+const cachedTotal = ref(0);
+
 const metaDialogNum = ref(0);
 const metaDialogShow = ref(false);
 const metaOpen = (id: number): void => {
@@ -155,6 +158,8 @@ let _savedFilters: typeof filters | null = null;
 onBeforeRouteLeave(() => {
   scrollTop.value = mainScrollRef.value?.scrollTop || 0;
   _savedFilters = JSON.parse(JSON.stringify(filters));
+  cachedList.value = [...list.value];
+  cachedTotal.value = total.value;
 });
 
 let _firstActivation = true;
@@ -163,12 +168,18 @@ onActivated(() => {
   if (_firstActivation) { _firstActivation = false; return; }
   if (Object.keys(route.query).length > 0) {
     readFiltersFromRoute();
+    loadList();
   } else if (_savedFilters) {
     Object.assign(filters, _savedFilters);
     router.replace({ name: 'catalog', query: filtersToQuery() });
     _savedFilters = null;
+    if (cachedList.value.length > 0) {
+      list.value = cachedList.value;
+      total.value = cachedTotal.value;
+    } else {
+      loadList();
+    }
   }
-  loadList();
   nextTick(() => {
     if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value;
   });
