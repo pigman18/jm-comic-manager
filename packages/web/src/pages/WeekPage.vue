@@ -140,12 +140,9 @@ async function loadComics() {
 
 function syncUrl() {
   _syncingUrl = true
-  try {
-    const q: Record<string, string> = { category: activeCategory.value }
-    if (activeType.value) q.type = activeType.value
-    router.replace({ name: 'week', query: q })
-  } catch {}
-  _syncingUrl = false
+  const q: Record<string, string> = { category: activeCategory.value }
+  if (activeType.value) q.type = activeType.value
+  router.replace({ name: 'week', query: q }).catch(() => {}).finally(() => { _syncingUrl = false })
 }
 
 function onCategoryChange(id: string) {

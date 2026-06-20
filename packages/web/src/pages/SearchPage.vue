@@ -98,8 +98,7 @@ async function doSearch(page?: number) {
   currentPage.value = p
   // 写 URL 便于恢复
   _syncingUrl = true
-  try { router.replace({ name: 'search', query: { keyword: kw, sort: sort.value, page: String(p) } }) } catch {}
-  _syncingUrl = false
+  router.replace({ name: 'search', query: { keyword: kw, sort: sort.value, page: String(p) } }).catch(() => {}).finally(() => { _syncingUrl = false })
   // 新搜索时清缓存
   cachedList.value = []
   loading.value = true
