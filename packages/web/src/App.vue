@@ -36,7 +36,7 @@
             </router-link>
           </nav>
           <div class="jmz-sidebar-foot">
-            <UserBar />
+            <UserBar @logout="onUserLogout" />
           </div>
         </aside>
         <div class="jmz-main-area">
@@ -103,6 +103,7 @@
             </router-view>
           </main>
         </div>
+        <LoginDialog v-model:show="showLoginDialog" @login-success="onLoginSuccess" />
         <TasksDialog v-model:show="showTasks" />
         <BatchDownloadDialog v-model:show="showBatchDownload" :comics="currentPageComics" />
       </div>
@@ -118,11 +119,13 @@ import { ArrowBack, CloudUploadOutline, CloudDownloadOutline, ListOutline, Downl
 import { useRoute, useRouter } from 'vue-router'
 import { useJmLiveStore } from '@/stores/jmLive'
 import { useJmTasksStore } from '@/stores/jmTasks'
+import { useUserStore } from '@/stores/user'
 import { API } from '@/constants'
 import { postJson } from '@/api'
 import type { Comic } from '@/types'
 import TasksDialog from '@/components/TasksDialog.vue'
 import BatchDownloadDialog from '@/components/BatchDownloadDialog.vue'
+import LoginDialog from '@/components/LoginDialog.vue'
 import UserBar from '@/components/UserBar.vue'
 import { peekCatalogReturnQuery } from '@/utils/catalogReturn'
 
@@ -132,7 +135,9 @@ const store = useJmLiveStore()
 const live = useJmLiveStore()
 const tasksStore = useJmTasksStore()
 const showTasks = ref(false)
+const showLoginDialog = ref(false)
 const isDetail = computed(() => route.name === 'detail')
+const userStore = useUserStore()
 const pageTitle = computed(() => {
   const map: Record<string, string> = {
     catalog: '本地管理',
@@ -268,8 +273,20 @@ function connectWs() {
   }
 }
 
-onMounted(() => {
+function onUserLogout() {
+  showLoginDialog.value = true
+}
+
+function onLoginSuccess() {
+  showLoginDialog.value = false
+}
+
+onMounted(async () => {
   connectWs()
+  await userStore.checkSession()
+  if (!userStore.loggedIn) {
+    showLoginDialog.value = true
+  }
   if (harmonyEnabled.value) nextTick(applyHarmony)
 })
 
