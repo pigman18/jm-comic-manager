@@ -3,7 +3,7 @@
     <n-card style="width:640px;height:600px;display:flex;flex-direction:column" content-style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column" :bordered="false" role="dialog" closable @close="close">
       <template #header>
         <div class="jmt-meta-dlg-header">
-          <span>{{ dlgTitle }}</span>
+          <span class="xxx-text">{{ dlgTitle }}</span>
           <n-button text size="small" @click="jumpPage">
             <template #icon><n-icon :component="OpenOutline" /></template>
             单独打开
