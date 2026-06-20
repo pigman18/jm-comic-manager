@@ -135,7 +135,27 @@ onBeforeRouteLeave((_to, _from, next) => {
   next()
 })
 
+let _firstActivation = true
+
 onActivated(() => {
+  const q = route.query
+  const d = parseInt(String(q.day || ''), 10)
+
+  if (Number.isFinite(d)) {
+    if (_firstActivation) { _firstActivation = false; return }
+    activeDay.value = d
+    cachedList.value = []
+    syncUrl()
+    loadComics()
+    return
+  }
+
+  if (_firstActivation) {
+    _firstActivation = false
+    if (!cachedList.value.length) loadComics()
+    return
+  }
+
   if (cachedList.value.length > 0) {
     list.value = cachedList.value
     activeDay.value = cachedDay.value
@@ -143,8 +163,7 @@ onActivated(() => {
     nextTick(() => {
       if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value
     })
-  } else if (!_loaded) {
-    _loaded = true
+  } else {
     loadComics()
   }
 })

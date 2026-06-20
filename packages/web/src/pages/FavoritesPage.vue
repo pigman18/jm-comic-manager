@@ -202,7 +202,27 @@ onBeforeRouteLeave((_to, _from, next) => {
   next()
 })
 
+let _firstActivation = true
+
 onActivated(() => {
+  const q = route.query
+  const hasParams = !!(q.page || q.folder_id)
+
+  if (hasParams) {
+    if (_firstActivation) { _firstActivation = false; return }
+    cachedList.value = []
+    cachedTotal.value = 0
+    cachedPage.value = 1
+    loadFavorites()
+    return
+  }
+
+  if (_firstActivation) {
+    _firstActivation = false
+    if (!cachedList.value.length) loadFavorites()
+    return
+  }
+
   if (cachedList.value.length > 0) {
     list.value = cachedList.value
     total.value = cachedTotal.value
@@ -211,8 +231,7 @@ onActivated(() => {
     nextTick(() => {
       if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value
     })
-  } else if (!_loaded) {
-    _loaded = true
+  } else {
     loadFavorites()
   }
 })
