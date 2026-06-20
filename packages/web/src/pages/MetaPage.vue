@@ -88,6 +88,7 @@ import { ArrowBackOutline, EyeOutline, HeartOutline } from '@vicons/ionicons5'
 import { getJson, postJson } from '@/api'
 import { useZipReader } from '@/composables/useZipReader'
 import { useJmLiveStore } from '@/stores/jmLive'
+import { useReadStore } from '@/stores/reads'
 import type { Comic, ZipStatus } from '@/types'
 
 const props = defineProps<{ num?: string; dialog?: boolean }>()
@@ -118,29 +119,20 @@ const filteredRows = computed(() => {
 })
 
 const albumNum = computed(() => Math.floor(Number(props.num || route.params.num)))
-const storageKey = computed(() => `jm_read_${albumNum.value}`)
-const readEps = ref<number[]>([])
+const readStore = useReadStore()
 
-function loadReadState() {
-  try {
-    const raw = localStorage.getItem(storageKey.value)
-    readEps.value = raw ? JSON.parse(raw) : []
-  } catch { readEps.value = [] }
-}
-function markRead(zipKey: string) {
-  const num = Number(zipKey)
-  if (!Number.isFinite(num) || readEps.value.includes(num)) return
-  readEps.value = [...readEps.value, num]
-  localStorage.setItem(storageKey.value, JSON.stringify(readEps.value))
-}
 function isRead(zipKey: string) {
-  return readEps.value.includes(Number(zipKey))
+  return readStore.isRead(Number(zipKey))
 }
-
-watch(albumNum, () => { loadReadState() }, { immediate: true })
 
 const loading = ref(true)
 const comic = ref<Comic | null>(null)
+watch(comic, async (c) => {
+  if (c?.series?.length) {
+    const ids = c.series.map((e: any) => Number(e.id))
+    await readStore.checkReads(ids)
+  }
+})
 const zipStatus = ref<Record<string, ZipStatus>>({})
 const pend = ref<Set<string>>(new Set())
 
@@ -293,7 +285,7 @@ async function downloadAllMissing() {
 }
 
 async function onRead(row: ZipRow) {
-  markRead(row.zipKey)
+  readStore.markRead(albumNum.value, Number(row.zipKey))
   await openComic(albumNum.value, row.zipKey, `${comic.value?.name || ''} · ${row.zipLabel}`)
 }
 

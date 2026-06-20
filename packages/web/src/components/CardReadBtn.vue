@@ -45,16 +45,17 @@ import { EyeOutline } from '@vicons/ionicons5'
 import { postJson } from '@/api'
 import { useMessage } from 'naive-ui'
 import { useZipReader } from '@/composables/useZipReader'
+import { useReadStore } from '@/stores/reads'
 import type { Comic } from '@/types'
 
 const props = defineProps<{ comic: Comic }>()
 const message = useMessage()
 const { openComic } = useZipReader()
+const readStore = useReadStore()
 
 const fetching = ref(false)
 const modalShow = ref(false)
 const dlInfo = ref<any>(null)
-const readEps = ref<string[]>([])
 const filterText = ref('')
 const showReadable = ref(false)
 
@@ -72,20 +73,19 @@ const filteredSeries = computed(() => {
   return eps
 })
 
-watch(modalShow, (v) => {
-  if (v) {
-    const raw = localStorage.getItem(`jm_read_${props.comic.id}`)
-    try { readEps.value = raw ? JSON.parse(raw) : [] } catch { readEps.value = [] }
+watch(modalShow, async (v) => {
+  if (v && dlInfo.value?.series?.length) {
+    const ids = dlInfo.value.series.map((e: any) => Number(e.id))
+    await readStore.checkReads(ids)
   }
 })
 
 function isRead(epId: string): boolean {
-  return readEps.value.includes(epId)
+  return readStore.isRead(Number(epId))
 }
 
 function markRead(epId: string) {
-  if (!readEps.value.includes(epId)) readEps.value.push(epId)
-  localStorage.setItem(`jm_read_${props.comic.id}`, JSON.stringify(readEps.value))
+  readStore.markRead(props.comic.id, Number(epId))
 }
 
 async function handleClick() {
@@ -97,7 +97,7 @@ async function handleClick() {
     const series = j.comic?.series || j.series || []
     if (series.length <= 1) {
       if (!c.canRead) { message.warning('请先下载后再阅读'); return }
-      markRead(String(c.id))
+      readStore.markRead(c.id)
       openComic(c.id, String(c.id), c.name || `JM${c.id}`)
       return
     }
@@ -110,7 +110,7 @@ async function handleClick() {
 }
 
 function readEpisode(ep: any) {
-  markRead(ep.id)
+  readStore.markRead(props.comic.id, Number(ep.id))
   openComic(Number(ep.id), String(ep.id), ep.name || `JM${ep.id}`)
 }
 </script>
