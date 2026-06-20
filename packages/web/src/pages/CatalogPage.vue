@@ -9,6 +9,7 @@ import MetaPageDialog from '@/components/MetaPageDialog.vue'
 import { buildQuery, getJson, postJson } from '@/api'
 
 import { useJmLiveStore } from '@/stores/jmLive'
+import { useBanStore } from '@/stores/ban'
 import type { Comic } from '@/types'
 
 const route = useRoute()
@@ -17,6 +18,7 @@ const message = useMessage()
 
 const live = useJmLiveStore()
 const { syncLocalToDb, syncDbToLocal } = storeToRefs(live)
+const banStore = useBanStore()
 
 const tagsOptions = ref<string[]>([])
 const tagsLoading = ref(false)
@@ -46,6 +48,7 @@ const filters = reactive({
   tags: [] as string[],
   kind: '',
   available: false,
+  banned: false,
   sort: 'update_time',
   order: 'desc',
   page: 1,
@@ -71,6 +74,7 @@ const queryParams = computed(() => {
     tags,
     kind: filters.kind,
     available: filters.available ? 'true' : undefined,
+    banned: filters.banned ? 'true' : undefined,
     sort: filters.sort,
     order: filters.order,
   }
@@ -90,6 +94,7 @@ function readFiltersFromRoute() {
   filters.tags = ts ? ts.split(',').map(x => x.trim()).filter(Boolean) : []
   filters.kind = scalarQ(q.kind)
   filters.available = q.available === 'true'
+  filters.banned = q.banned === 'true'
   filters.sort = scalarQ(q.sort) || 'update_time'
   filters.order = scalarQ(q.order) || 'desc'
   const p = parseInt(scalarQ(q.page), 10)
@@ -106,6 +111,7 @@ function filtersToQuery(): Record<string, string> {
   if (filters.tags.length) q.tags = filters.tags.join(',')
   if (filters.kind) q.kind = filters.kind
   if (filters.available) q.available = 'true'
+  if (filters.banned) q.banned = 'true'
   if (filters.sort !== 'update_time') q.sort = filters.sort
   if (filters.order !== 'desc') q.order = filters.order
   if (filters.page > 1) q.page = String(filters.page)
@@ -128,6 +134,9 @@ async function loadList() {
     list.value = j.list || []
     total.value = j.total ?? 0
     for (const k of Object.keys(coverLoaded)) delete coverLoaded[Number(k)]
+    if (list.value.length) {
+      banStore.checkBans(list.value.map(c => c.id))
+    }
   } catch (e: any) {
     if (e?.name === 'AbortError' || signal.aborted) return
     message.error(String(e?.message || e))
@@ -159,6 +168,9 @@ function resetPage() {
   router.replace({ name: 'catalog', query: filtersToQuery() })
 }
 function doSearch() {
+  loadList()
+}
+function onBanToggle() {
   loadList()
 }
 function clearNumber() {
@@ -369,6 +381,7 @@ const orderOptions = [
             />
             <n-select v-model:value="filters.kind" placeholder="类型" clearable :options="kindOptions" @update:value="resetPage" />
             <n-checkbox v-model:checked="filters.available" @update:checked="resetPage">可读</n-checkbox>
+            <n-checkbox v-model:checked="filters.banned" @update:checked="resetPage">黑名单</n-checkbox>
           </div>
           <div class="jmz-sort-row">
             <n-select v-model:value="filters.sort" :options="sortOptions" @update:value="resetPage" />
@@ -409,6 +422,7 @@ const orderOptions = [
               :on-cover-img="onCoverImg"
               :on-cover-load="() => onCoverLoad(c.id)"
               :on-cover-err="(ev) => onCoverErr(ev, c.id)"
+              :on-ban-toggle="onBanToggle"
           >
             <template #tags>
               <span
