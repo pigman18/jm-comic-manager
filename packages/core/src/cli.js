@@ -8,7 +8,8 @@ const PQueue = require('p-queue').default;
 
 const {ERR} = require('./protocol');
 const {sleep, shuffleArray, formatDuration} = require('../util/common');
-const {touchFileSync, writeToFileSync} = require('../util/file');
+const {touchFileSync, writeToFileSync, isNotEmptySync} = require('../util/file');
+const {parseNumber} = require("./parser");
 
 function createCli(
     manifest,
@@ -220,7 +221,24 @@ function createCli(
         .description('查询漫画')
         .option('-f, --file <file>')
         .action(async (number, opts) => {
-            const action = (n) => crawler.comic.getMeta(n);
+            const action = async (number) => {
+                number = parseNumber(number);
+                let file = `${config.dataDir}/info/${number}.json`;
+                if (isNotEmptySync(file)) {
+                    // 1、本地文件存在时，解压本地文件
+                    try {
+                        return JSON.parse(fs.readFileSync(file, 'utf-8'));
+                    } catch (_) {}
+                }
+                // 2、请求最新内容
+                let meta = await crawler.comic.getMeta(number);
+                if (!meta) {
+                    throw ERR.INFO_NOT_FOUND;
+                }
+                // 3、保存漫画压缩内容
+                writeToFileSync(file, JSON.stringify(meta));
+                return meta;
+            };
             if (number) return runSingle('拉取元数据', number, action);
             if (opts.file) return runBatch('拉取元数据', opts.file, action, (numbers) => {
                 return numbers.filter((number) => !existsHtmlFlag(number));
