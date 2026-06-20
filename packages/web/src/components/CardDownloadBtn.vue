@@ -5,7 +5,7 @@
     title="下载"
     @click.stop="handleClick"
   >
-    <n-icon :component="DownloadOutline" size="18" />
+    <n-icon :component="DownloadOutline" size="18" :class="{ 'jmz-spin': fetching }" />
   </button>
   <n-modal
     v-model:show="modalShow"
@@ -241,5 +241,11 @@ async function doAddDownload() {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #c4c4d6;
+}
+.jmz-spin {
+  animation: jmz-btn-spin 0.8s linear infinite;
+}
+@keyframes jmz-btn-spin {
+  to { transform: rotate(360deg); }
 }
 </style>

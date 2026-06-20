@@ -25,6 +25,7 @@
         @error="onCoverErr?.($event)"
       />
       <span v-if="comic.canRead" class="jmz-card-ribbon">可读</span>
+      <CardMetaBtn :comic="comic" />
       <CardDownloadBtn :comic="comic" />
       <CardReadBtn :comic="comic" />
     </div>
@@ -56,6 +57,7 @@
 
 <script setup lang="ts">
 import type { Comic } from '@/types'
+import CardMetaBtn from './CardMetaBtn.vue'
 import CardDownloadBtn from './CardDownloadBtn.vue'
 import CardReadBtn from './CardReadBtn.vue'
 import { EyeOutline, HeartOutline } from '@vicons/ionicons5'
@@ -136,7 +138,7 @@ defineProps<{
 .jmz-card-ribbon {
   position: absolute;
   top: 10px;
-  right: 10px;
+  left: 10px;
   z-index: 4;
   font-size: 11px;
   font-weight: 700;
