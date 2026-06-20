@@ -100,6 +100,7 @@ onActivated(() => {
 })
 
 async function loadWeekInfo() {
+  loading.value = true
   try {
     const j = await getJson('/week/info')
     if (!j.ok) throw new Error(j.message || '获取周信息失败')
@@ -112,10 +113,12 @@ async function loadWeekInfo() {
     })
     if (categories.value.length && !activeCategory.value) {
       activeCategory.value = categories.value[0].id
-      loadComics()
+      await loadComics()
     }
   } catch (e: any) {
     message.error(e.message || '获取周信息失败')
+  } finally {
+    loading.value = false
   }
 }
 
