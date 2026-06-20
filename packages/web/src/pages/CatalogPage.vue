@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import {
   reactive, ref, shallowRef, computed, onMounted, onBeforeUnmount,
-  inject, type Ref
+  onActivated, nextTick, inject, type Ref
 } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useMessage } from 'naive-ui';
 import { SearchOutline } from '@vicons/ionicons5';
@@ -147,6 +147,31 @@ function onPageChange(): void {
 onMounted(() => {
   readFiltersFromRoute();
   loadList();
+});
+
+/* ===== keep-alive 支持 ===== */
+let _savedFilters: typeof filters | null = null;
+
+onBeforeRouteLeave(() => {
+  scrollTop.value = mainScrollRef.value?.scrollTop || 0;
+  _savedFilters = JSON.parse(JSON.stringify(filters));
+});
+
+let _firstActivation = true;
+
+onActivated(() => {
+  if (_firstActivation) { _firstActivation = false; return; }
+  if (Object.keys(route.query).length > 0) {
+    readFiltersFromRoute();
+  } else if (_savedFilters) {
+    Object.assign(filters, _savedFilters);
+    router.replace({ name: 'catalog', query: filtersToQuery() });
+    _savedFilters = null;
+  }
+  loadList();
+  nextTick(() => {
+    if (mainScrollRef.value) mainScrollRef.value.scrollTop = scrollTop.value;
+  });
 });
 
 onBeforeUnmount(() => {
