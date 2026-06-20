@@ -5,7 +5,8 @@
     title="下载"
     @click.stop="handleClick"
   >
-    <n-icon :component="DownloadOutline" size="18" :class="{ 'jmz-spin': fetching }" />
+    <n-icon v-if="!fetching" :component="DownloadOutline" size="18" />
+    <n-spin v-else size="small" style="transform:scale(.55);transform-origin:center" />
   </button>
   <n-modal
     v-model:show="modalShow"
@@ -48,11 +49,12 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { DownloadOutline } from '@vicons/ionicons5'
-import { postJson } from '@/api'
+import { getJson, postJson } from '@/api'
 import { useMessage } from 'naive-ui'
 import type { Comic } from '@/types'
 
-const props = defineProps<{ comic: Comic }>()
+const props = defineProps<{ comic: Comic; fetchRemote?: boolean }>()
+const fetchRemote = props.fetchRemote !== false
 const message = useMessage()
 
 const fetching = ref(false)
@@ -92,7 +94,7 @@ async function handleClick() {
   const c = props.comic
   fetching.value = true
   try {
-    const j = await postJson(`/comics/${c.id}/fetch-meta`)
+    const j = fetchRemote ? await postJson(`/comics/${c.id}/fetch-meta`) : await getJson(`/comics/${c.id}`)
     if (!j.ok) { message.warning(j.message || '获取信息失败'); return }
     const series = j.comic?.series || j.series || []
     const isMulti = series.length > 1
@@ -242,10 +244,5 @@ async function doAddDownload() {
   white-space: nowrap;
   color: #c4c4d6;
 }
-.jmz-spin {
-  animation: jmz-btn-spin 0.8s linear infinite;
-}
-@keyframes jmz-btn-spin {
-  to { transform: rotate(360deg); }
-}
+
 </style>

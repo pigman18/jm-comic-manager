@@ -399,6 +399,7 @@ const orderOptions = [
               v-for="(c, i) in list"
               :key="c.id"
               :comic="c"
+              :fetch-remote="false"
               :tone-class="cardToneClass(i)"
               :cover-ready="coverReady(c.id, c.cover)"
               :img-loading="imgLazy(i)"

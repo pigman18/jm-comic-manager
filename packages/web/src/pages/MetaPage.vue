@@ -133,12 +133,7 @@ function isRead(zipKey: string) {
 
 const loading = ref(true)
 const comic = ref<Comic | null>(null)
-watch(comic, async (c) => {
-  if (c?.series?.length) {
-    const ids = c.series.map((e: any) => Number(e.id))
-    await readStore.checkReads(ids)
-  }
-})
+
 const zipStatus = ref<Record<string, ZipStatus>>({})
 const pend = ref<Set<string>>(new Set())
 
@@ -166,6 +161,11 @@ async function loadDetail(silent = false) {
       if (j.comic) emit('title-changed', `${j.comic.name || ''}`)
       zipStatus.value = j.zipStatus || {}
     }
+    const ids = [albumNum.value]
+    if (comic.value?.series?.length) {
+      ids.push(...comic.value.series.map((e: any) => Number(e.id)))
+    }
+    readStore.checkReads(ids)
     const base = zipStatus.value
     const ws = live.zipByKey
     for (const k of new Set([...Object.keys(base), ...Object.keys(ws)])) {

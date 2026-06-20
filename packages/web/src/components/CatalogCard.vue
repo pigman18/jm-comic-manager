@@ -26,8 +26,8 @@
       />
       <span v-if="comic.canRead" class="jmz-card-ribbon">可读</span>
       <CardMetaBtn :comic="comic" />
-      <CardDownloadBtn :comic="comic" />
-      <CardReadBtn :comic="comic" />
+      <CardDownloadBtn :comic="comic" :fetch-remote="fetchRemote" />
+      <CardReadBtn :comic="comic" :fetch-remote="fetchRemote" />
     </div>
     <div class="jmz-card-body">
       <div class="jmz-card-num">JM{{ comic.id }}</div>
@@ -73,6 +73,7 @@ defineProps<{
   onCoverImg?: (el: HTMLImageElement | null, n: number, coverUrl?: string) => void
   onCoverLoad?: () => void
   onCoverErr?: (ev: Event) => void
+  fetchRemote?: boolean
 }>()
 </script>
 
