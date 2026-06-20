@@ -9,8 +9,6 @@
   "description": "用于JM漫画的快速导航和下载，仅供研究学习禁止用于其他用途！",
   "scripts": {
     "build": "node build/build.mjs",
-    "build:sea": "node --build-sea build/sea-config.json",
-    "postbuild:sea": "..\\node_modules\\rcedit\\bin\\rcedit.exe dist/JM模块.exe --set-icon resources/icon.ico",
     "help": "node src/index.js --help",
     "album:meta": "node src/index.js album:meta",
     "album:download": "node src/index.js album:download",
