@@ -153,6 +153,12 @@ function createStore(manifest, ctx, message, config, crawler) {
         try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_update_time ON comic_meta(update_time)'); } catch (_) {}
         try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_create_time ON comic_meta(create_time)'); } catch (_) {}
         try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_tags ON comic_meta(tags)'); } catch (_) {}
+        database.exec(`
+      CREATE TABLE IF NOT EXISTS comic_read (
+        id INTEGER PRIMARY KEY,
+        read_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+      );
+    `);
         return database;
     }
 
@@ -225,6 +231,28 @@ function createStore(manifest, ctx, message, config, crawler) {
         page,
         saveOrUpdate,
         saveOrUpdateBatch,
+    };
+
+    // ============ comicRead sub-module ============
+
+    async function saveRead(episodeId) {
+        const conn = await connect();
+        const existing = conn.prepare('SELECT id FROM comic_read WHERE id = ?').get(episodeId);
+        if (existing) return;
+        conn.prepare('INSERT INTO comic_read (id) VALUES (?)').run(episodeId);
+    }
+
+    async function checkReads(ids) {
+        if (!Array.isArray(ids) || ids.length === 0) return [];
+        const conn = await connect();
+        const placeholders = ids.map(() => '?').join(',');
+        const rows = conn.prepare(`SELECT id FROM comic_read WHERE id IN (${placeholders})`).all(ids);
+        return rows.map(r => (typeof r.id === 'bigint' ? Number(r.id) : r.id));
+    }
+
+    const comicRead = {
+        saveRead,
+        checkReads,
     };
 
     async function runLocal2Db() {
@@ -349,6 +377,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         listAllTags: listTags,
         pageComic: page,
         comicMeta,
+        comicRead,
         runLocal2Db,
         runDb2Local,
         close

@@ -975,6 +975,36 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         });
     }
 
+    function handleReads(app, api) {
+        app.post(`${api}/comics/:num/read`, async (req, res) => {
+            try {
+                const comicId = Math.floor(Number(req.params.num));
+                const episodeId = req.body.episodeId != null ? Math.floor(Number(req.body.episodeId)) : comicId;
+                if (!Number.isFinite(episodeId)) {
+                    res.json({ok: false, message: '无效的 episodeId'});
+                    return;
+                }
+                await store.comicRead.saveRead(episodeId);
+                res.json({ok: true});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.post(`${api}/reads/check`, async (req, res) => {
+            try {
+                const ids = req.body.ids;
+                if (!Array.isArray(ids)) {
+                    res.json({ok: false, message: 'ids 必须是数组'});
+                    return;
+                }
+                const readIds = await store.comicRead.checkReads(ids.map(id => Math.floor(Number(id))).filter(Number.isFinite));
+                res.json({ok: true, readIds});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+    }
+
     function handleOpenViewer(app, api) {
         app.post(`${api}/comics/:num/open-viewer`, async (req, res) => {
             try {
@@ -1057,6 +1087,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         handleDownload(app, api);
         handleBatchAdd(app, api);
         handleZipFile(app, api);
+        handleReads(app, api);
         handleOpenViewer(app, api);
         handleBrowse(app, api);
         await new Promise((resolve, reject) => {
