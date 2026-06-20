@@ -21,6 +21,7 @@
         <div class="jmt-status-cell">
           <n-tag :type="statusType" size="small">{{ statusLabel }}</n-tag>
           <span v-if="task.status !== 'completed' && task.stepStatus" class="jmt-step-sub" :style="task.stepStatus.color ? { color: task.stepStatus.color } : {}">{{ task.stepStatus.label }}</span>
+          <span v-if="task.status === 'error' && task.error" class="jmt-step-sub jmt-error-msg">{{ task.error }}</span>
         </div>
       </template>
       <template #cell-progress="{ task, pct, formatSize }">
@@ -375,6 +376,9 @@ function readNumber(n: number) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.jmt-error-msg {
+  color: #d03050;
 }
 .jmt-progress-cell {
   display: flex;
