@@ -1,5 +1,5 @@
 <template>
-  <div v-if="memberInfo" class="jmz-sbar-user">
+  <div v-if="userStore.loggedIn" class="jmz-sbar-user">
     <div class="jmz-sbar-top">
       <img v-if="memberInfo.photo && !memberInfo.photo.startsWith('nopic')" class="jmz-sbar-avatar" :src="avatarUrl" alt="" />
       <div v-else class="jmz-sbar-avatar jmz-sbar-avatar--letter">{{ memberInfo.username.charAt(0).toUpperCase() }}</div>
@@ -17,14 +17,21 @@
         <span>{{ memberInfo.coin }} <span class="jmz-sbar-coin-icon">J</span></span>
       </div>
     </div>
+    <button class="jmz-sbar-logout" @click="handleLogout">登出</button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { getJson } from '@/api'
+import { computed } from 'vue'
+import { useUserStore } from '@/stores/user'
 
-const memberInfo = ref<any>(null)
+const emit = defineEmits<{
+  logout: []
+}>()
+
+const userStore = useUserStore()
+
+const memberInfo = computed(() => userStore.memberInfo)
 
 const avatarUrl = computed(() => {
   if (!memberInfo.value?.photo || memberInfo.value.photo.startsWith('nopic')) return ''
@@ -32,14 +39,10 @@ const avatarUrl = computed(() => {
   return `/file/cdn-msp.18comic.vip/media/users/orig/${memberInfo.value.photo}?originUrl=${encodeURIComponent(originUrl)}`
 })
 
-onMounted(async () => {
-  try {
-    const j = await getJson('/settings')
-    if (j.ok && j.bundleConfig?.memberInfo) {
-      memberInfo.value = j.bundleConfig.memberInfo
-    }
-  } catch { /* ignore */ }
-})
+async function handleLogout() {
+  await userStore.logout()
+  emit('logout')
+}
 </script>
 
 <style scoped>
@@ -114,5 +117,22 @@ onMounted(async () => {
 .jmz-sbar-coin-icon {
   font-weight: 800;
   color: #f59e0b;
+}
+.jmz-sbar-logout {
+  margin-top: 4px;
+  width: 100%;
+  padding: 5px 0;
+  border: 1px solid #2e2e35;
+  border-radius: 6px;
+  background: transparent;
+  color: #9b9bb4;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.jmz-sbar-logout:hover {
+  background: #2e2e3566;
+  color: #e0e0e6;
+  border-color: #3d3d4a;
 }
 </style>
