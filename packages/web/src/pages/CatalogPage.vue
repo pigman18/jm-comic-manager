@@ -144,6 +144,7 @@ function resetPage(): void {
 /* ✅ 分页变化（修好分页点击） */
 function onPageChange(): void {
   router.replace({ name: 'catalog', query: filtersToQuery() });
+  mainScrollRef.value?.scrollTo({ top: 0 });
   loadList();
 }
 
