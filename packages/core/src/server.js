@@ -378,8 +378,8 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     params.n = `%${name}%`;
                 }
                 if (author) {
-                    parts.push('author LIKE @a');
-                    params.a = `%"${author}"%`;
+                    parts.push('EXISTS (SELECT 1 FROM json_each(author) WHERE value = @a)');
+                    params.a = author;
                 }
                 if (id) {
                     parts.push('CAST(id AS TEXT) LIKE @i');
@@ -407,9 +407,9 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 const banned = String(req.query.banned || '').trim();
                 if (banned === 'true') {
-                    parts.push('id IN (SELECT id FROM comic_ban)');
+                    parts.push('EXISTS (SELECT 1 FROM comic_ban cb WHERE cb.id = comic_meta.id)');
                 } else {
-                    parts.push('id NOT IN (SELECT id FROM comic_ban)');
+                    parts.push('NOT EXISTS (SELECT 1 FROM comic_ban cb WHERE cb.id = comic_meta.id)');
                 }
                 if (req.query.available === 'true') {
                     const availDir = path.join(config.dataDir, 'comic');

@@ -137,22 +137,20 @@ function createStore(manifest, ctx, message, config, crawler) {
         // 兼容旧表：可能缺少 create_time / update_time
         try { database.exec('ALTER TABLE comic_meta ADD COLUMN create_time INTEGER'); } catch (_) {}
         try { database.exec('ALTER TABLE comic_meta ADD COLUMN update_time INTEGER'); } catch (_) {}
-        // 索引
+        // 索引 — WHERE 过滤
         try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_series_id ON comic_meta(series_id)'); } catch (_) {}
         try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_name ON comic_meta(name)'); } catch (_) {}
         try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_author ON comic_meta(author)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_addtime ON comic_meta(addtime)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_total_views ON comic_meta(total_views)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_likes ON comic_meta(likes)'); } catch (_) {}
         try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_comment_total ON comic_meta(comment_total)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_liked ON comic_meta(liked)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_is_favorite ON comic_meta(is_favorite)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_is_aids ON comic_meta(is_aids)'); } catch (_) {}
         try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_price ON comic_meta(price)'); } catch (_) {}
         try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_purchased ON comic_meta(purchased)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_update_time ON comic_meta(update_time)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_create_time ON comic_meta(create_time)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_tags ON comic_meta(tags)'); } catch (_) {}
+        // 复合排序索引 — 让 ORDER BY + LIMIT 直接走索引扫描
+        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_update ON comic_meta(update_time, id)'); } catch (_) {}
+        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_create ON comic_meta(create_time, id)'); } catch (_) {}
+        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_views ON comic_meta(total_views, id)'); } catch (_) {}
+        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_likes ON comic_meta(likes, id)'); } catch (_) {}
+        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_name ON comic_meta(name, id)'); } catch (_) {}
+        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_addtime ON comic_meta(addtime, id)'); } catch (_) {}
         database.exec(`
       CREATE TABLE IF NOT EXISTS comic_read (
         id INTEGER PRIMARY KEY,
