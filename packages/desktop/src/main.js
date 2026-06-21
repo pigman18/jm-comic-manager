@@ -7,9 +7,9 @@ const { spawn, exec } = require('child_process');
 
 let bundle;
 try {
-  bundle = require('../runtime/jm.bundle.all.js');
+  bundle = require('../runtime/jm.core.all.js');
 } catch (e) {
-  console.error('[desktop] failed to load runtime/jm.bundle.all.js:', e.message);
+  console.error('[desktop] failed to load runtime/jm.core.all.js:', e.message);
   process.exit(1);
 }
 

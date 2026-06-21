@@ -6,6 +6,7 @@
   "author": "pigman17",
   "version": "1.0.0",
   "private": true,
+  "title": "jm.core",
   "description": "用于JM漫画的快速导航和下载，仅供研究学习禁止用于其他用途！",
   "scripts": {
     "build": "node build/build.mjs",
@@ -19,7 +20,9 @@
     "db2local": "node src/index.js db2local",
     "covers": "node src/index.js covers",
     "server": "node src/index.js server",
-    "command": "node src/index.js"
+    "command": "node src/index.js",
+    "build:pkg": "npx @yao-pkg/pkg dist/jm.core.all.js --targets node22-win-x64 --output dist/jm.core.exe",
+    "postbuild:pkg": "node build/pkg-icon.mjs"
   },
   "dependencies": {
     "@trayjs/trayjs": "^0.0.10",
@@ -38,6 +41,7 @@
     "marked": "^15.0.12",
     "marked-terminal": "^7.3.0",
     "morgan": "^1.10.1",
+    "node-fs-dialogs": "^0.1.3",
     "node-notifier": "^10.0.1",
     "p-queue": "^9.3.0",
     "socks-proxy-agent": "^10.0.0",
