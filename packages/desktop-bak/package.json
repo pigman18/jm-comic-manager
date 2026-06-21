@@ -1,0 +1,14 @@
+{
+  "name": "@jm/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "build:sea": "node --experimental-sea-config sea-config.json"
+  },
+  "dependencies": {
+    "ewvjs": "^1.0.25"
+  }
+}

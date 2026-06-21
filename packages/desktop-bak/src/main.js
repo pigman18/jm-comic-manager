@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { spawn, exec } = require('child_process');
+const { createTray, showConfirm } = require('./tray');
 
 let bundle;
 try {
@@ -36,35 +37,6 @@ function writeConfig(cfg) {
   fs.writeFileSync(configPath(), JSON.stringify(cur, null, 2));
 }
 
-function createTray(binPath, iconPath, handlers) {
-  const proc = spawn(binPath, ['--tooltip', 'JM\u6F2B\u753B\u7BA1\u7406\u5668'], {
-    stdio: ['pipe', 'pipe', 'inherit'], windowsHide: true,
-  });
-  let buf = '';
-  proc.stdout.on('data', (chunk) => {
-    buf += chunk.toString();
-    const lines = buf.split('\n');
-    buf = lines.pop() || '';
-    for (const line of lines) {
-      const m = line.trim();
-      if (!m) continue;
-      try {
-        const msg = JSON.parse(m);
-        switch (msg.method) {
-          case 'ready': if (iconPath) setTrayIcon(proc, iconPath); handlers.onReady?.(); break;
-          case 'menuRequested': sendTray(proc, { method: 'setMenu', params: { items: handlers.onMenuRequested?.() || [] } }); break;
-          case 'clicked': handlers.onClicked?.(msg.params.id); break;
-        }
-      } catch { }
-    }
-  });
-  proc.on('error', (e) => console.error('[tray]', e.message));
-  proc.on('exit', (c) => handlers.onExit?.(c));
-  return proc;
-}
-function sendTray(proc, msg) { if (proc && proc.stdin.writable) proc.stdin.write(JSON.stringify(msg) + '\n'); }
-function setTrayIcon(proc, iconPath) { try { sendTray(proc, { method: 'setIcon', params: { base64: fs.readFileSync(iconPath).toString('base64') } }); } catch {} }
-function quitTray(proc) { try { proc.stdin.end(); } catch {} setTimeout(() => { try { proc.kill(); } catch {} }, 500); }
 
 function browseDir(defaultPath) {
   return new Promise((resolve) => {
@@ -103,7 +75,6 @@ async function main() {
   const { create_window, expose, start } = require('ewvjs');
   const iconIco = path.join(REPO_ROOT, 'resources', 'icon.ico');
   const configHtml = path.join(PKG_DIR, 'src', 'config-window.html');
-  const trayBin = path.join(REPO_ROOT, 'node_modules', '@trayjs', 'win32-x64', 'bin', 'tray.exe');
 
   // State
   let mainWin = null;
@@ -114,8 +85,9 @@ async function main() {
   // Helpers
   async function createMainWindow(homeUrl) {
     const mw = await create_window('JM\u6F2B\u753B\u7BA1\u7406\u5668', homeUrl, {
-      width: 1200, height: 800, min_width: 800, min_height: 600, icon: iconIco,
+      width: 1200, height: 800, min_width: 800, min_height: 600, icon: iconIco, confirm_close: true,
     });
+    
     await mw.run();
     // Inject desktop top bar
     try {
@@ -131,7 +103,9 @@ async function main() {
       {i:'\\u2699',t:'\\u8BBE\\u7F6E',c:'openSettings'},
       {i:'\\uD83D\\uDCCB',t:'\\u6253\\u5F00\\u914D\\u7F6E\\u6587\\u4EF6\\u5939',c:'openConfigDir'},
       {i:'\\uD83D\\uDCC1',t:'\\u6253\\u5F00\\u6570\\u636E\\u76EE\\u5F55',c:'openDataDir'},
-      {i:'\\uD83C\\uDF10',t:'\\u5728\\u6D4F\\u89C8\\u5668\\u4E2D\\u6253\\u5F00',c:'openBrowser'}
+      {i:'\\uD83C\\uDF10',t:'\\u5728\\u6D4F\\u89C8\\u5668\\u4E2D\\u6253\\u5F00',c:'openBrowser'},
+      {i:'\\uD83D\\uDD04',t:'\\u5237\\u65B0',c:'refreshPage'},
+      {i:'\\u2B07',t:'\\u9690\\u85CF\\u5230\\u6258\\u76D8',c:'hideToTray'}
     ];
     list.forEach(function(a){
       var btn=document.createElement('button');
@@ -160,37 +134,44 @@ async function main() {
     }
     mainWin = mw;
     mainWinAlive = true;
-    mw.on_close = () => { mainWinAlive = false; };
+    mw.on_close = () => {
+      mainWinAlive = false;
+      if (trayRef) trayRef.setMenu(getTrayMenu());
+    };
+    mw.on_context_menu = (params) => {
+      return [
+        { label: '设置', click: () => mw.evaluate('window.ewvjs.api.openSettings()').catch(() => {}) },
+        { label: '打开配置文件夹', click: () => mw.evaluate('window.ewvjs.api.openConfigDir()').catch(() => {}) },
+        { label: '打开数据目录', click: () => mw.evaluate('window.ewvjs.api.openDataDir()').catch(() => {}) },
+        { label: '在浏览器中打开', click: () => mw.evaluate('window.ewvjs.api.openBrowser()').catch(() => {}) },
+        { type: 'separator' },
+        { label: '刷新', click: () => mw.reload() },
+        { type: 'separator' },
+        { label: '隐藏到托盘', click: () => { mw.hide().catch(() => {}); mainWinAlive = false; if (trayRef) trayRef.setMenu(getTrayMenu()); } },
+        { type: 'separator' },
+        { label: '退出', click: () => { if (trayRef) trayRef.close(); bundle.stop().catch(() => {}); process.exit(0); } },
+      ];
+    };
     return mw;
   }
 
+  function getTrayMenu() { return [
+    { id: 'toggle', title: mainWinAlive ? '隐藏到托盘' : '显示主窗口' },
+    { separator: true },
+    { id: 'quit', title: '退出' },
+  ]; }
+
   function setupTray(mw) {
-    const tr = createTray(trayBin, iconIco, {
-      onMenuRequested: () => [
-        { id: 'toggle', title: mainWinAlive ? '隐藏主界面' : '显示主界面' },
-        { id: 'config', title: '设置' },
-        { id: 'sep', separator: true },
-        { id: 'quit', title: '退出' },
-      ],
+    const tr = createTray({
+      icon: iconIco,
+      tooltip: 'JM\u6F2B\u753B\u7BA1\u7406\u5668',
+      menu: getTrayMenu(),
       onClicked: async (id) => {
         if (id === 'toggle') {
-          if (mainWinAlive) { await mw.hide(); mainWinAlive = false; }
-          else { await mw.show(); mainWinAlive = true; }
-        } else if (id === 'config') {
-          if (mw) await mw.hide();
-          const cw = await create_window('JM\u6F2B\u753B\u7BA1\u7406\u5668 - \u8BBE\u7F6E', configHtml, {
-            width: 640, height: 560, resizable: false, icon: iconIco, on_top: true,
-          });
-          await cw.run();
-          _configSavedCb = async () => {
-            await cw.close();
-            if (tr) quitTray(tr);
-            await bundle.stop();
-            restartApp();
-          };
-          await cw.show();
+          if (mainWinAlive) { await mw.hide(); mainWinAlive = false; tr.setMenu(getTrayMenu()); }
+          else { await mw.show(); mw.focus(); mainWinAlive = true; tr.setMenu(getTrayMenu()); }
         } else if (id === 'quit') {
-          if (tr) quitTray(tr);
+          tr.close();
           if (mw) await mw.close();
           await bundle.stop();
           process.exit(0);
@@ -199,9 +180,9 @@ async function main() {
       onExit: () => { trayRef = null; },
     });
     trayRef = tr;
-    process.on('exit', () => { if (tr) quitTray(tr); });
-    process.on('SIGTERM', () => { if (tr) quitTray(tr); process.exit(0); });
-    process.on('SIGINT', () => { if (tr) quitTray(tr); process.exit(0); });
+    process.on('exit', () => { if (tr) tr.close(); });
+    process.on('SIGTERM', () => { if (tr) tr.close(); process.exit(0); });
+    process.on('SIGINT', () => { if (tr) tr.close(); process.exit(0); });
   }
 
   // Expose shared functions (with placeholder, overridden per-mode)
@@ -213,6 +194,15 @@ async function main() {
   expose('configExited', () => {});
 
   function exposeSidebarFns() {
+    expose('refreshPage', () => {
+      if (mainWin) mainWin.reload();
+    });
+    expose('hideToTray', async () => {
+      if (!mainWin) return;
+      await mainWin.hide();
+      mainWinAlive = false;
+      if (trayRef) trayRef.setMenu(getTrayMenu());
+    });
     expose('openDataDir', () => {
       const cfg = readConfig();
       const dir = cfg.dataDir || appDataDir();
