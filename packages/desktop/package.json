@@ -1,14 +1,36 @@
 {
   "name": "@jm/desktop",
-  "version": "1.0.0",
   "private": true,
-  "type": "commonjs",
-  "main": "src/main.js",
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "start": "node src/main.js",
-    "build:sea": "node --experimental-sea-config sea-config.json"
+    "dev:web": "vite",
+    "dev": "node dev.js",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "start": "node app.js",
+    "package": "npm run build && npx ewvjs-cli package app.js -o jm-desktop -t node22-win-x64 -n \"JM\u6F2B\u753B\u7BA1\u7406\u5668\" -i icon.ico --assets ./assets,./native"
   },
   "dependencies": {
-    "ewvjs": "^1.0.25"
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "ewvjs": "^1.0.24",
+    "koffi": "^3.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.12.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.0.12",
+    "ewvjs-cli": "^1.0.24"
   }
 }

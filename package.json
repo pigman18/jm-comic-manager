@@ -1,1 +1,1 @@
-{"name":"jm-comic-manager","private":true,"version":"1.0.0","description":"JM本地搜索与下载管理器","workspaces":["packages/core","packages/web","packages/vscode","packages/desktop"],"dependencies":{"ewvjs":"^1.0.25"},"devDependencies":{"png-to-ico":"^3.0.1","resedit":"^3.0.2"}}
+{"name":"jm-comic-manager","private":true,"version":"1.0.0","description":"JM本地搜索与下载管理器","workspaces":["packages/core","packages/web","packages/vscode","packages/desktop"],"dependencies":{"ewvjs":"^1.0.25","koffi":"^3.0.2"},"devDependencies":{"png-to-ico":"^3.0.1","resedit":"^3.0.2"}}
