@@ -18,7 +18,7 @@ module.exports = {
     entry: path.join(bundleRoot, 'src/index.js'),
     output: {
         path: distDir,
-        filename: 'jm.bundle.js',
+        filename: 'jm.core.js',
         libraryTarget: 'commonjs',
     },
     optimization: {

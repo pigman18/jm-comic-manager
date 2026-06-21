@@ -2,7 +2,6 @@ node_modules/
 out/
 dist/
 release/
-jm.bundle/config.json
 test/config.json
 .data/
 *.log
@@ -12,7 +11,6 @@ test/config.json
 **/web-embedded.json
 **/package-lock.json
 **/eng.traineddata
-/bundles/jm.bundle/resources/exe/ComicsViewer_3.08/ComicsViewer.ini
 /.data/
 /bundles/*.*/data/
 **/temp/
