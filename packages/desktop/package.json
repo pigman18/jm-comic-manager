@@ -10,13 +10,14 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node app.js",
-    "package": "npm run build && npx ewvjs-cli package app.js -o jm-desktop -t node22-win-x64 -n \"JM\u6F2B\u753B\u7BA1\u7406\u5668\" -i icon.ico --assets ./assets,./native"
+    "package": "npm run build && npx ewvjs-cli package app.js -o \"JM漫画管理器\" -t node22-win-x64 -n \"JM漫画管理器\" --icon icon.ico",
+    "postpackage": "node build/dist-pack.cjs"
   },
   "dependencies": {
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
     "ewvjs": "^1.0.24",
-    "koffi": "^3.0.2"
+    "koffi": "^3.0.2",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -27,10 +28,11 @@
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "ewvjs-cli": "^1.0.24",
     "globals": "^17.6.0",
+    "rcedit": "^5.0.2",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12",
-    "ewvjs-cli": "^1.0.24"
+    "vite": "^8.0.12"
   }
 }
