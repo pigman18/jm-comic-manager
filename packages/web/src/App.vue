@@ -5,7 +5,7 @@
       <n-dialog-provider>
       <div id="jm-app-root">
         <aside class="jmz-sidebar" v-if="!isDetail">
-          <div class="jmz-sidebar-head">
+          <div class="jmz-sidebar-head" style="display:none">
             <img src="/icon.ico" class="jmz-app-logo" alt="" />
             <span class="jmz-app-title">JM漫画管理器</span>
           </div>
@@ -47,9 +47,7 @@
                 返回
               </n-button>
               <span class="jmz-header-title">{{ pageTitle }}</span>
-            </div>
-            <div class="jmz-header-right">
-              <template v-if="!isDetail">
+              <template v-if="!isDetail && route.name === 'catalog'">
                 <div class="jmz-header-sync-group">
                   <n-button size="tiny" quaternary @click="syncApi('local2db')" :disabled="store.syncLocalToDb.busy" :loading="store.syncLocalToDb.busy">
                     <template #icon><n-icon :component="CloudUploadOutline" /></template>
@@ -63,6 +61,10 @@
                     {{ store.syncLocalToDb.complete }}/{{ store.syncLocalToDb.total || store.syncDbToLocal.complete }}/{{ store.syncDbToLocal.total }}
                   </span>
                 </div>
+              </template>
+            </div>
+            <div class="jmz-header-right">
+              <template v-if="!isDetail">
                 <div class="jmz-header-divider" />
                 <div class="jmz-header-actions">
                   <n-button text size="small" class="jmz-header-btn" @click="showBatchDownload = true" v-if="currentPageComics.length > 0">

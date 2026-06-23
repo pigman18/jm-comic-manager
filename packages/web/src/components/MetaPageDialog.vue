@@ -37,7 +37,7 @@ const dlgTitle = ref('漫画元数据')
 
 function onTitleChanged(title: string) { dlgTitle.value = title }
 function close() { emit('update:show', false) }
-function jumpPage() { close(); window.open(router.resolve({ name: 'meta', params: { num: props.num } }).href, '_blank') }
+function jumpPage() { close(); router.push({ name: 'meta', params: { num: props.num } }) }
 </script>
 
 <style scoped>

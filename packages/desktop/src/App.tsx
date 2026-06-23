@@ -28,6 +28,8 @@ declare global {
         openDataDir: () => Promise<void>;
         openConfigDir: () => Promise<void>;
         openBrowser: () => Promise<void>;
+        browseDir: (defaultPath?: string) => Promise<string>;
+        browseFile: (defaultPath?: string) => Promise<string>;
       };
     };
     __showSettingsModal?: () => void;
@@ -137,6 +139,16 @@ function ConfigPage({ onSaved }: { onSaved: () => void }) {
     }
   };
 
+  const handleBrowseDir = async () => {
+    const p = await window.ewvjs?.api?.browseDir?.(config.dataDir);
+    if (p) update('dataDir', p);
+  };
+
+  const handleBrowseExe = async () => {
+    const p = await window.ewvjs?.api?.browseFile?.(config.comicViewer);
+    if (p) update('comicViewer', p);
+  };
+
   return (
     <div className="config-page">
       <div className="config-header">
@@ -170,7 +182,10 @@ function ConfigPage({ onSaved }: { onSaved: () => void }) {
               <div className="form-row">
                 <div className="form-group">
                   <label>数据目录</label>
-                  <input value={config.dataDir || ''} onChange={e => update('dataDir', e.target.value)} placeholder="如 D:\JM_Data" />
+                  <div className="browse-wrap">
+                    <input value={config.dataDir || ''} onChange={e => update('dataDir', e.target.value)} placeholder="如 D:\JM_Data" />
+                    <button className="btn-browse" onClick={handleBrowseDir} tabIndex={-1}>浏览</button>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>端口</label>
@@ -180,7 +195,10 @@ function ConfigPage({ onSaved }: { onSaved: () => void }) {
               <div className="form-row">
                 <div className="form-group full">
                   <label>漫画阅读器</label>
-                  <input value={config.comicViewer || ''} onChange={e => update('comicViewer', e.target.value)} placeholder="C:\Program Files\..." />
+                  <div className="browse-wrap">
+                    <input value={config.comicViewer || ''} onChange={e => update('comicViewer', e.target.value)} placeholder="C:\Program Files\..." />
+                    <button className="btn-browse" onClick={handleBrowseExe} tabIndex={-1}>浏览</button>
+                  </div>
                 </div>
               </div>
             </>
@@ -252,6 +270,16 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const handleBrowseDir = async () => {
+    const p = await window.ewvjs?.api?.browseDir?.(config.dataDir);
+    if (p) update('dataDir', p);
+  };
+
+  const handleBrowseExe = async () => {
+    const p = await window.ewvjs?.api?.browseFile?.(config.comicViewer);
+    if (p) update('comicViewer', p);
+  };
+
   return (
     <div className="settings-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="settings-modal">
@@ -281,7 +309,10 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
               <div className="form-row">
                 <div className="form-group">
                   <label>数据目录</label>
-                  <input value={config.dataDir || ''} onChange={e => update('dataDir', e.target.value)} />
+                  <div className="browse-wrap">
+                    <input value={config.dataDir || ''} onChange={e => update('dataDir', e.target.value)} />
+                    <button className="btn-browse" onClick={handleBrowseDir} tabIndex={-1}>浏览</button>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>端口</label>
@@ -291,7 +322,10 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
               <div className="form-row">
                 <div className="form-group full">
                   <label>漫画阅读器</label>
-                  <input value={config.comicViewer || ''} onChange={e => update('comicViewer', e.target.value)} />
+                  <div className="browse-wrap">
+                    <input value={config.comicViewer || ''} onChange={e => update('comicViewer', e.target.value)} />
+                    <button className="btn-browse" onClick={handleBrowseExe} tabIndex={-1}>浏览</button>
+                  </div>
                 </div>
               </div>
             </>

@@ -19,3 +19,4 @@ taskManager/.npmrc
 /resources/jm-api/JMComic3v2.0.25.apk
 /packages/core/config.json
 /packages/desktop/installer
+/packages/desktop/CONOUT$
