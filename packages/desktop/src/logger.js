@@ -83,11 +83,12 @@ export function setupConsole(visible) {
 
     // ★ 启用虚拟终端处理（让 ANSI 颜色生效）
     if (_hOut) {
-      const modePtr = new Uint32Array(1);
-      if (k.GetConsoleMode(_hOut, modePtr)) {
-        const newMode = modePtr[0] | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-        k.SetConsoleMode(_hOut, newMode);
-      }
+      try {
+        const modePtr = new Uint32Array(1);
+        if (k.GetConsoleMode(_hOut, modePtr)) {
+          k.SetConsoleMode(_hOut, modePtr[0] | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+        }
+      } catch {}
     }
   } catch {}
 }

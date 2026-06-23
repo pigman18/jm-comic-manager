@@ -67,7 +67,9 @@ function createMessage(manifest, ctx, mod) {
             const text = consoleRender.render(payload);
             if (payload.hasOwnProperty('complete') && payload.hasOwnProperty('total')) {
                 // 打印进度
-                process.stdout.write(`\r${text}`);
+                // process.stdout.write(`\r${text}`);
+                // ✅ 关键：同一行覆盖
+                console.log('\x1B[1A\x1B[K' + text);
             } else {
                 console.log(text);
             }
