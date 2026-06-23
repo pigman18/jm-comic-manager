@@ -6,7 +6,7 @@ import { spawn, exec } from 'child_process';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { createTray } from './src/tray.js';
-import { createLogger, setForward, setupConsole } from './src/logger.js';
+import { createLogger, setDevToolsEval, setupConsole } from './src/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,9 +28,7 @@ const _cfg = readConfig();
 setupConsole(_cfg.debug);
 
 // ── 2. Logger setup ────────────────────────────────────────────
-const _logger = _cfg.debug
-    ? createLogger({ file: path.join(appDataDir(), 'jm-desktop.log') })
-    : null;
+const _logger = createLogger({ file: path.join(appDataDir(), 'jm-desktop.log') });
 
 // ── 3. Bundle ─────────────────────────────────────────────────
 let bundle;
@@ -245,6 +243,17 @@ async function main() {
             _logger.reinstall();
             console.log('[desktop] logger reinstalled');
         }
+        /* ---------- 始终输出日志到 DevTools ---------- */
+        setDevToolsEval((msg) => {
+            if (!mainWin) return;
+            // 前端回声重复调用，忽略掉即可
+            if (msg.startsWith('WebView Console')) {
+                return;
+            }
+            mainWin.evaluate(`
+                window?.__hostLog(${JSON.stringify(msg)})
+            `).catch(() => {});
+        });
         setupTray(mainWin);
         start();
     }
