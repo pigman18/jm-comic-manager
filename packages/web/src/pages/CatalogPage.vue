@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  reactive, ref, shallowRef, computed, onMounted, onBeforeUnmount,
+  reactive, ref, shallowRef, computed, watch, onMounted, onBeforeUnmount,
   onActivated, nextTick, inject, type Ref
 } from 'vue';
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router';
@@ -149,6 +149,11 @@ function onPageChange(): void {
 }
 
 onMounted(() => {
+  readFiltersFromRoute();
+  loadList();
+});
+
+watch(() => route.query, () => {
   readFiltersFromRoute();
   loadList();
 });
