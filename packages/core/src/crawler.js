@@ -858,6 +858,17 @@ function createCrawler(manifest, ctx, message, config) {
                 // pageSize固定为80，手动计算总页数
                 pages: Math.ceil(total / 80)
             }
+        },
+        /**
+         * 获取最新发布
+         * @param page  页码
+         * @returns {Promise<{total: *, content: *}>}
+         */
+        latest: async (page) => {
+            let resp = await expireRetry(async () => {
+                return await apiClient.get(`${getApiHost()}/latest?page=${page}`);
+            });
+            return resp.data.data || [];
         }
     };
 

@@ -637,6 +637,40 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         });
     }
 
+    function handleLatestComics(app, api) {
+        app.get(`${api}/latest/comics`, async (req, res) => {
+            try {
+                const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
+                const result = await crawler.rank.latest(page);
+                const comicDir = path.join(config.dataDir, 'comic');
+                const list = (Array.isArray(result) ? result : []).map((item) => {
+                    const id = Number(item.aid || item.id);
+                    const o = {
+                        ...item,
+                        id,
+                        name: String(item.title || item.name || ''),
+                        cover: String(item.cover || item.image || ''),
+                        author: Array.isArray(item.author) ? item.author : (item.author ? [String(item.author)] : []),
+                        tags: Array.isArray(item.tags) ? item.tags.map(String) : [],
+                        total_views: String(item.views ?? ''),
+                        likes: String(item.likes ?? ''),
+                        inStore: false,
+                        canRead: false,
+                    };
+                    return rewriteComicMediaUrls(o);
+                });
+                await Promise.all(list.map(async (o) => {
+                    const dbRow = await store.comicMeta.get(o.id);
+                    o.inStore = !!dbRow;
+                    o.canRead = isNotEmptySync(path.join(comicDir, `${o.id}.zip`));
+                }));
+                res.json({ok: true, list, total: result?.total || list.length});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+    }
+
     function handleFavorites(app, api) {
         app.get(`${api}/favorites/comics`, async (req, res) => {
             try {
@@ -1127,6 +1161,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         handleWeekInfo(app, api);
         handleWeekComics(app, api);
         handleSerialComics(app, api);
+        handleLatestComics(app, api);
         handleCategoryInfo(app, api);
         handleCategoryFilter(app, api);
         handleFavorites(app, api);

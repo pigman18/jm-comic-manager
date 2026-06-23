@@ -30,6 +30,10 @@
               <span class="jmz-nav-icon">📆</span>
               <span>每日连载</span>
             </router-link>
+            <router-link :to="{ name: 'latest' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'latest' }">
+              <span class="jmz-nav-icon">🆕</span>
+              <span>最新发布</span>
+            </router-link>
             <router-link :to="{ name: 'favorites' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'favorites' }">
               <span class="jmz-nav-icon">⭐</span>
               <span>收藏列表</span>
@@ -99,7 +103,7 @@
           </header>
           <main class="jmz-app-main">
             <router-view v-slot="{ Component }">
-              <keep-alive :include="['CatalogPage', 'SearchPage', 'WeekPage', 'CategoryPage', 'SerialPage', 'FavoritesPage']">
+              <keep-alive :include="['CatalogPage', 'SearchPage', 'WeekPage', 'CategoryPage', 'SerialPage', 'LatestPage', 'FavoritesPage']">
                 <component :is="Component" />
               </keep-alive>
             </router-view>
@@ -147,6 +151,7 @@ const pageTitle = computed(() => {
     week: '每周必看',
     category: '分类排行',
     serial: '每日连载',
+    latest: '最新发布',
     favorites: '收藏列表',
     detail: '漫画详情',
     meta: '漫画元数据',
@@ -219,6 +224,8 @@ function backToCatalog() {
     router.push({ name: 'category' })
   } else if (route.query.from === 'serial') {
     router.push({ name: 'serial' })
+  } else if (route.query.from === 'latest') {
+    router.push({ name: 'latest' })
   } else {
     router.push({ name: 'catalog', query: peekCatalogReturnQuery() })
   }
@@ -515,6 +522,59 @@ onUnmounted(() => {
 .harmonize img.xxx-img {
   opacity: 0 !important;
 }
+
+/* === shared card + grid + skeleton === */
+.jmz-card {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #22222a 0%, #1a1a20 100%);
+  border: 1px solid #2e2e35;
+  border-left: 4px solid #3b82f6;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 28px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.jmz-card-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+}
+.jmz-skel-grid {
+  gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.jmz-skel-card {
+  cursor: default;
+  pointer-events: none;
+}
+.jmz-skel-cover {
+  aspect-ratio: 3 / 4;
+  background: linear-gradient(90deg, #2a2a30 0%, #35353d 50%, #2a2a30 100%);
+  background-size: 200% 100%;
+  animation: jmz-shimmer 1.1s ease-in-out infinite;
+  border-radius: 8px 8px 0 0;
+}
+.jmz-skel-lines {
+  height: 72px;
+  margin: 12px 14px 14px;
+  border-radius: 8px;
+  background: #2a2a30;
+}
+@keyframes jmz-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+.jmz-card.tone-1 { border-left-color: #3b82f6; }
+.jmz-card.tone-2 { border-left-color: #8b5cf6; }
+.jmz-card.tone-3 { border-left-color: #10b981; }
+.jmz-card.tone-4 { border-left-color: #f59e0b; }
 
 @media (max-width: 768px) {
   .jmz-sidebar {
