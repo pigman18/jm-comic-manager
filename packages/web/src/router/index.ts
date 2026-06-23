@@ -9,6 +9,7 @@ export const router = createRouter({
     { path: '/week', name: 'week', component: () => import('@/pages/WeekPage.vue') },
     { path: '/category', name: 'category', component: () => import('@/pages/CategoryPage.vue') },
     { path: '/serial', name: 'serial', component: () => import('@/pages/SerialPage.vue') },
+    { path: '/latest', name: 'latest', component: () => import('@/pages/LatestPage.vue') },
     { path: '/favorites', name: 'favorites', component: () => import('@/pages/FavoritesPage.vue') },
     {
       path: '/detail/:num',
@@ -35,6 +36,7 @@ router.afterEach((to) => {
   else if (to.name === 'week') document.title = '每周必看'
   else if (to.name === 'category') document.title = '分类排行'
   else if (to.name === 'serial') document.title = '每日连载'
+  else if (to.name === 'latest') document.title = '最新发布'
   else if (to.name === 'favorites') document.title = '收藏列表'
   else if (to.name === 'detail') document.title = `JM${to.params.num}`
   else if (to.name === 'meta') document.title = `JM${to.params.num} 元数据`

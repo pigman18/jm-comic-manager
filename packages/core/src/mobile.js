@@ -186,6 +186,8 @@ function tryParseJsonObject(respText) {
     // fast case
     if (text.startsWith('{') && text.endsWith('}')) {
         return JSON.parse(text);
+    } else if (text.startsWith('[') && text.endsWith(']')) {
+        return JSON.parse(text);
     }
     const pattern = /\{[\s\S]*?\}/g;
     for (const match of text.matchAll(pattern)) {
