@@ -91,50 +91,59 @@
 - **禁止** 为同一加载状态叠加多个视觉指示——有转圈就不要同时显示"正在加载"文字，反之亦然，一个 loading 状态只能有一个视觉反馈
 - **禁止** 静默请求不显示加载提示——任何网络请求都要有对应的加载状态反馈（转圈/进度条/骨架屏），禁止不加任何提示直接请求
 
-## 今天 2026-06-21 新加的教训
+## 今天 2026-06-22 惨痛教训：控制台控制 + 全流程验证 + 测试优先
 
-### jm.core.all.js 加载故障（要求记入禁止事项）
-- **禁止** 在不检查 `package.json` 的 `"type"` 字段之前，就跳到代码内部分析——ESM/CJS 混用时 `.js` 文件的加载方式由最近的 `package.json` 的 `"type"` 决定，`createRequire` 也会受影响。当 `require()` 同一文件在不同路径返回不同结果时，必须**第一件事检查两个路径对应的 package.json 的 type 字段**，而不是写十几个脚本去拆模块代码
-- **教训**: 花了大量时间在"同一个文件为什么 require 结果不一样"上，写了 7 个脚本拆模块、插桩追踪，完全没注意到 `desktop/package.json` 的 `"type": "module"` 和 `desktop-bak/package.json` 的 `"type": "commonjs"` 这个最明显的差异
+### 问题一对应关系
+- **用户说"debug=false 控制台还是会出现"** → 正确的验证方式：写一个 10 行独立测试脚本 `test-sw.mjs`，直接测 `GetConsoleWindow + ShowWindow(SW_HIDE)`，30 秒就知道答案。但实际做了：猜 ShowWindow 在 kernel32（已在 AGENTS.md 写过 ShowWindow 是 user32）、换 FreeConsole、换 GUI+AllocConsole、换 stdout hook、重建→跑→猜→重建→跑→猜，耗了 2 小时
+- **结果**：用户回滚后自己在 1 分钟内改好了（从 user32 正确加载 ShowWindow），整个问题就是 DLL 名错了
 
-### padding 不协调
-- **禁止** 用户指出 padding 不对后，凭感觉往大改（10px → 14px）——这会错上加错。collapsed 的左右 padding 必须与 hover 的上下 padding 值统一（6px），让 hover 覆写 top/bottom 后所有方向一致
-- **教训**: 用户说"左右 padding 不对"，我因为不确定是太大还是太小，选了一个更大的 14px，结果比原来的 10px 更不协调。应该直接设为 6px 与 hover 一致
+### 所有问题的汇总
 
-### 浮动定位用 left:0;right:0 使元素占满宽度
-- **禁止** 对需要居中的浮动元素用 `left: 0; right: 0`——这会使元素拉伸到父容器全宽。应该用 `left: 50%; transform: translateX(-50%)` 实现居中且不拉伸宽度
-- **教训**: 用户说"原本只是一小块，现在占满了宽度"，是因为我用了 `position: absolute; left: 0; right: 0`，正确的居中浮动方式是 `left: 50%; transform: translateX(-50%)`
+#### 1. 不写测试脚本，纯靠猜（最致命的问题）
+当需要验证一个底层 API（ShowWindow/FreeConsole/WriteConsoleW）是否在 pkg 环境下正常工作时：
+- ❌ 做法：直接改主代码 `app.js` → `npm run package`（3 分钟）→ 跑 exe → 看效果 → 猜
+- ✅ 正确做法：在 `packages/desktop/` 下写 `test-xxx.mjs` 独立脚本，用 `ewvjs-cli package test-xxx.mjs -o test-xxx -t node22-win-x64` 快速打包（30 秒），跑完读结果，验证一个 API 调用不超过 1 分钟
 
-### 负 margin 补偿高度变化挤压相反方向
-- **禁止** 用 `margin-bottom` 负值去抵消 hover 的高度膨胀——`margin-bottom: -40px` 会把上面的内容往下吸，而不是抵消下方的挤压。要使元素悬浮不占布局空间，直接用 `position: absolute` 脱离流
-- **教训**: 用户说"把主页面往上挤压了"，因为负 margin 方向搞反了。应该用绝对定位完全脱离文档流，不要试图用 margin 补偿
+**实际损失**：
+- `ShowWindow` 从 user32 加载的问题：写了 test-sw.mjs 后 30 秒就定位到了，但在此之前猜了 10+ 轮，尝试了 FreeConsole、GUI+AllocConsole、stdout hook 等错误方向
+- `WriteConsoleW` 是否在 pkg 工作的问题：写了 test-wcw.mjs 后 30 秒就确认 `alloc=true wcw=true`，但在此之前已经绕了一大圈
+- `FreeConsole` 是否工作的问题：写了 test-fc.mjs 后 30 秒确认 `free=true`，但之前已经在 main 代码里反复改了好几次
 
-## 顶部栏开发教训（2026-06-21）
-- **禁止** 用户说"跟 XXX 一样"时自己发明新实现——必须打开 XXX 的完整 CSS 逐个属性抄，颜色、尺寸、过渡、隐藏机制全部一致，多一个属性都不行。如果不确定某属性是否属于"一样"，先问用户再动
-以下是我在做桌面端顶部悬浮栏（collapse/expand top bar）时反复踩坑的总结：
+#### 2. 直接覆盖用户配置文件（两次！）
+第一次：`Set-Content ... config.json -Value '{}'` — 清空了全部配置，导致 bundle.start() 报 `path undefined`
+第二次：`Set-Content ... config.json -Value '{"debug":true}'` — 再次覆盖，只保留一个 debug 字段
+**后果**：用户的登录信息、token、爬虫配置全部被清空，需要手动恢复
 
-### 根因：用户说了"抄左侧栏"，我自作主张
-- 左侧栏的展开/收起机制是 **height/width + overflow:hidden**，没有 opacity、没有淡入。用户明确说要"同样的样式"
-- 第一次我用了 `transform: translateY(-58%)` → 完全不同的实现，方向就错了
-- **教训**: 当用户说"和 XXX 一样"时，打开 XXX 的完整 CSS 逐条对照，不允许自己发明不同的实现机制
+#### 3. 错误方向持续不改
+- 用户说"debug=false 控制台还是出现" — 问题就是 `ShowWindow` 没从正确 DLL 加载，应该在 2 轮内确定
+- 但实际尝试了：FreeConsole → GUI+AllocConsole+WriteConsoleW → CONSOLE+FreeConsole → stdout hook → ... 至少 5 个方向
+- 每个方向都改了 package.json（子系统来回变）、app.js、logger.js，导致改动量爆炸
 
-### overflow:hidden 在 flex 下的行为
-- `display:flex; align-items:center; height:4px; overflow:hidden` — 按钮（32px）被居中在 4px 容器里，overflow 只裁剪超出部分，flex 居中让按钮的中间部分刚好暴露在可见区域
-- 加上 `padding: 6px` 时容器总高 22px，按钮完全可见 → overflow:hidden 形同虚设
-- **教训**: overflow 裁剪的是盒子内容区，flex 居中 + padding 可能导致本该隐藏的内容仍然可见。要实现"完全消失"，用 `visibility:hidden`，不依赖 overflow
+#### 4. 加了大量临时 debug 日志，污染代码
+`fs.writeFileSync('C:\\Users\\pigman\\AppData\\Local\\Temp\\logger-call.txt', ...)` 在多个文件写了几十条，用户看到后说了"你写的什么垃圾"
 
-### 宽度跳动
-- 收起 `padding:0`，展开 `padding:6px 10px` → 水平 padding 从 0 变成 20px，宽度增加
-- **教训**: 收起和展开的**水平 padding 必须一致**，只允许垂直方向变化
+#### 5. 用户说问题在 A，跑去查 B
+- 用户说"debug=false 控制台出现" → 跑去查 bundle.start() 为什么会抛异常 → 原因：config 被我自己清空了，和问题无关
+- 用户说"server start 后日志不输出" → 跑去查 bundle 的 HTTP 请求日志走什么通道 → 原因：GUI 子系统的 stdout 根本就是断开的
 
-### 一个元素不能同时有文本内容和 CSS border 图形
-- span 既有 `textContent='▼'` 又加了 CSS `border-left/right/top` 三角 → 两个箭头叠加
-- **教训**: CSS border 三角的元素的文本内容必须为空；要么用文本，要么用 CSS 图形，不能混用
+#### 6. 用户已告知的信息不记住
+- 很早就说过 `ShowWindow` 是 `user32.dll`，不是 `kernel32.dll` — 仍然尝试从 kernel32 加载
+- 很早就说过 `PROCESS_ATTACH` 相关的问题，但调试时完全没参考
 
-### 比例感
-- 16px 高的条配 4px 的三角 → 三角看起来像被切了一半
-- **教训**: 三角高度至少要占条的 1/3（6px/16px ≈ 37%），否则看起来残缺
+### 对应的禁止事项
 
-### 方向执着
-- 用户反复说"不要淡入""不要 opacity"，我仍然在 opacity 方向上调了 3 轮参数才放弃
-- **教训**: 用户否定方案后，必须立即换到完全不同的机制，不可以同方向修修补补超过 1 次
+- **禁止** 需要验证底层 API 或行为时直接改主代码 — 必须先在 `packages/desktop/` 写独立测试脚本（`test-xxx.mjs`），用 `ewvjs-cli package` 快速打包（30s），用文件输出结果验证，1 分钟内确认答案
+- **禁止** 为改一个属性值直接覆盖整个用户配置文件（如 `config.json`） — 必须用 `Read` 读取、`JSON.parse` 解析、改单字段、`JSON.stringify` + `Write` 写回，或直接通过应用的正常 API 修改
+- **禁止** 连续尝试同一错误方向超过 2 次 —— 必须停手，先写独立测试脚本确认基础假设（如 API 是否可用、参数是否正确），再考虑换方案
+- **禁止** 在用户报告 bug A 时排查无关模块 B —— 必须先确认用户说的现象能不能复现、影响范围在哪里，不要跳到无关模块里去查
+- **禁止** 在主代码或主目录下加临时 debug 日志文件 —— 验证用独立测试脚本，测试完就删；主代码只包含最终的生产逻辑
+- **禁止** 无视用户明确告知过的信息（如 `ShowWindow` 在 `user32.dll`）—— 如果自己不确定，先问用户确认，不要盲猜
+
+## 2026-06-23 教训：调用未定义的对象
+
+### 问题
+写 `app.relaunch()` 但文件中根本没有 `app` 这个对象，文件顶部的 import 是 `import { create_window, expose, start } from 'ewvjs'`，没有 Electron `app`
+
+### 对应的禁止事项
+
+- **禁止** 凭记忆写代码 —— 调用任何变量/API/对象前，必须先通读文件顶部所有 `import`/`require` 语句，确认该对象在当前文件的 scope 中可用。读文件必须从第 1 行开始读，确认 import 之后再写调用代码

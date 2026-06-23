@@ -212,10 +212,11 @@ const dateLabel = computed(() => {
   font-weight: 700;
   color: #e0e0e6;
   margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.3;
 }
 
 .jmz-card-author {

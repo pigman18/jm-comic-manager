@@ -54,9 +54,9 @@ Source: "{#BuildDir}\icons.svg"; DestDir: "{app}"; Flags: ignoreversion recurses
 ; ========= 快捷方式 =========
 [Icons]
 ; 开始菜单
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "icon.ico"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; 
 ; 桌面图标（可选）
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "icon.ico"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; 
 ; 卸载
 Name: "{group}\卸载 {#MyAppName}"; Filename: "{uninstallexe}"
 

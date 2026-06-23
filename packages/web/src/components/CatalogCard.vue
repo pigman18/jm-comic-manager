@@ -175,8 +175,6 @@ defineProps<{
   font-weight: 800;
   line-height: 1.35;
   color: #e0e0e6;
-  min-height: 2.35em;
-  max-height: 2.35em;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;

@@ -6,63 +6,44 @@ import { spawn, exec } from 'child_process';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { createTray } from './src/tray.js';
-import koffi from 'koffi';
+import { createLogger, setForward, setupConsole } from './src/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
-let bundle;
-try {
-  bundle = require('./runtime/jm.core.all.cjs');
-} catch (e) {
-  process.exit(1);
-}
-
-function setupLogging(cfg) {
-  const logPath = path.join(appDataDir(), 'jm-desktop.log');
-  try { fs.mkdirSync(path.dirname(logPath), { recursive: true }); } catch {}
-  const logStream = fs.createWriteStream(logPath, { flags: 'a' });
-
-  if (cfg?.debug) {
-    try {
-      const kernel32 = koffi.load('kernel32.dll');
-      const allocConsole = kernel32.func('AllocConsole', 'bool', []);
-      allocConsole();
-    } catch (e) {
-      // ignore - console may already exist (dev mode)
-    }
-  }
-
-  const origLog = console.log.bind(console);
-  const origWarn = console.warn.bind(console);
-  const origError = console.error.bind(console);
-
-  console.log = (...args) => {
-    logStream.write(`[LOG] ${new Date().toISOString()} ${args.join(' ')}\n`);
-    origLog(...args);
-  };
-  console.warn = (...args) => {
-    logStream.write(`[WRN] ${new Date().toISOString()} ${args.join(' ')}\n`);
-    origWarn(...args);
-  };
-  console.error = (...args) => {
-    logStream.write(`[ERR] ${new Date().toISOString()} ${args.join(' ')}\n`);
-    origError(...args);
-  };
-}
-
+// ── 0. Config ──────────────────────────────────────────────────
 function appDataDir() {
   const app = 'JmComicManager';
   if (process.platform === 'win32')
     return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), app);
   return path.join(os.homedir(), '.config', app);
 }
+function readConfig() {
+  try { return JSON.parse(fs.readFileSync(path.join(appDataDir(), 'config.json'), 'utf-8')); } catch { return {}; }
+}
+const _cfg = readConfig();
+
+// ── 1. Console setup ───────────────────────────────────────────
+setupConsole(_cfg.debug);
+
+// ── 2. Logger setup ────────────────────────────────────────────
+const _logger = _cfg.debug
+    ? createLogger({ file: path.join(appDataDir(), 'jm-desktop.log') })
+    : null;
+
+// ── 3. Bundle ─────────────────────────────────────────────────
+let bundle;
+try {
+  bundle = require('./runtime/jm.core.all.cjs');
+} catch (e) {
+  process.stdout.write('[FATAL] bundle require failed: ' + String(e) + '\n');
+  process.exit(1);
+}
+
+// ── 4. Utilities ──────────────────────────────────────────────
 function configPath() { return path.join(appDataDir(), 'config.json'); }
 function hasConfig() { return fs.existsSync(configPath()); }
-function readConfig() {
-  try { return JSON.parse(fs.readFileSync(configPath(), 'utf-8')); } catch { return {}; }
-}
 function writeConfig(cfg) {
   const cur = readConfig();
   for (const [k, v] of Object.entries(cfg)) {
@@ -78,7 +59,7 @@ function browseDir(defaultPath) {
     if (process.platform !== 'win32') { resolve(''); return; }
     const sel = defaultPath ? `$f.SelectedPath = '${defaultPath.replace(/'/g, "''")}'; ` : '';
     exec(`powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; ${sel}$f.ShowDialog() | Out-Null; Write-Output $f.SelectedPath"`,
-      { windowsHide: true, timeout: 30000 }, (err, stdout) => resolve((stdout || '').trim()));
+        { windowsHide: true, timeout: 30000 }, (err, stdout) => resolve((stdout || '').trim()));
   });
 }
 function browseFile(defaultPath) {
@@ -93,7 +74,7 @@ function browseFile(defaultPath) {
       } catch {}
     }
     exec(`powershell -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.OpenFileDialog; ${init}$f.ShowDialog() | Out-Null; Write-Output $f.FileName"`,
-      { windowsHide: true, timeout: 30000 }, (err, stdout) => resolve((stdout || '').trim()));
+        { windowsHide: true, timeout: 30000 }, (err, stdout) => resolve((stdout || '').trim()));
   });
 }
 
@@ -108,8 +89,11 @@ function restartApp() {
 const isDev = process.argv.includes('--dev') || process.env.NODE_ENV === 'development';
 
 async function main() {
-  const cfg = readConfig();
-  setupLogging(cfg);
+  process.stdout.write('[TRACE] main() called\n');
+
+  if (_cfg.debug) {
+    console.log('[con] jm-desktop starting, log:', path.join(appDataDir(), 'jm-desktop.log'));
+  }
 
   const iconIco = path.join(__dirname, 'icon.ico');
 
@@ -120,11 +104,11 @@ async function main() {
 
   async function createMainWindow() {
     const startUrl = isDev
-      ? 'http://localhost:5173'
-      : path.resolve(__dirname, 'dist/index.html');
+        ? 'http://localhost:5173'
+        : path.resolve(__dirname, 'dist/index.html');
 
-    const mw = await create_window('JM\u6F2B\u753B\u7BA1\u7406\u5668', startUrl, {
-      width: 1200, height: 800, min_width: 800, min_height: 600, icon: iconIco, confirm_close: true, debug: cfg.debug,
+    const mw = await create_window('JM漫画管理器', startUrl, {
+      width: 1200, height: 800, min_width: 800, min_height: 600, icon: iconIco, confirm_close: true, debug: true,
     });
     await mw.run();
     mw.setIcon(iconIco).catch(e => console.error('[desktop] setIcon failed:', e));
@@ -160,7 +144,7 @@ async function main() {
   function setupTray(mw) {
     const tr = createTray({
       icon: iconIco,
-      tooltip: 'JM\u6F2B\u753B\u7BA1\u7406\u5668',
+      tooltip: 'JM漫画管理器',
       menu: getTrayMenu(),
       onClicked: async (id) => {
         if (id === 'toggle') {
@@ -219,16 +203,22 @@ async function main() {
 
   if (!hasConfig()) {
     console.log('[desktop] first-run config');
-    expose('loadConfig', () => ({}));
+    expose('loadConfig', () => {
+      try {
+        const d = JSON.parse(fs.readFileSync(path.join(__dirname, 'runtime', 'config.json'), 'utf-8'));
+        d.dataDir = path.join(appDataDir(), 'data');
+        return d;
+      } catch (e) { console.warn('[desktop] failed to read runtime config', e); return {}; }
+    });
 
     await createMainWindow();
+    if (_logger) _logger.reinstall();
     setupTray(mainWin);
-    _configSavedCb = async () => {
-      await bundle.start({}, {});
-      console.log('[desktop] server:', bundle.state.server.homeUrl);
-      expose('loadConfig', () => readConfig());
-      exposeSidebarFns();
-      mainWin.evaluate('window.__onServerReady()').catch(() => {});
+    _configSavedCb = () => {
+      const args = process.argv.slice(1);
+      spawn(process.execPath, args, { detached: true, stdio: 'ignore' }).unref();
+      if (trayRef) trayRef.close();
+      process.exit(0);
     };
     expose('configExited', () => {
       if (trayRef) trayRef.close();
@@ -242,6 +232,7 @@ async function main() {
     expose('loadConfig', () => readConfig());
     exposeSidebarFns();
     await createMainWindow();
+    if (_logger) _logger.reinstall();
     setupTray(mainWin);
     start();
   }

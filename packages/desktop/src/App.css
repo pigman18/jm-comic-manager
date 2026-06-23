@@ -242,6 +242,28 @@
 .pwd-wrap input {
   padding-right: 30px;
 }
+.browse-wrap {
+  display: flex;
+  gap: 6px;
+}
+.browse-wrap input {
+  flex: 1;
+  min-width: 0;
+}
+.btn-browse {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(46,46,53,.95);
+  background: #2a2a30;
+  color: #b0b0c0;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background .12s,color .12s;
+  white-space: nowrap;
+}
+.btn-browse:hover { background: #3d3d3d; color: #e0e0e6; }
+.btn-browse:active { transform: scale(.97); }
 .pwd-toggle {
   position: absolute;
   right: 8px;

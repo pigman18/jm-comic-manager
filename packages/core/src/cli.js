@@ -152,66 +152,149 @@ function createCli(
 
     program
         .command('config')
-        .description('编辑配置文件')
+        .description('交互式配置')
         .action(async () => {
-            const {execSync} = require('node:child_process');
-            const configFile = path.join(manifest.workspace, 'config.json');
-            const platform = process.platform;
+            const {intro, outro, text, multiline, confirm, isCancel, note, log} = require('@clack/prompts');
 
-            /**
-             * 尝试按顺序调用编辑器
-             * @param {string[]} editors 编辑器命令列表
-             * @returns {boolean} 是否成功调用
-             */
-            function tryEditors(editors) {
-                for (const editor of editors) {
-                    try {
-                        // 检查命令是否存在
-                        const checkCmd = platform === 'win32'
-                            ? `where ${editor}`
-                            : `command -v ${editor}`;
+            intro('JM漫画管理器 配置');
 
-                        try {
-                            execSync(checkCmd, {stdio: 'ignore'});
-                            // 命令存在，执行编辑
-                            console.log(`使用编辑器：${editor}`);
-                            execSync(`${editor} "${configFile}"`, {stdio: 'inherit'});
-                            return true;
-                        } catch (e) {
-                            // 命令不存在，继续尝试下一个
-                            continue;
-                        }
-                    } catch (e) {
-                        console.error(`编辑器 ${editor} 执行失败：${e.message}`);
-                    }
+            const cfg = config.get();
+            const changed = {};
+
+            function setVal(k, v) {
+                changed[k] = v;
+                cfg[k] = v;
+            }
+
+            const fields = [
+                {key: 'username',   label: 'JM 账号'},
+                {key: 'password',   label: 'JM 密码'},
+                {key: 'dataDir',    label: '数据目录'},
+                {key: 'port',       label: '端口'},
+                {key: 'comicViewer',label: '漫画阅读器'},
+                {key: 'host',       label: 'JM 主站'},
+                {key: 'cdnHosts',   label: 'CDN 域名'},
+                {key: 'apiHosts',   label: 'API 域名'},
+                {key: 'timeout',    label: '请求超时'},
+                {key: 'debug',      label: '调试模式'},
+            ];
+
+            function displayVal(key) {
+                const v = cfg[key];
+                if (Array.isArray(v)) return v.length ? v.join(', ') : '(未设置)';
+                if (typeof v === 'boolean') return v ? '开' : '关';
+                if (typeof v === 'string') return v || '(未设置)';
+                return String(v ?? '(未设置)');
+            }
+
+            function isSet(key) {
+                const v = cfg[key];
+                if (Array.isArray(v)) return v.length > 0;
+                if (typeof v === 'boolean') return true;
+                if (typeof v === 'string') return v.length > 0;
+                return v != null;
+            }
+
+            loop:
+            while (true) {
+                console.log('');
+                for (let i = 0; i < fields.length; i++) {
+                    const f = fields[i];
+                    const val = displayVal(f.key);
+                    const marker = isSet(f.key) ? '●' : '○';
+                    console.log(`  ${String(i + 1).padStart(2)}. ${marker} ${f.label.padEnd(10)} ${val}`);
                 }
-                return false;
+                console.log('');
+                const choice = await text({
+                    message: '输入编号修改 (s 保存退出)',
+                    validate: (val) => {
+                        if (val === 's' || val === '') return;
+                        const n = Number(val);
+                        if (isNaN(n) || n < 1 || n > fields.length) return '请输入 1~' + fields.length + ' 或 s';
+                    },
+                });
+
+                if (isCancel(choice) || choice === '') { outro('已取消'); return; }
+                if (choice === 's') break loop;
+
+                const idx = Number(choice) - 1;
+                const field = fields[idx];
+                const key = field.key;
+
+                if (key === 'username') {
+                    const v = await text({message: 'JM 账号', initialValue: cfg.username || ''});
+                    if (!isCancel(v)) setVal('username', v ?? '');
+                } else if (key === 'password') {
+                    const v = await text({message: 'JM 密码', initialValue: cfg.password || ''});
+                    if (!isCancel(v)) setVal('password', v ?? '');
+                } else if (key === 'dataDir') {
+                    const browseDir = await confirm({message: '打开浏览窗口选择文件夹？', initialValue: true});
+                    if (isCancel(browseDir)) continue;
+                    if (browseDir) {
+                        const {pickDirectory} = require('node-fs-dialogs');
+                        const p = await pickDirectory({defaultPath: cfg.dataDir || process.cwd()});
+                        if (p) setVal('dataDir', p);
+                    } else {
+                        const v = await text({message: '数据目录', initialValue: cfg.dataDir || ''});
+                        if (!isCancel(v)) setVal('dataDir', v ?? '');
+                    }
+                } else if (key === 'port') {
+                    const v = await text({
+                        message: '端口',
+                        initialValue: String(cfg.port ?? 47310),
+                        validate: (val) => isNaN(Number(val)) ? '必须是数字' : undefined,
+                    });
+                    if (!isCancel(v)) setVal('port', Number(v));
+                } else if (key === 'comicViewer') {
+                    const browseExe = await confirm({message: '打开浏览窗口选择文件？', initialValue: true});
+                    if (isCancel(browseExe)) continue;
+                    if (browseExe) {
+                        const {pickFile} = require('node-fs-dialogs');
+                        const p = await pickFile({
+                            filters: [{name: '可执行文件', extensions: ['exe']}],
+                            defaultPath: cfg.comicViewer || 'C:\\Program Files',
+                        });
+                        if (p) setVal('comicViewer', p);
+                    } else {
+                        const v = await text({message: '漫画阅读器路径', initialValue: cfg.comicViewer || ''});
+                        if (!isCancel(v)) setVal('comicViewer', v ?? '');
+                    }
+                } else if (key === 'host') {
+                    const v = await text({message: 'JM 主站', initialValue: cfg.host || 'https://18comic.vip'});
+                    if (!isCancel(v)) setVal('host', v ?? 'https://18comic.vip');
+                } else if (key === 'cdnHosts') {
+                    const v = await multiline({
+                        message: 'CDN 域名（每行一个，空行提交）',
+                        initialValue: (cfg.cdnHosts || []).join('\n'),
+                    });
+                    if (!isCancel(v)) setVal('cdnHosts', (v ?? '').split('\n').map(s => s.trim()).filter(Boolean));
+                } else if (key === 'apiHosts') {
+                    const v = await multiline({
+                        message: 'API 域名（每行一个，空行提交）',
+                        initialValue: (cfg.apiHosts || []).join('\n'),
+                    });
+                    if (!isCancel(v)) setVal('apiHosts', (v ?? '').split('\n').map(s => s.trim()).filter(Boolean));
+                } else if (key === 'timeout') {
+                    const v = await text({
+                        message: '请求超时（毫秒）',
+                        initialValue: String(cfg.timeout ?? 86400000),
+                        validate: (val) => isNaN(Number(val)) ? '必须是数字' : undefined,
+                    });
+                    if (!isCancel(v)) setVal('timeout', Number(v));
+                } else if (key === 'debug') {
+                    const v = await confirm({message: '启用调试日志', initialValue: cfg.debug ?? false});
+                    if (!isCancel(v)) setVal('debug', v);
+                }
             }
 
-            let success = false;
-
-            if (platform === 'linux') {
-                // Linux: nano > vim > vi
-                success = tryEditors(['nano', 'vim', 'vi']);
-            } else if (platform === 'win32') {
-                // Windows: editplus > vscode > notepad++ > notepad
-                success = tryEditors(['editplus', 'code', 'notepad++', 'notepad']);
-            } else if (platform === 'darwin') {
-                // macOS: code > vim > nano > open -e (TextEdit)
-                success = tryEditors(['code', 'vim', 'nano']) ||
-                    (() => {
-                        try {
-                            execSync(`open -e "${configFile}"`, {stdio: 'inherit'});
-                            return true;
-                        } catch (e) {
-                            return false;
-                        }
-                    })();
+            const keys = Object.keys(changed);
+            if (keys.length) {
+                for (const k of keys) config.setValue(k, changed[k]);
+                note(keys.length + ' 项配置已保存', '完成');
+            } else {
+                note('无修改', '完成');
             }
-
-            if (!success) {
-                console.error('未找到可用的文本编辑器，请手动编辑配置文件：' + configFile);
-            }
+            outro('配置完成');
         });
 
     /* ================= Album ================= */

@@ -1,0 +1,14 @@
+{
+  "dataDir": "F:\\jm",
+  "comicViewer": "C:\\Program Files\\ComicRack\\ComicRack.exe",
+  "port": 47310,
+  "timeout": 86400000,
+  "host": "https://18comic.vip",
+  "cdnHosts": [
+    "https://www.cdngwc.cc"
+  ],
+  "apiHosts": [
+    "https://www.cdngwc.cc"
+  ],
+  "debug": false
+}
