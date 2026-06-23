@@ -110,6 +110,7 @@ async function main() {
 
         const mw = await create_window('JM漫画管理器', startUrl, {
             width: 1200, height: 800, min_width: 800, min_height: 600, icon: iconIco, confirm_close: true, debug: true,
+            dark_mode: true
         });
         await mw.run();
         mw.setIcon(iconIco).catch(e => console.error('[desktop] setIcon failed:', e));
