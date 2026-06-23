@@ -405,7 +405,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         return rows.length;
     }
 
-    async function close() {
+    function close() {
         if (database) {
             try {
                 database.close();
