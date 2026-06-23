@@ -170,10 +170,11 @@ function createConsoleRenderer(protocol, theme, options = {}) {
     }
 
     function progress(complete, total, width = 20) {
-        if (!total) return ''
-        const r = Math.min(complete / total, 1)
-        const f = Math.round(r * width)
-        return '[' + '█'.repeat(f) + '░'.repeat(width - f) + `] ${complete}/${total}`
+        if (!total) return '';
+        const r = Math.min(complete / total, 1);
+        const f = Math.round(r * width);
+        // ✅ 只用 GBK 能表示的 ASCII 字符
+        return '[' + '#'.repeat(f) + '-'.repeat(width - f) + `] ${complete}/${total}`;
     }
 
     return { render }

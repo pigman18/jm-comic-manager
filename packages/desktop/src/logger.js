@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import koffi from 'koffi';
+import iconv from 'iconv-lite';
 
 let _stream = null;
 let _log = null;
@@ -9,41 +10,79 @@ let _error = null;
 let _forward = null;
 let _ready = false;
 
-function tee(msg) {
-  if (_stream) _stream.write(msg + '\n');
-  if (_forward) _forward(msg);
+let _hOut = null;
+let _written = new Uint32Array(1);
+
+/* ---------- kernel32 缓存（不换调用方式） ---------- */
+let _kernel32 = null;
+
+function kernel() {
+  if (_kernel32) return _kernel32;
+
+  const lib = koffi.load('kernel32.dll');
+
+  _kernel32 = {
+    AllocConsole: lib.func('AllocConsole', 'bool', []),
+    GetStdHandle: lib.func('GetStdHandle', 'void*', ['int']),
+    WriteConsoleA: lib.func(
+        'WriteConsoleA',
+        'bool',
+        ['void*', 'string', 'uint', 'uint*', 'void*']
+    ),
+  };
+
+  return _kernel32;
 }
 
-function override() {
-  console.log   = (...args) => { const m = args.join(' '); tee(m); _log(m); };
-  console.warn  = (...args) => { const m = args.join(' '); tee(m); _warn(m); };
-  console.error = (...args) => { const m = args.join(' '); tee(m); _error(m); };
-}
-
-export function setupConsole(visible) {
-  if (visible) return;
+/* ---------- 控制台直写 ---------- */
+function writeConsole(msg) {
+  if (!_hOut) return;
   try {
-    // 尽早加载，减少中间模块初始化带来的延迟
-    const kernel32 = koffi.load('kernel32.dll');
-    const user32 = koffi.load('user32.dll');
-    const GetConsoleWindow = kernel32.func('GetConsoleWindow', 'void*', []);
-    const ShowWindow = user32.func('ShowWindow', 'bool', ['void*', 'int']);
-    const FreeConsole = kernel32.func('FreeConsole', 'bool', []); // 可选
-    const hwnd = GetConsoleWindow();
-    if (hwnd && hwnd !== 0n) { // 注意 BigInt 指针比较
-      // SW_HIDE = 0
-      ShowWindow(hwnd, 0);
-      // 对于纯 GUI 无控制台需求，FreeConsole 更彻底，防止父进程复用导致窗口复现
-      // FreeConsole();
-    }
+    const k = kernel();
+    // ✅ 去掉 ANSI 颜色
+    const cleanMsg = String(msg).replace(/\x1B\[[0-9;]*m/g, '');
+    const gbkBuffer = iconv.encode(cleanMsg + '\r\n', 'gbk');
+    k.WriteConsoleA(_hOut, gbkBuffer, gbkBuffer.length, _written, null);
   } catch {}
 }
 
+function tee(msg) {
+  if (_stream) _stream.write(msg + '\n');
+  if (_forward) _forward(msg);
+  writeConsole(msg); // ✅ writeConsole 自己管 \r\n
+}
+
+function override() {
+  console.log = (...args) => {
+    tee(args.join(' '));
+  };
+
+  console.warn = (...args) => {
+    tee(args.join(' '));
+  };
+
+  console.error = (...args) => {
+    tee(args.join(' '));
+  };
+}
+
+/* ---------- 控制台创建 ---------- */
+export function setupConsole(visible) {
+  if (!visible) return;
+  try {
+    const k = kernel();
+    k.AllocConsole();
+    _hOut = k.GetStdHandle(-11); // STD_OUTPUT_HANDLE
+  } catch {}
+}
+
+/* ---------- Logger ---------- */
 export function createLogger(options = {}) {
   if (!_ready) {
-    _log = console.log.bind(console);
-    _warn = console.warn.bind(console);
-    _error = console.error.bind(console);
+    // ✅ 不要 bind，直接引用
+    _log = console.log;
+    _warn = console.warn;
+    _error = console.error;
     _ready = true;
   }
 
@@ -57,6 +96,14 @@ export function createLogger(options = {}) {
   }
 
   override();
+
+  // 主要用于express的日志输出，只在这里注册1次
+  process.stdout.write = (chunk) => {
+    const str = Buffer.isBuffer(chunk) ? chunk.toString() : String(chunk);
+    // ✅ 去掉 chunk 自带的换行
+    writeConsole(str.replace(/[\r\n]+$/, ''));
+  };
+
   return { reinstall: override };
 }
 
