@@ -3,6 +3,10 @@ import path from 'path';
 import koffi from 'koffi';
 import iconv from 'iconv-lite';
 
+// ★ 新增常量
+const STD_OUTPUT_HANDLE = -11;
+const ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
+
 let _stream = null;
 let _log = null;
 let _warn = null;
@@ -29,6 +33,9 @@ function kernel() {
         'bool',
         ['void*', 'string', 'uint', 'uint*', 'void*']
     ),
+    // ★ 新增两个 API
+    GetConsoleMode: lib.func('GetConsoleMode', 'bool', ['void*', 'uint*']),
+    SetConsoleMode: lib.func('SetConsoleMode', 'bool', ['void*', 'uint']),
   };
 
   return _kernel32;
@@ -39,9 +46,9 @@ function writeConsole(msg) {
   if (!_hOut) return;
   try {
     const k = kernel();
-    // ✅ 去掉 ANSI 颜色
-    const cleanMsg = String(msg).replace(/\x1B\[[0-9;]*m/g, '');
-    const gbkBuffer = iconv.encode(cleanMsg + '\r\n', 'gbk');
+    // ✅ 去掉 ANSI 颜色（注释掉，保留颜色）
+    // const cleanMsg = String(msg).replace(/\x1B\[[0-9;]*m/g, '');
+    const gbkBuffer = iconv.encode(msg + '\r\n', 'gbk');
     k.WriteConsoleA(_hOut, gbkBuffer, gbkBuffer.length, _written, null);
   } catch {}
 }
@@ -72,7 +79,16 @@ export function setupConsole(visible) {
   try {
     const k = kernel();
     k.AllocConsole();
-    _hOut = k.GetStdHandle(-11); // STD_OUTPUT_HANDLE
+    _hOut = k.GetStdHandle(STD_OUTPUT_HANDLE); // ★ 使用常量
+
+    // ★ 启用虚拟终端处理（让 ANSI 颜色生效）
+    if (_hOut) {
+      const modePtr = new Uint32Array(1);
+      if (k.GetConsoleMode(_hOut, modePtr)) {
+        const newMode = modePtr[0] | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        k.SetConsoleMode(_hOut, newMode);
+      }
+    }
   } catch {}
 }
 
