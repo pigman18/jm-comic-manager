@@ -228,16 +228,8 @@ function createCli(
                     const v = await text({message: 'JM 密码', initialValue: cfg.password || ''});
                     if (!isCancel(v)) setVal('password', v ?? '');
                 } else if (key === 'dataDir') {
-                    const browseDir = await confirm({message: '打开浏览窗口选择文件夹？', initialValue: true});
-                    if (isCancel(browseDir)) continue;
-                    if (browseDir) {
-                        const {pickDirectory} = require('node-fs-dialogs');
-                        const p = await pickDirectory({defaultPath: cfg.dataDir || process.cwd()});
-                        if (p) setVal('dataDir', p);
-                    } else {
-                        const v = await text({message: '数据目录', initialValue: cfg.dataDir || ''});
-                        if (!isCancel(v)) setVal('dataDir', v ?? '');
-                    }
+                    const v = await text({message: '数据目录', initialValue: cfg.dataDir || ''});
+                    if (!isCancel(v)) setVal('dataDir', v ?? '');
                 } else if (key === 'port') {
                     const v = await text({
                         message: '端口',
@@ -246,19 +238,8 @@ function createCli(
                     });
                     if (!isCancel(v)) setVal('port', Number(v));
                 } else if (key === 'comicViewer') {
-                    const browseExe = await confirm({message: '打开浏览窗口选择文件？', initialValue: true});
-                    if (isCancel(browseExe)) continue;
-                    if (browseExe) {
-                        const {pickFile} = require('node-fs-dialogs');
-                        const p = await pickFile({
-                            filters: [{name: '可执行文件', extensions: ['exe']}],
-                            defaultPath: cfg.comicViewer || 'C:\\Program Files',
-                        });
-                        if (p) setVal('comicViewer', p);
-                    } else {
-                        const v = await text({message: '漫画阅读器路径', initialValue: cfg.comicViewer || ''});
-                        if (!isCancel(v)) setVal('comicViewer', v ?? '');
-                    }
+                    const v = await text({message: '漫画阅读器路径', initialValue: cfg.comicViewer || ''});
+                    if (!isCancel(v)) setVal('comicViewer', v ?? '');
                 } else if (key === 'host') {
                     const v = await text({message: 'JM 主站', initialValue: cfg.host || 'https://18comic.vip'});
                     if (!isCancel(v)) setVal('host', v ?? 'https://18comic.vip');

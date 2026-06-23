@@ -132,18 +132,18 @@ if (fs.existsSync(runtimeSrc)) {
   console.log('   ✓ Runtime files copied');
 }
 
-// ── Step 4: Patch subsystem to CONSOLE (3) ─────────────────────────
-console.log('\n🪟 Step 4: Patching subsystem to CONSOLE...');
+// ── Step 4: Patch subsystem to GUI (2) ─────────────────────────
+console.log('\n🪟 Step 4: Patching subsystem to GUI...');
 const subBuf = fs.readFileSync(outputExe);
 const subPeOffset = subBuf.readUInt32LE(0x3C);
 const subOff = subPeOffset + 24 + 68;
 const subCur = subBuf.readUInt16LE(subOff);
-if (subCur === 3) {
-  console.log('   Subsystem already CONSOLE (3), skipping');
+if (subCur === 2) {
+  console.log('   Subsystem already GUI (2), skipping');
 } else {
-  subBuf.writeUInt16LE(3, subOff);
+  subBuf.writeUInt16LE(2, subOff);
   fs.writeFileSync(outputExe, subBuf);
-  console.log('   ✓ Patched subsystem from', subCur, 'to 3 (CONSOLE)');
+  console.log('   ✓ Patched subsystem from', subCur, 'to 2 (GUI)');
 }
 
 // ── Step 5: Create ZIP archive ────────────────────────────────────

@@ -241,7 +241,10 @@ async function main() {
         expose('loadConfig', () => readConfig());
         exposeSidebarFns();
         await createMainWindow();
-        if (_logger) _logger.reinstall();
+        if (_logger) {
+            _logger.reinstall();
+            console.log('[desktop] logger reinstalled');
+        }
         setupTray(mainWin);
         start();
     }
