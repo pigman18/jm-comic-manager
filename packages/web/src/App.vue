@@ -201,12 +201,77 @@ function applyHarmony() {
       if (!el.dataset.orig) el.dataset.orig = el.textContent || ''
       el.textContent = harmonyText(el.dataset.orig)
     })
+    document.querySelectorAll('.xxx-img').forEach(el => {
+      if (!(el instanceof HTMLImageElement)) return
+      if (el.dataset._harmonyPending) return
+      if (el.src === el.dataset._harmonySrc) return
+      if (el.complete && el.naturalWidth > 0) { tryApplyHarmonyImg(el); return }
+      el.dataset._harmonyPending = '1'
+      el.addEventListener('load', () => {
+        delete el.dataset._harmonyPending
+        if (!harmonyEnabled.value) return
+        tryApplyHarmonyImg(el)
+      }, { once: true })
+    })
   } else {
     document.querySelectorAll('.xxx-text').forEach(el => {
       if (!(el instanceof HTMLElement)) return
       if (el.dataset.orig) el.textContent = el.dataset.orig
     })
+    document.querySelectorAll('.xxx-img').forEach(el => {
+      if (!(el instanceof HTMLImageElement)) return
+      delete el.dataset._harmonyPending
+      if (el.src === el.dataset._harmonySrc) {
+        el.src = el.dataset._harmonyOrig || ''
+        delete el.dataset._harmonySrc
+        delete el.dataset._harmonyOrig
+      }
+    })
   }
+}
+
+function tryApplyHarmonyImg(img: HTMLImageElement) {
+  img.dataset._harmonyOrig = img.src
+  try {
+    const dataUrl = createHarmonyDataUrl(img)
+    img.dataset._harmonySrc = dataUrl
+    img.src = dataUrl
+  } catch {
+  }
+}
+
+function createHarmonyDataUrl(img: HTMLImageElement): string {
+  const w = img.width || 240
+  const h = img.height || 320
+  const BLOCK = 24
+  const bw = Math.max(1, Math.ceil(w / BLOCK))
+  const bh = Math.max(1, Math.ceil(h / BLOCK))
+  const tiny = document.createElement('canvas')
+  tiny.width = bw; tiny.height = bh
+  const tc = tiny.getContext('2d')!
+  tc.imageSmoothingEnabled = false
+  tc.drawImage(img, 0, 0, bw, bh)
+  const td = tc.getImageData(0, 0, bw, bh)
+
+  const d = td.data
+  const freq = new Map<number, number>()
+  for (let i = 0; i < d.length; i += 4) {
+    const key = ((d[i] >> 3) << 10) | ((d[i + 1] >> 3) << 5) | (d[i + 2] >> 3)
+    freq.set(key, (freq.get(key) || 0) + 1)
+  }
+  let bestKey = 0, bestCnt = 0
+  for (const [k, c] of freq) { if (c > bestCnt) { bestCnt = c; bestKey = k } }
+
+  const out = document.createElement('canvas')
+  out.width = w; out.height = h
+  const oc = out.getContext('2d')!
+  const dr = (bestKey >> 10) & 0x1f, dg = (bestKey >> 5) & 0x1f, db = bestKey & 0x1f
+  oc.fillStyle = '#' + [dr << 3, dg << 3, db << 3].map(c => c.toString(16).padStart(2, '0')).join('')
+  oc.fillRect(0, 0, w, h)
+  oc.globalAlpha = 0.7
+  oc.imageSmoothingEnabled = false
+  oc.drawImage(tiny, 0, 0, w, h)
+  return out.toDataURL('image/jpeg', 0.85)
 }
 
 const signLoading = ref(false)
@@ -527,10 +592,9 @@ onUnmounted(() => {
   color: #9b9bb4 !important;
 }
 
-.harmonize .xxx-img,
 .harmonize img.xxx-img {
-  filter: blur(var(--harmony-blur, 20px));
-  transform: scale(1.05);
+  /* pixelation is applied via Canvas src replacement; CSS filter as fallback */
+  filter: blur(3px);
 }
 
 /* === shared card + grid + skeleton === */
