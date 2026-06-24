@@ -2,9 +2,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { toast } = require('./util/toast');
+const toast = require('powertoast');
 
 const { PHASE, STATE, STEP } = require('./protocol');
+const {saveB64Image} = require('../util/app');
 
 const STATUSES = [
     { status: 'downloading', label: '下载中', icon: 'CloudDownloadOutline', color: '#1BA784' },
@@ -295,7 +296,14 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             }
             saveTasks();
             broadcast({ type: 'completed', id: task.id });
-            toast('\u2705 \u4E0B\u8F7D\u5B8C\u6210', task.name || `JM${task.number}`, manifest.icon, task.coverBase64);
+            await toast({
+                appID: manifest.appId,                 // ✅ 关键：必须
+                title: '\u2705 \u4E0B\u8F7D\u5B8C\u6210',
+                message: task.name || `JM${task.number}`,
+                // 应用存在图标且获取当前appId失败
+                icon:  (manifest.icon && 'Microsoft.Windows.Shell.RunDialog' === manifest.appId) ? saveB64Image( manifest.icon, 'icon.ico') : null,       // ✅ 标题左侧图标
+                headerImg: task.coverBase64 ? saveB64Image(task.coverBase64, task.id + '.png') : null, // ✅ 内容区图片（Hero）
+            });
         } catch (e) {
             if (task.status === 'paused' || task.status === 'removed') return;
             task.status = 'error';

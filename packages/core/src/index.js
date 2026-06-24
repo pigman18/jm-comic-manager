@@ -8,11 +8,13 @@ const {createCrawler} = require('./crawler');
 const {createServer} = require('./server');
 const {createCli} = require('./cli');
 const {createTaskManager} = require('./taskManager');
+const {resolveAppId, saveB64Image} = require('../util/app')
 
 // 1、加载JM模块应用配置，里面直接包含服务器配置、命令行配置
 let manifest = require(`../package.json`);
 // 2、设置当前工作目录
 manifest.workspace = process.cwd();
+// manifest.appId = resolveAppId(manifest.appId);
 // 3、加载内嵌资源（webpack 通过 asset/source/inline + 字面量 require 内联；dev 模式从磁盘读文件）
 const _pj = require('node:path');
 const _fs = require('node:fs');
