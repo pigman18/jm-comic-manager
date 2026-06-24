@@ -852,7 +852,8 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const time = String(req.query.time || 'a').slice(0, 1) || 'a';
                 const slug = String(req.query.slug || '');
                 const sort = String(req.query.sort || 'mv');
-                const result = await crawler.rank.categoriesFilter(page, time, slug, sort);
+                const sub = String(req.query.sub || '');
+                const result = await crawler.rank.categoriesFilter(page, time, slug, sort, sub);
                 const comicDir = path.join(config.dataDir, 'comic');
                 const list = (result?.content || []).map((item) => {
                     const id = Number(item.id);

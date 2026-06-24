@@ -840,11 +840,13 @@ function createCrawler(manifest, ctx, message, config) {
             let o = 'a' !== time
                 ? `${order_by}_${time}`
                 : order_by;
+            let c = category ? category : undefined;
+            if (c && sub_category) c += '_' + sub_category;
             let resp = await expireRetry(async () => {
                 return await apiClient.get(`${getApiHost()}/categories/filter?${toQueryString({
                     'page': page,
                     'order': '',  // 该参数为空
-                    'c': category || '0',
+                    'c': c,
                     'o': o
                 })}`);
             });

@@ -35,14 +35,14 @@ const applyHarmony = inject<(() => void) | undefined>('applyHarmony', undefined)
 watch(list, (v) => { currentPageComics.value = v }, { immediate: true })
 const pages = ref(0)
 const currentPage = ref(1)
-const timeFilter = ref('a')
 const sortFilter = ref('mv')
+const subSlugFilter = ref('')
 
 const cachedList = shallowRef<Comic[]>([])
 const cachedTotal = ref(0)
 const cachedPages = ref(0)
 const cachedTab = ref('')
-const cachedTime = ref('a')
+const cachedSubSlug = ref('')
 const cachedSort = ref('mv')
 const cachedPageNum = ref(1)
 const scrollTop = ref(0)
@@ -59,6 +59,17 @@ const tabOptions = computed(() => [
   ...categories.value.map(c => ({ label: c.name, value: String(c.id) }))
 ])
 
+const subCatOptions = computed(() => [
+  { label: '全部', value: '' },
+  ...subCatSlugs.value,
+])
+
+const subCatSlugs = computed(() => {
+  if (activeTab.value === '_blocks' || !activeTab.value) return []
+  const cat = categories.value.find(c => String(c.id) === activeTab.value)
+  return (cat as any)?.sub_categories?.map((s: any) => ({ label: s.name, value: s.slug })) || []
+})
+
 function cardToneClass(index: number) { return `tone-${(index % 4) + 1}` }
 function coverReady(id: number, cover?: string) { return cover && coverLoaded[id] }
 function onCoverLoad(id: number) { coverLoaded[id] = true }
@@ -68,19 +79,12 @@ function onCoverErr(e: Event, id: number) {
   coverLoaded[id] = true
 }
 
-const timeOptions = [
-  { label: '全部', value: 'a' },
-  { label: '今天', value: 't' },
-  { label: '本周', value: 'w' },
-  { label: '本月', value: 'm' },
-]
 const sortOptions = [
   { label: '最新', value: 'mr' },
-  { label: '最多观看', value: 'mv' },
-  { label: '最多图片', value: 'mp' },
-  { label: '总排行', value: 'tr' },
-  { label: '最多评论', value: 'md' },
   { label: '最多爱心', value: 'tf' },
+  { label: '总排行', value: 'mv' },
+  { label: '月排行', value: 'mv_m' },
+  { label: '周排行', value: 'mv_w' },
 ]
 
 let _syncCount = 0
@@ -91,7 +95,7 @@ watch(() => route.query, (q) => {
   if (!tab) return
   activeTab.value = tab
   currentPage.value = Math.max(1, parseInt(String(q.page || '1'), 10) || 1)
-  timeFilter.value = String(q.time || 'a').slice(0, 1) || 'a'
+  subSlugFilter.value = String(q.sub || '')
   sortFilter.value = String(q.sort || 'mv')
   if (tab !== '_blocks' && !cachedList.value.length) loadCategory()
 }, { immediate: true })
@@ -102,7 +106,7 @@ onBeforeRouteLeave((_to, _from, next) => {
     cachedTotal.value = total.value
     cachedPages.value = pages.value
     cachedTab.value = activeTab.value
-    cachedTime.value = timeFilter.value
+    cachedSubSlug.value = subSlugFilter.value
     cachedSort.value = sortFilter.value
     cachedPageNum.value = currentPage.value
     scrollTop.value = mainScrollRef.value?.scrollTop || 0
@@ -123,7 +127,7 @@ onActivated(() => {
     const tab = String(q.tab || '')
     activeTab.value = tab
     currentPage.value = Math.max(1, parseInt(String(q.page || '1'), 10) || 1)
-    timeFilter.value = String(q.time || 'a').slice(0, 1) || 'a'
+    subSlugFilter.value = String(q.sub || '')
     sortFilter.value = String(q.sort || 'mv')
     syncUrl()
     if (tab !== '_blocks') loadCategory()
@@ -132,7 +136,7 @@ onActivated(() => {
     total.value = cachedTotal.value
     pages.value = cachedPages.value
     activeTab.value = cachedTab.value
-    timeFilter.value = cachedTime.value
+    subSlugFilter.value = cachedSubSlug.value
     sortFilter.value = cachedSort.value
     currentPage.value = cachedPageNum.value
     syncUrl()
@@ -173,8 +177,8 @@ function syncUrl() {
   const q: Record<string, string> = { tab: activeTab.value }
   if (activeTab.value !== '_blocks') {
     q.page = String(currentPage.value)
-    q.time = timeFilter.value
     q.sort = sortFilter.value
+    if (subSlugFilter.value) q.sub = subSlugFilter.value
   }
   router.replace({ name: 'category', query: q }).catch(() => {}).finally(() => { _syncCount-- })
 }
@@ -204,7 +208,8 @@ async function loadCategory(p?: number) {
   coverLoaded.value = {}
   syncUrl()
   try {
-    const params = new URLSearchParams({ page: String(pg), time: timeFilter.value, slug: cat.slug, sort: sortFilter.value })
+    const params = new URLSearchParams({ page: String(pg), slug: cat.slug, sort: sortFilter.value })
+    if (subSlugFilter.value) params.set('sub', subSlugFilter.value)
     const j = await getJson(`/category/filter?${params}`)
     if (!j.ok) throw new Error(j.message || '获取失败')
     list.value = j.list || []
@@ -220,8 +225,13 @@ async function loadCategory(p?: number) {
   }
 }
 
-function onTimeChange() { cachedList.value = []; currentPage.value = 1; loadCategory() }
 function onSortChange() { cachedList.value = []; currentPage.value = 1; loadCategory() }
+function onSubChange(val: string) {
+  subSlugFilter.value = val || ''
+  cachedList.value = []
+  currentPage.value = 1
+  loadCategory()
+}
 
 
 </script>
@@ -250,7 +260,7 @@ function onSortChange() { cachedList.value = []; currentPage.value = 1; loadCate
       </section>
       <section v-if="activeTab && activeTab !== '_blocks'" class="jmz-panel jmz-panel--pad jmz-cat-filter-bar">
         <div class="jmz-cat-filter-row">
-          <n-select v-model:value="timeFilter" :options="timeOptions" class="jmz-cat-filter-select" @update:value="onTimeChange" />
+          <n-select v-if="subCatSlugs.length > 0" v-model:value="subSlugFilter" :options="subCatOptions" class="jmz-cat-filter-select" @update:value="onSubChange" clearable />
           <n-select v-model:value="sortFilter" :options="sortOptions" class="jmz-cat-filter-select" @update:value="onSortChange" />
         </div>
       </section>
@@ -486,6 +496,13 @@ function onSortChange() { cachedList.value = []; currentPage.value = 1; loadCate
 
 .jmz-cat-filter-select {
   width: 180px;
+}
+
+.jmz-cat-sub-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 /* main */
