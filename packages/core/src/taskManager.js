@@ -319,7 +319,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             broadcast({ type: 'completed', id: task.id });
             try {
                 const ico = task.coverBase64 ? base64ToIconPath(task.coverBase64) : (manifest.icon ? base64ToIconPath(manifest.icon) : undefined);
-                notifier.notify({ title: '下载完成', message: task.name || `JM${task.number}`, appID: 'JM漫画管理器', icon: ico });
+                notifier.notify({ title: '\u2705 \u4E0B\u8F7D\u5B8C\u6210', message: task.name || `JM${task.number}`, appID: 'JM漫画管理器', icon: ico });
             } catch (_) {}
         } catch (e) {
             if (task.status === 'paused' || task.status === 'removed') return;
