@@ -6,6 +6,7 @@ export const useJmTasksStore = defineStore('jm-tasks', {
   state: () => ({
     tasks: [] as TaskItem[],
     statuses: [] as { status: string; label: string; icon: string; color: string }[],
+    _taskVersion: 0,
   }),
   getters: {
     waitingCount(state) {
@@ -114,6 +115,7 @@ export const useJmTasksStore = defineStore('jm-tasks', {
           break
         }
       }
+      this._taskVersion++
     },
     /** 将 task-manager 的下载任务同步到 jmLive 的 zipByKey（详情页用） */
     syncZipByKey(task: TaskItem, live: ReturnType<typeof useJmLiveStore>) {
