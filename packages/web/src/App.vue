@@ -135,6 +135,16 @@ import LoginDialog from '@/components/LoginDialog.vue'
 import UserBar from '@/components/UserBar.vue'
 import { peekCatalogReturnQuery } from '@/utils/catalogReturn'
 
+import sensitiveWordsRaw from '@/assets/sensitive-words.txt?raw'
+
+const _sensitiveWords = [...new Set(
+  sensitiveWordsRaw.split('\n').map(s => s.trim()).filter(Boolean)
+)].sort((a, b) => b.length - a.length)
+const _sensitiveRe = new RegExp(
+  _sensitiveWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'),
+  'gi'
+)
+
 const route = useRoute()
 const router = useRouter()
 const store = useJmLiveStore()
@@ -180,9 +190,8 @@ watch(() => route.name, () => {
 })
 
 function harmonyText(text: string): string {
-  const fill = '文本'
   if (!text) return text
-  return fill.repeat(Math.ceil(text.length / fill.length)).slice(0, text.length)
+  return text.replace(_sensitiveRe, match => '*'.repeat(match.length))
 }
 function applyHarmony() {
   document.documentElement.classList.toggle('harmonize', harmonyEnabled.value)
@@ -520,7 +529,8 @@ onUnmounted(() => {
 
 .harmonize .xxx-img,
 .harmonize img.xxx-img {
-  opacity: 0 !important;
+  filter: blur(var(--harmony-blur, 20px));
+  transform: scale(1.05);
 }
 
 /* === shared card + grid + skeleton === */

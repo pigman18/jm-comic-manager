@@ -1,3 +1,4 @@
+'use strict';
 
 /**
  * 转换为base64图片
@@ -5,7 +6,7 @@
  */
 function buffer2Base64Image(buffer) {
     const base64 = buffer.toString('base64');
-    const mimeType = 'image/jpeg'; // 根据实际图片类型设置
+    const mimeType = 'image/jpeg';
     return `data:${mimeType};base64,${base64}`;
 }
 
