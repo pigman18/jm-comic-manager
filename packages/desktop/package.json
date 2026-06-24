@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node app.js",
-    "package": "npm run build && node build/package.js"
+    "package": "npm run build && node build/package.js",
+    "postpackage": "C:\\\"Program Files (x86)\"\\\"Inno Setup 6\"\\ISCC.exe setup.iss"
   },
   "dependencies": {
     "ewvjs": "^1.0.24",
