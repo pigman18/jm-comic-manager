@@ -9,6 +9,8 @@ interface Config {
     comicViewer?: string;
     timeout?: number;
     debug?: boolean;
+    toast?: boolean;
+    proxy?: string | null;
     host?: string;
     cdnHosts?: string[];
     apiHosts?: string[];
@@ -213,34 +215,82 @@ function ConfigPage({ onSaved }: { onSaved: () => void }) {
                             </div>
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label>CDN 域名（每行一个）</label>
-                                    <textarea value={(config.cdnHosts || []).join('\n')} onChange={e => update('cdnHosts', e.target.value.split('\n').map(s => s.trim()).filter(Boolean))} rows={4} />
+                                    <label>CDN 域名</label>
+                                    <TagInput values={config.cdnHosts || []} onChange={v => update('cdnHosts', v)} placeholder="输入 CDN 域名后回车" />
                                 </div>
                                 <div className="form-group">
-                                    <label>API 域名（每行一个）</label>
-                                    <textarea value={(config.apiHosts || []).join('\n')} onChange={e => update('apiHosts', e.target.value.split('\n').map(s => s.trim()).filter(Boolean))} rows={4} />
+                                    <label>API 域名</label>
+                                    <TagInput values={config.apiHosts || []} onChange={v => update('apiHosts', v)} placeholder="输入 API 域名后回车" />
                                 </div>
                             </div>
                             <div className="form-group full">
                                 <label>请求超时（ms）</label>
                                 <input type="number" value={config.timeout ?? 86400000} onChange={e => update('timeout', Number(e.target.value))} />
                             </div>
+                            <div className="form-group full">
+                                <label>代理地址</label>
+                                <input value={config.proxy || ''} onChange={e => update('proxy', e.target.value || null)} placeholder="http://127.0.0.1:10809" />
+                            </div>
                         </>
                     )}
                     {tab === 'advanced' && (
-                        <div className="form-group full">
-                            <label>调试模式</label>
+                        <>
                             <label className="checkbox-label">
                                 <input type="checkbox" checked={config.debug ?? false} onChange={e => update('debug', e.target.checked)} />
                                 启用调试日志
                             </label>
-                        </div>
+                            <label className="checkbox-label" style={{ marginTop: 10 }}>
+                                <input type="checkbox" checked={config.toast ?? false} onChange={e => update('toast', e.target.checked)} />
+                                下载完成后弹出系统通知
+                            </label>
+                        </>
                     )}
                 </div>
                 <div className="config-footer">
                     <button className="btn-save" onClick={handleSave}>保存配置</button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+function TagInput({ values, onChange, placeholder }: { values: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
+    const [inputVal, setInputVal] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const add = () => {
+        const v = inputVal.trim();
+        if (v && !values.includes(v)) {
+            onChange([...values, v]);
+        }
+        setInputVal('');
+        inputRef.current?.focus();
+    };
+
+    const remove = (idx: number) => {
+        onChange(values.filter((_, i) => i !== idx));
+    };
+
+    const handleKey = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') { e.preventDefault(); add(); }
+    };
+
+    return (
+        <div className="tag-input-wrap">
+            {values.map((v, i) => (
+                <div key={i} className="tag-input-row">
+                    <span className="tag-input-text">{v}</span>
+                    <button className="tag-input-del" onClick={() => remove(i)} tabIndex={-1}>&times;</button>
+                </div>
+            ))}
+            <input
+                ref={inputRef}
+                className="tag-input"
+                value={inputVal}
+                onChange={e => setInputVal(e.target.value)}
+                onKeyDown={handleKey}
+                placeholder={placeholder || '输入后回车添加'}
+            />
         </div>
     );
 }
@@ -341,23 +391,34 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
                             <div className="form-row" style={{ marginBottom: 0 }}>
                                 <div className="form-group">
                                     <label>CDN 域名</label>
-                                    <textarea value={(config.cdnHosts || []).join('\n')} onChange={e => update('cdnHosts', e.target.value.split('\n').map(s => s.trim()).filter(Boolean))} rows={4} />
+                                    <TagInput values={config.cdnHosts || []} onChange={v => update('cdnHosts', v)} placeholder="输入 CDN 域名后回车" />
                                 </div>
                                 <div className="form-group">
                                     <label>API 域名</label>
-                                    <textarea value={(config.apiHosts || []).join('\n')} onChange={e => update('apiHosts', e.target.value.split('\n').map(s => s.trim()).filter(Boolean))} rows={4} />
+                                    <TagInput values={config.apiHosts || []} onChange={v => update('apiHosts', v)} placeholder="输入 API 域名后回车" />
                                 </div>
+                            </div>
+                            <div className="form-group full">
+                                <label>请求超时（ms）</label>
+                                <input type="number" value={config.timeout ?? 86400000} onChange={e => update('timeout', Number(e.target.value))} />
+                            </div>
+                            <div className="form-group full">
+                                <label>代理地址</label>
+                                <input value={config.proxy || ''} onChange={e => update('proxy', e.target.value || null)} placeholder="http://127.0.0.1:10809" />
                             </div>
                         </>
                     )}
                     {tab === 'advanced' && (
-                        <div className="form-group full">
-                            <label>调试模式</label>
+                        <>
                             <label className="checkbox-label">
                                 <input type="checkbox" checked={config.debug ?? false} onChange={e => update('debug', e.target.checked)} />
                                 启用调试日志
                             </label>
-                        </div>
+                            <label className="checkbox-label" style={{ marginTop: 10 }}>
+                                <input type="checkbox" checked={config.toast ?? false} onChange={e => update('toast', e.target.checked)} />
+                                下载完成后弹出系统通知
+                            </label>
+                        </>
                     )}
                 </div>
                 <div className="settings-footer">

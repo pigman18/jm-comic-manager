@@ -296,14 +296,15 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             }
             saveTasks();
             broadcast({ type: 'completed', id: task.id });
-            await toast({
-                appID: manifest.appId,                 // ✅ 关键：必须
-                title: '\u2705 \u4E0B\u8F7D\u5B8C\u6210',
-                message: task.name || `JM${task.number}`,
-                // 应用存在图标且获取当前appId失败
-                icon:  (manifest.icon && 'Microsoft.Windows.Shell.RunDialog' === manifest.appId) ? saveB64Image( manifest.icon, 'icon.ico') : null,       // ✅ 标题左侧图标
-                headerImg: task.coverBase64 ? saveB64Image(task.coverBase64, task.id + '.png') : null, // ✅ 内容区图片（Hero）
-            });
+            if (config.toast) {
+                await toast({
+                    appID: manifest.appId,
+                    title: '\u2705 \u4E0B\u8F7D\u5B8C\u6210',
+                    message: task.name || `JM${task.number}`,
+                    icon: (manifest.icon && 'Microsoft.Windows.Shell.RunDialog' === manifest.appId) ? saveB64Image(manifest.icon, 'icon.ico') : null,
+                    headerImg: task.coverBase64 ? saveB64Image(task.coverBase64, task.id + '.png') : null,
+                });
+            }
         } catch (e) {
             if (task.status === 'paused' || task.status === 'removed') return;
             task.status = 'error';
