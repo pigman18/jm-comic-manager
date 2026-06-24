@@ -116,8 +116,9 @@ provide('statuses', statusesRef)
 
 const { openComic } = useZipReader()
 
-const taskManagerTasks = computed<TmTaskItem[]>(() =>
-  tasksStore.tasks.map(t => ({
+const taskManagerTasks = computed<TmTaskItem[]>(() => {
+  void tasksStore._taskVersion
+  return tasksStore.tasks.map(t => ({
     id: t.id,
     name: t.name || t.displayTitle || `JM${t.number}`,
     url: String(t.number),
@@ -134,7 +135,7 @@ const taskManagerTasks = computed<TmTaskItem[]>(() =>
     ...(t.stepStatus ? { stepStatus: t.stepStatus } : {}),
     ...(t.number ? { number: t.number } : {}),
   })) as unknown as TmTaskItem[]
-)
+})
 
 // --- 模式切换 ---
 const mode = ref<'query' | 'batch'>('query')
