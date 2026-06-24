@@ -259,8 +259,8 @@ function applyHarmony() {
 function tryApplyHarmonyImg(img: HTMLImageElement, origSrc: string, tempImg?: HTMLImageElement) {
   delete img.dataset._harmonyPending
   try {
-    const dw = img.width || 240
-    const dh = img.height || 320
+    const dw = parseInt(img.getAttribute('width') || '240', 10)
+    const dh = parseInt(img.getAttribute('height') || '320', 10)
     const dataUrl = createHarmonyDataUrl(tempImg || img, dw, dh)
     img.dataset._harmonySrc = dataUrl
     img.src = dataUrl
