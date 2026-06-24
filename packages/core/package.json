@@ -43,6 +43,7 @@
     "marked-terminal": "^7.3.0",
     "morgan": "^1.10.1",
     "p-queue": "^9.3.0",
+    "powertoast": "^1.2.3",
     "socks-proxy-agent": "^10.0.0",
     "supports-color": "^10.2.2",
     "tough-cookie": "^6.0.1",
@@ -62,6 +63,7 @@
     "webpack-obfuscator": "^3.5.1",
     "webpack-obfuscator-plugin": "^1.0.2"
   },
+  "appId": "com.pigman18.jmcomicmanager",
   "theme": "light",
   "protocol": {
     "phase": {

@@ -43,6 +43,7 @@ module.exports = {
             },
             {test: /\.node$/, loader: 'node-loader'},
             {test: /\.md$/, type: 'asset/source'},
+            {test: /\.ico$/, type: 'asset/inline'},
         ],
         noParse: [
             /node_modules\/puppeteer/,
