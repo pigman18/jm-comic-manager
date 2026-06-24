@@ -21,10 +21,11 @@
     "covers": "node src/index.js covers",
     "server": "node src/index.js server",
     "command": "node src/index.js",
-    "build:pkg": "npx @yao-pkg/pkg dist/jm.core.all.js --targets node22-win-x64 --output dist/jm.core.exe",
+    "build:pkg": "npm run build && npx @yao-pkg/pkg dist/jm.core.all.js --targets node22-win-x64 --output dist/jm.core.exe",
     "postbuild:pkg": "node build/pkg-icon.mjs"
   },
   "dependencies": {
+    "@agentine/herald": "^0.1.0",
     "@clack/prompts": "^1.6.0",
     "abort-controller": "^3.0.0",
     "async-lock": "^1.4.1",
@@ -41,7 +42,6 @@
     "marked": "^15.0.12",
     "marked-terminal": "^7.3.0",
     "morgan": "^1.10.1",
-    "node-notifier": "^10.0.1",
     "p-queue": "^9.3.0",
     "socks-proxy-agent": "^10.0.0",
     "supports-color": "^10.2.2",

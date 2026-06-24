@@ -2,8 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const os = require('node:os');
-const notifier = require('node-notifier');
+const { toast } = require('./util/toast');
 
 const { PHASE, STATE, STEP } = require('./protocol');
 
@@ -31,27 +30,6 @@ function stepStatusLabel(step, stepState, stepLabels, payload) {
     return null;
 }
 
-function base64ToIconPath(base64) {
-  if (!base64) return null;
-  const isDataUri = base64.startsWith('data:');
-  const m = isDataUri ? base64.match(/^data:image\/(\w+);base64,(.+)$/) : null;
-  if (!m && !isDataUri) {
-    const fp = path.join(os.tmpdir(), 'jm-comic-manager', 'app-icon.ico');
-    try {
-      if (!fs.existsSync(path.dirname(fp))) fs.mkdirSync(path.dirname(fp), { recursive: true });
-      if (!fs.existsSync(fp)) fs.writeFileSync(fp, Buffer.from(base64, 'base64'));
-    } catch { return null }
-    return fp;
-  }
-  if (!m) return null;
-  const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
-  const buf = Buffer.from(m[2], 'base64');
-  const tmpDir = path.join(os.tmpdir(), 'jm-comic-manager');
-  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-  const fp = path.join(tmpDir, `cover-${Date.now()}.${ext}`);
-  try { fs.writeFileSync(fp, buf) } catch { return null }
-  return fp;
-}
 
 function createTaskManager(manifest, ctx, store, crawler, message, config) {
     const stepLabels = manifest.themeDetail?.step || {};
@@ -317,10 +295,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             }
             saveTasks();
             broadcast({ type: 'completed', id: task.id });
-            try {
-                const ico = task.coverBase64 ? base64ToIconPath(task.coverBase64) : (manifest.icon ? base64ToIconPath(manifest.icon) : undefined);
-                notifier.notify({ title: '\u2705 \u4E0B\u8F7D\u5B8C\u6210', message: task.name || `JM${task.number}`, appID: 'JM漫画管理器', icon: ico });
-            } catch (_) {}
+            toast('\u2705 \u4E0B\u8F7D\u5B8C\u6210', task.name || `JM${task.number}`, manifest.icon, task.coverBase64);
         } catch (e) {
             if (task.status === 'paused' || task.status === 'removed') return;
             task.status = 'error';
