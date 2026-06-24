@@ -46,27 +46,23 @@ if (!fs.existsSync(FETCHED)) {
   console.error('Fetched template not found at', FETCHED);
   process.exit(1);
 }
-if (!fs.existsSync(BUILT)) {
-  fs.copyFileSync(FETCHED, BUILT);
-  const exeData = fs.readFileSync(BUILT);
-  const exe = ResEdit.NtExecutable.from(exeData);
-  const res = ResEdit.NtExecutableResource.from(exe);
-  const icoBuf = fs.readFileSync(ICON);
-  const count = icoBuf.readUInt16LE(4);
-  const iconEntries = [];
-  for (let i = 0; i < count; i++) {
-    const off = 6 + i * 16;
-    iconEntries.push(ResEdit.Data.IconItem.from(icoBuf, icoBuf.readUInt32LE(off + 12), icoBuf.readUInt32LE(off + 8)));
-  }
-  const iconGroupEntry = res.entries.find(e => e.type === 14);
-  const iconGroupId = iconGroupEntry ? iconGroupEntry.id : 1;
-  ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, iconGroupId, 1033, iconEntries);
-  res.outputResource(exe);
-  fs.writeFileSync(BUILT, Buffer.from(exe.generate()));
-  console.log('   ✓ Template patched:', BUILT);
-} else {
-  console.log('   Template already patched, reusing');
+fs.copyFileSync(FETCHED, BUILT);
+const exeData = fs.readFileSync(BUILT);
+const exe = ResEdit.NtExecutable.from(exeData);
+const res = ResEdit.NtExecutableResource.from(exe);
+const icoBuf = fs.readFileSync(ICON);
+const count = icoBuf.readUInt16LE(4);
+const iconEntries = [];
+for (let i = 0; i < count; i++) {
+const off = 6 + i * 16;
+iconEntries.push(ResEdit.Data.IconItem.from(icoBuf, icoBuf.readUInt32LE(off + 12), icoBuf.readUInt32LE(off + 8)));
 }
+const iconGroupEntry = res.entries.find(e => e.type === 14);
+const iconGroupId = iconGroupEntry ? iconGroupEntry.id : 1;
+ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, iconGroupId, 1033, iconEntries);
+res.outputResource(exe);
+fs.writeFileSync(BUILT, Buffer.from(exe.generate()));
+console.log('   ✓ Template patched:', BUILT);
 
 // ── Step 2: Run pkg (uses patched template) ───────────────────────
 console.log('\n🔨 Step 2: Running pkg...');
