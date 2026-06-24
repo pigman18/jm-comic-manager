@@ -21,7 +21,7 @@
     "covers": "node src/index.js covers",
     "server": "node src/index.js server",
     "command": "node src/index.js",
-    "build:pkg": "npm run build && npx @yao-pkg/pkg dist/jm.core.all.js --targets node22-win-x64 --output dist/jm.core.exe",
+    "build:pkg": "npx @yao-pkg/pkg dist/jm.core.all.js --targets node22-win-x64 --output dist/jm.core.exe",
     "postbuild:pkg": "node build/pkg-icon.mjs"
   },
   "dependencies": {

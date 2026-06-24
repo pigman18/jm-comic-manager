@@ -2,6 +2,7 @@
 const sharp = require('sharp');
 const toIco = require('to-ico');
 const fs = require('fs');
+const { vectorize, ColorMode, Hierarchical, PathSimplifyMode } = require('@neplex/vectorizer');
 
 const sizes = [16, 32, 48, 64, 128, 256];
 const tmpDir = 'tmp-icons';
@@ -26,6 +27,25 @@ if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir);
 
     const ico = await toIco(buffers);
 
-    fs.writeFileSync('../resources/icon.ico', ico);
-    console.log('✅ icon.ico 生成完成');
+    fs.writeFileSync(
+        '../resources/icon.ico', ico);
+
+    const src = fs.readFileSync('../resources/icon.png');
+    const svg = await vectorize(src, {
+        colorMode: ColorMode.Color,
+        colorPrecision: 6,
+        filterSpeckle: 4,
+        spliceThreshold: 45,
+        cornerThreshold: 60,
+        hierarchical: Hierarchical.Stacked,
+        mode: PathSimplifyMode.Spline,
+        layerDifference: 5,
+        lengthThreshold: 5,
+        maxIterations: 2,
+        pathPrecision: 5,
+    });
+    fs.writeFileSync('../resources/icon.svg', svg);
+    console.log('✅ SVG 已生成');
+
+    console.log('✅ icon 生成完成');
 })();
