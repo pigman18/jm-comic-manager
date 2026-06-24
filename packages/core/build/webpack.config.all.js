@@ -47,6 +47,7 @@ module.exports = {
                 options: { outputAsset: false },
             },
             {test: /\.md$/, type: 'asset/source'},
+            {test: /\.ico$/, type: 'asset/inline'},
         ],
     },
     plugins: [

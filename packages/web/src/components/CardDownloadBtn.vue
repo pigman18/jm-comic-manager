@@ -49,12 +49,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { DownloadOutline } from '@vicons/ionicons5'
-import { getJson, postJson } from '@/api'
+import { postJson } from '@/api'
 import { useMessage } from 'naive-ui'
 import type { Comic } from '@/types'
 
-const props = defineProps<{ comic: Comic; fetchRemote?: boolean }>()
-const fetchRemote = props.fetchRemote !== false
+const props = defineProps<{ comic: Comic }>()
 const message = useMessage()
 
 const fetching = ref(false)
@@ -94,7 +93,7 @@ async function handleClick() {
   const c = props.comic
   fetching.value = true
   try {
-    const j = fetchRemote ? await postJson(`/comics/${c.id}/fetch-meta`) : await getJson(`/comics/${c.id}`)
+    const j = await postJson(`/comics/${c.id}/fetch-meta`)
     if (!j.ok) { message.warning(j.message || '获取信息失败'); return }
     const series = j.comic?.series || j.series || []
     const isMulti = series.length > 1

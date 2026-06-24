@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const notifier = require('node-notifier');
 
 const { PHASE, STATE, STEP } = require('./protocol');
 
@@ -27,6 +28,25 @@ function stepStatusLabel(step, stepState, stepLabels, payload) {
     return { label: `${stepName}失败`, icon: 'CloseCircleOutline', color: '#d03050' };
   }
   return null;
+}
+
+function base64ToIconPath(base64) {
+  if (!base64) return null;
+  let buf, ext;
+  if (base64.startsWith('data:')) {
+    const m = base64.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!m) return null;
+    ext = m[1] === 'jpeg' ? 'jpg' : m[1];
+    buf = Buffer.from(m[2], 'base64');
+  } else {
+    ext = 'ico';
+    buf = Buffer.from(base64, 'base64');
+  }
+  const tmpDir = path.join(require('node:os').tmpdir(), 'jm-comic-manager');
+  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+  const fp = path.join(tmpDir, `notify-icon-${Date.now()}.${ext}`);
+  fs.writeFileSync(fp, buf);
+  return fp;
 }
 
 function createTaskManager(manifest, ctx, store, crawler, message, config) {
@@ -293,6 +313,10 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
       }
       saveTasks();
       broadcast({ type: 'completed', id: task.id });
+      try {
+        const iconPath = task.coverBase64 ? base64ToIconPath(task.coverBase64) : (manifest.icon ? base64ToIconPath(manifest.icon) : undefined);
+        notifier.notify({ title: '下载完成', message: task.name || `JM${task.number}`, appID: 'JM漫画管理器', icon: iconPath, timeout: 5 });
+      } catch (_) {}
     } catch (e) {
       if (task.status === 'paused' || task.status === 'removed') return;
       task.status = 'error';

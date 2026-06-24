@@ -27,7 +27,7 @@
       <span v-if="comic.canRead" class="jmz-card-ribbon">可读</span>
       <CardMetaBtn :comic="comic" />
       <CardBanBtn :comic="comic" :on-toggle="onBanToggle" />
-      <CardDownloadBtn :comic="comic" :fetch-remote="fetchRemote" />
+      <CardDownloadBtn :comic="comic" />
       <CardReadBtn :comic="comic" :fetch-remote="fetchRemote" />
     </div>
     <div class="jmz-card-body">
