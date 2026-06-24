@@ -205,13 +205,38 @@ function applyHarmony() {
       if (!(el instanceof HTMLImageElement)) return
       if (el.dataset._harmonyPending) return
       if (el.src === el.dataset._harmonySrc) return
-      if (el.complete && el.naturalWidth > 0) { tryApplyHarmonyImg(el); return }
+      // immediately stop original from loading, so the spinner stays
+      const origSrc = el.src
+      if (!origSrc || origSrc.startsWith('data:')) {
+        // already a data URL or no src, process directly if loaded
+        if (el.complete && el.naturalWidth > 0) { tryApplyHarmonyImg(el, origSrc); return }
+        el.dataset._harmonyPending = '1'
+        el.addEventListener('load', () => {
+          delete el.dataset._harmonyPending
+          if (!harmonyEnabled.value) return
+          tryApplyHarmonyImg(el, el.src)
+        }, { once: true })
+        return
+      }
+      el.dataset._harmonyOrig = origSrc
+      el.removeAttribute('src')
       el.dataset._harmonyPending = '1'
-      el.addEventListener('load', () => {
+      const temp = new Image()
+      temp.crossOrigin = 'anonymous'
+      temp.onload = () => {
+        tryApplyHarmonyImg(el, origSrc, temp)
+      }
+      temp.onerror = () => {
+        // fallback: let the original image show
+        el.src = origSrc
         delete el.dataset._harmonyPending
-        if (!harmonyEnabled.value) return
-        tryApplyHarmonyImg(el)
-      }, { once: true })
+        el.addEventListener('load', () => {
+          delete el.dataset._harmonyPending
+          if (!harmonyEnabled.value) return
+          tryApplyHarmonyImg(el, origSrc)
+        }, { once: true })
+      }
+      temp.src = origSrc
     })
   } else {
     document.querySelectorAll('.xxx-text').forEach(el => {
@@ -221,8 +246,9 @@ function applyHarmony() {
     document.querySelectorAll('.xxx-img').forEach(el => {
       if (!(el instanceof HTMLImageElement)) return
       delete el.dataset._harmonyPending
-      if (el.src === el.dataset._harmonySrc) {
-        el.src = el.dataset._harmonyOrig || ''
+      delete el.dataset.harmonyReady
+      if (el.dataset._harmonyOrig) {
+        el.src = el.dataset._harmonyOrig
         delete el.dataset._harmonySrc
         delete el.dataset._harmonyOrig
       }
@@ -230,27 +256,29 @@ function applyHarmony() {
   }
 }
 
-function tryApplyHarmonyImg(img: HTMLImageElement) {
-  img.dataset._harmonyOrig = img.src
+function tryApplyHarmonyImg(img: HTMLImageElement, origSrc: string, tempImg?: HTMLImageElement) {
+  delete img.dataset._harmonyPending
   try {
-    const dataUrl = createHarmonyDataUrl(img)
+    const dw = img.width || 240
+    const dh = img.height || 320
+    const dataUrl = createHarmonyDataUrl(tempImg || img, dw, dh)
     img.dataset._harmonySrc = dataUrl
     img.src = dataUrl
   } catch {
+    if (origSrc) img.src = origSrc
   }
+  img.dataset.harmonyReady = '1'
 }
 
-function createHarmonyDataUrl(img: HTMLImageElement): string {
-  const w = img.width || 240
-  const h = img.height || 320
+function createHarmonyDataUrl(srcImg: HTMLImageElement, outW: number, outH: number): string {
   const BLOCK = 24
-  const bw = Math.max(1, Math.ceil(w / BLOCK))
-  const bh = Math.max(1, Math.ceil(h / BLOCK))
+  const bw = Math.max(1, Math.ceil(outW / BLOCK))
+  const bh = Math.max(1, Math.ceil(outH / BLOCK))
   const tiny = document.createElement('canvas')
   tiny.width = bw; tiny.height = bh
   const tc = tiny.getContext('2d')!
   tc.imageSmoothingEnabled = false
-  tc.drawImage(img, 0, 0, bw, bh)
+  tc.drawImage(srcImg, 0, 0, bw, bh)
   const td = tc.getImageData(0, 0, bw, bh)
 
   const d = td.data
@@ -263,14 +291,14 @@ function createHarmonyDataUrl(img: HTMLImageElement): string {
   for (const [k, c] of freq) { if (c > bestCnt) { bestCnt = c; bestKey = k } }
 
   const out = document.createElement('canvas')
-  out.width = w; out.height = h
+  out.width = outW; out.height = outH
   const oc = out.getContext('2d')!
   const dr = (bestKey >> 10) & 0x1f, dg = (bestKey >> 5) & 0x1f, db = bestKey & 0x1f
   oc.fillStyle = '#' + [dr << 3, dg << 3, db << 3].map(c => c.toString(16).padStart(2, '0')).join('')
-  oc.fillRect(0, 0, w, h)
+  oc.fillRect(0, 0, outW, outH)
   oc.globalAlpha = 0.7
   oc.imageSmoothingEnabled = false
-  oc.drawImage(tiny, 0, 0, w, h)
+  oc.drawImage(tiny, 0, 0, outW, outH)
   return out.toDataURL('image/jpeg', 0.85)
 }
 
@@ -593,8 +621,10 @@ onUnmounted(() => {
 }
 
 .harmonize img.xxx-img {
-  /* pixelation is applied via Canvas src replacement; CSS filter as fallback */
-  filter: blur(3px);
+  opacity: 0 !important;
+}
+.harmonize img.xxx-img[data-harmony-ready] {
+  opacity: 1 !important;
 }
 
 /* === shared card + grid + skeleton === */
