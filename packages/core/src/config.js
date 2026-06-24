@@ -36,7 +36,9 @@ let defaultConfig = {
     ],
     "token": "",
     "cookie": "",
-    "debug": false
+    "debug": false,
+    "toast": false,
+    "proxy": null
 };
 
 /**
