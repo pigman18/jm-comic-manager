@@ -1,6 +1,5 @@
 'use strict'
 
-const notifier = require('node-notifier')
 const AsyncLock = require('async-lock');
 const lock = new AsyncLock();
 

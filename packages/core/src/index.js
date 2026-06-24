@@ -13,23 +13,22 @@ const {createTaskManager} = require('./taskManager');
 let manifest = require(`../package.json`);
 // 2、设置当前工作目录
 manifest.workspace = process.cwd();
-// 3、加载内嵌资源（dev 模式读文件，webpack 构建时通过 asset/source/inline 内联）
-function tryLoadResource(relPath, encoding) {
-  try {
-    const raw = require(relPath);
-    if (encoding === 'base64') {
-      if (typeof raw === 'string' && raw.includes(';base64,')) return raw.split(';base64,')[1];
-      return Buffer.from(raw, 'binary').toString('base64');
-    }
-    return raw;
-  } catch {
-    const fullPath = require('node:path').join(__dirname, relPath);
-    return require('node:fs').readFileSync(fullPath, encoding || 'utf8');
-  }
+// 3、加载内嵌资源（webpack 通过 asset/source/inline + 字面量 require 内联；dev 模式从磁盘读文件）
+const _pj = require('node:path');
+const _fs = require('node:fs');
+try { manifest.readme = require('../../../README.md'); } catch {
+  try { manifest.readme = _fs.readFileSync(_pj.join(__dirname, '../../../README.md'), 'utf8'); } catch { manifest.readme = ''; }
 }
-manifest.readme = tryLoadResource('../../../README.md', 'utf8');
-manifest.changelog = tryLoadResource('../../../CHANGELOG.md', 'utf8');
-manifest.icon = tryLoadResource('../icon.ico', 'base64');
+try { manifest.changelog = require('../../../CHANGELOG.md'); } catch {
+  try { manifest.changelog = _fs.readFileSync(_pj.join(__dirname, '../../../CHANGELOG.md'), 'utf8'); } catch { manifest.changelog = ''; }
+}
+try {
+  const r = require('../icon.ico');
+  if (typeof r === 'string' && r.includes(';base64,')) manifest.icon = r.split(';base64,')[1];
+  else manifest.icon = Buffer.from(r, 'binary').toString('base64');
+} catch {
+  try { manifest.icon = _fs.readFileSync(_pj.join(__dirname, '../icon.ico'), 'base64'); } catch { manifest.icon = null; }
+}
 
 /**
  * 定义一个完整模块
