@@ -20,3 +20,4 @@ taskManager/.npmrc
 /packages/core/config.json
 /packages/desktop/installer
 /packages/desktop/CONOUT$
+/CONOUT$
