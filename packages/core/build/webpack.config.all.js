@@ -42,9 +42,12 @@ module.exports = {
                 parser: {dynamicImportMode: 'eager'},
             },
             {
-                test: /\.(js|mjs|node)$/,
-                loader: '@vercel/webpack-asset-relocator-loader',
-                options: { outputAsset: false },
+                test: /\.node$/,
+                // ✅ 什么都不做，只拷贝
+                type: 'asset/resource',
+                generator: {
+                    filename: '[name][ext]'
+                }
             },
             {test: /\.md$/, type: 'asset/source'},
             {test: /\.ico$/, type: 'asset/inline'},
@@ -58,6 +61,8 @@ module.exports = {
         }),
     ],
     externals: {
-        'encoding': 'commonjs encoding'
+        'encoding': 'commonjs encoding',
+        // ✅ 告诉 webpack：别管 .node 文件
+        '.node': 'commonjs .node'
     },
 };

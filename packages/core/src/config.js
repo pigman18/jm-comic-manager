@@ -2,18 +2,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const os = require('node:os');
+const {appDataDir} = require('../util/app');
 
 const CHANGE = 'handleChangeConfig';
-
-function appDataDir() {
-    const app = 'JmComicManager';
-    switch (process.platform) {
-        case 'win32': return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), app);
-        case 'darwin': return path.join(os.homedir(), 'Library', 'Application Support', app);
-        default: return path.join(os.homedir(), '.config', app);
-    }
-}
 
 let defaultConfig = {
     "username": "",

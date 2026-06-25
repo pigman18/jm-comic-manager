@@ -53,7 +53,17 @@ function saveB64Image(base64, filename) {
     try { fs.writeFileSync(fp, buf); return fp; } catch { return null; }
 }
 
+function appDataDir() {
+    const app = 'JmComicManager';
+    switch (process.platform) {
+        case 'win32': return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), app);
+        case 'darwin': return path.join(os.homedir(), 'Library', 'Application Support', app);
+        default: return path.join(os.homedir(), '.config', app);
+    }
+}
+
 module.exports = {
     resolveAppId,
-    saveB64Image
-}
+    saveB64Image,
+    appDataDir
+};
