@@ -3,7 +3,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const toast = require('powertoast');
-const { setProgress, setIndeterminate, setError } = require('taskbar-progress');
 
 const { PHASE, STATE, STEP } = require('./protocol');
 const {saveB64Image} = require('../util/app');
@@ -40,6 +39,34 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
 
     let tasks = [];
     let serverRef = null;
+
+    /**
+     * 设置任务栏进度条
+     * @param {number} value -1 清除，0~1 显示进度
+     */
+    function setProgress(value) {
+        const { extractNative } = require('../embed/extract.js');
+        const addon = extractNative('taskbar_progress');
+        return addon.setProgress(value);
+    }
+
+    /**
+     * 不确定进度（滚动绿光）
+     */
+    function setIndeterminate() {
+        const { extractNative } = require('../embed/extract.js');
+        const addon = extractNative('taskbar_progress');
+        return addon.setIndeterminate();
+    }
+
+    /**
+     * 错误态（红色）
+     */
+    function setError() {
+        const { extractNative } = require('../embed/extract.js');
+        const addon = extractNative('taskbar_progress');
+        return addon.setError();
+    }
 
     function setServer(server) { serverRef = server; }
 
