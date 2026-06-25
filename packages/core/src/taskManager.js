@@ -51,6 +51,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
     function setIndeterminate() { try { _taskbar?.setIndeterminate() } catch {} }
     function setError() { try { _taskbar?.setError() } catch {} }
 
+
     function setServer(server) { serverRef = server; }
 
     function broadcast(msg) {
@@ -320,13 +321,15 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             saveTasks();
             broadcast({ type: 'completed', id: task.id });
             updateTaskbarProgress();
+            let appIcon =  (manifest.icon && 'Microsoft.Windows.Shell.RunDialog' === manifest.appId) ? saveB64Image(manifest.icon, 'icon.ico') : null;
+            let comicIcon = task.coverBase64 ? saveB64Image(task.coverBase64, task.id + '.png') : null;
             if (config.toast) {
                 await toast({
                     appID: manifest.appId,
                     title: '\u2705 \u4E0B\u8F7D\u5B8C\u6210',
                     message: task.name || `JM${task.number}`,
-                    icon: (manifest.icon && 'Microsoft.Windows.Shell.RunDialog' === manifest.appId) ? saveB64Image(manifest.icon, 'icon.ico') : null,
-                    headerImg: task.coverBase64 ? saveB64Image(task.coverBase64, task.id + '.png') : null,
+                    icon: appIcon,
+                    headerImg: comicIcon,
                 });
             }
         } catch (e) {
