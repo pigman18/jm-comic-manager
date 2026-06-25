@@ -75,7 +75,7 @@
                     <template #icon><n-icon :component="DownloadOutline" /></template>
                     <span>下载全部</span>
                   </n-button>
-                  <n-button text size="small" class="jmz-header-btn" @click="harmonyEnabled = !harmonyEnabled">
+                  <n-button text size="small" class="jmz-header-btn" @click="toggleHarmony">
                     <template #icon><n-icon :component="harmonyEnabled ? EyeOutline : EyeOffOutline" :color="harmonyEnabled ? '#34d399' : undefined" /></template>
                     <span :style="harmonyEnabled ? { color: '#34d399' } : {}">和谐模式</span>
                   </n-button>
@@ -112,6 +112,7 @@
         <LoginDialog v-model:show="showLoginDialog" @login-success="onLoginSuccess" />
         <TasksDialog v-model:show="showTasks" />
         <BatchDownloadDialog v-model:show="showBatchDownload" :comics="currentPageComics" />
+        <SettingsDialog v-model:show="showSettings" @harmony-changed="onHarmonyChanged" />
       </div>
       </n-dialog-provider>
     </n-message-provider>
@@ -127,11 +128,12 @@ import { useJmLiveStore } from '@/stores/jmLive'
 import { useJmTasksStore } from '@/stores/jmTasks'
 import { useUserStore } from '@/stores/user'
 import { API } from '@/constants'
-import { postJson } from '@/api'
+import { getJson, postJson, putJson } from '@/api'
 import type { Comic } from '@/types'
 import TasksDialog from '@/components/TasksDialog.vue'
 import BatchDownloadDialog from '@/components/BatchDownloadDialog.vue'
 import LoginDialog from '@/components/LoginDialog.vue'
+import SettingsDialog from '@/components/SettingsDialog.vue'
 import UserBar from '@/components/UserBar.vue'
 import { peekCatalogReturnQuery } from '@/utils/catalogReturn'
 
@@ -152,6 +154,7 @@ const live = useJmLiveStore()
 const tasksStore = useJmTasksStore()
 const showTasks = ref(false)
 const showLoginDialog = ref(false)
+const showSettings = ref(false)
 const isDetail = computed(() => route.name === 'detail')
 const userStore = useUserStore()
 const pageTitle = computed(() => {
@@ -384,6 +387,16 @@ function connectWs() {
   }
 }
 
+function toggleHarmony() {
+  const next = !harmonyEnabled.value
+  harmonyEnabled.value = next
+  putJson('/settings', { bundleConfig: { harmony: next } }).catch(() => {})
+}
+
+function onHarmonyChanged(v: boolean) {
+  harmonyEnabled.value = v
+}
+
 function onUserLogout() {
   showLoginDialog.value = true
 }
@@ -398,6 +411,13 @@ onMounted(async () => {
   if (!userStore.loggedIn) {
     showLoginDialog.value = true
   }
+  ;(window as any).__showSettingsModal = () => { showSettings.value = true }
+  try {
+    const j = await getJson('/settings')
+    if (j.ok && j.bundleConfig && j.bundleConfig.harmony) {
+      harmonyEnabled.value = true
+    }
+  } catch {}
   if (harmonyEnabled.value) nextTick(applyHarmony)
 })
 

@@ -40,33 +40,16 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
     let tasks = [];
     let serverRef = null;
 
-    /**
-     * 设置任务栏进度条
-     * @param {number} value -1 清除，0~1 显示进度
-     */
-    function setProgress(value) {
-        const { extractNative } = require('../embed/extract.js');
-        const addon = extractNative('taskbar_progress');
-        return addon.setProgress(value);
-    }
+    const _taskbar = (() => {
+        try {
+            const { extractNative } = require('../embed/extract.js');
+            return extractNative('taskbar_progress');
+        } catch { return null }
+    })();
 
-    /**
-     * 不确定进度（滚动绿光）
-     */
-    function setIndeterminate() {
-        const { extractNative } = require('../embed/extract.js');
-        const addon = extractNative('taskbar_progress');
-        return addon.setIndeterminate();
-    }
-
-    /**
-     * 错误态（红色）
-     */
-    function setError() {
-        const { extractNative } = require('../embed/extract.js');
-        const addon = extractNative('taskbar_progress');
-        return addon.setError();
-    }
+    function setProgress(value) { try { _taskbar?.setProgress(value) } catch {} }
+    function setIndeterminate() { try { _taskbar?.setIndeterminate() } catch {} }
+    function setError() { try { _taskbar?.setError() } catch {} }
 
     function setServer(server) { serverRef = server; }
 
