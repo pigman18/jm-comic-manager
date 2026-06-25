@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const toast = require('powertoast');
+const { setProgress, setIndeterminate, setError } = require('taskbar-progress');
 
 const { PHASE, STATE, STEP } = require('./protocol');
 const {saveB64Image} = require('../util/app');
@@ -140,6 +141,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
                     name: task.name,
                 },
             });
+            updateTaskbarProgress();
         }
     };
 
@@ -147,6 +149,16 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
     const MAX_CONCURRENT = 5;
     const _lastProgress = {};
     const abortControllers = new Map();
+
+    function updateTaskbarProgress() {
+      const downloading = tasks.filter(t => t.status === 'downloading');
+      if (downloading.length === 0) { setProgress(-1); return; }
+      const withProgress = downloading.filter(t => t.progress > 0 && t.totalSize > 0);
+      if (withProgress.length > 0) {
+        const avg = withProgress.reduce((s, t) => s + t.progress, 0) / withProgress.length;
+        setProgress(Math.min(1, avg));
+      } else { setIndeterminate(); }
+    }
 
     function _updateSpeed(task, complete) {
         const elapsed = Date.now() - task.addedDate;
@@ -210,6 +222,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
         task.status = 'downloading';
         saveTasks();
         broadcast({ type: 'started', id: task.id, task: { status: 'downloading', stepStatus: stepStatusLabel(task.step, task.stepState, stepLabels, task.payload) } });
+        updateTaskbarProgress();
 
         // 有 withMeta 时用元信息补充标签，无 displayTitle 时再补 name / cover
         if (task.withMeta) {
@@ -296,6 +309,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             }
             saveTasks();
             broadcast({ type: 'completed', id: task.id });
+            updateTaskbarProgress();
             if (config.toast) {
                 await toast({
                     appID: manifest.appId,
@@ -311,6 +325,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             task.error = e.message || String(e);
             saveTasks();
             broadcast({ type: 'error', id: task.id, error: task.error });
+            updateTaskbarProgress();
         }
     }
 
@@ -331,6 +346,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
         }
         saveTasks();
         broadcast({ type: 'removed', id });
+        updateTaskbarProgress();
     }
 
     function startTask(id) {
@@ -362,6 +378,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
         }
         saveTasks();
         broadcast({ type: 'paused', id });
+        updateTaskbarProgress();
     }
 
     function markTaskError(number, message) {
@@ -371,6 +388,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
         task.error = message;
         saveTasks();
         broadcast({ type: 'error', id: task.id, error: message });
+        updateTaskbarProgress();
         return true;
     }
 

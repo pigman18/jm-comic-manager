@@ -271,7 +271,7 @@ function tryApplyHarmonyImg(img: HTMLImageElement, origSrc: string, tempImg?: HT
 }
 
 function createHarmonyDataUrl(srcImg: HTMLImageElement, outW: number, outH: number): string {
-  const BLOCK = 24
+  const BLOCK = 108
   const bw = Math.max(1, Math.ceil(outW / BLOCK))
   const bh = Math.max(1, Math.ceil(outH / BLOCK))
   const tiny = document.createElement('canvas')
