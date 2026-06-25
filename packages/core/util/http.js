@@ -1,7 +1,7 @@
 const axios = require('axios');
 const fs = require('node:fs');
 const path = require('node:path');
-const {touchFileSync, isNotEmptySync} = require('./file');
+const {touchFileSync, renameSync} = require('./file');
 let {logStart, logRunning, logDone, logError, logProgress, logDoneProgress} = require('./log');
 
 /**
@@ -428,7 +428,10 @@ async function downloadResume(url, filePath, options = {}) {
                 if (signal.aborted) { onAbort(); return; }
                 signal.addEventListener('abort', onAbort, { once: true });
             }
-            writer.on('finish', () => { fs.renameSync(tmpPath, filePath); resolve(); });
+            writer.on('finish', () => {
+                renameSync(tmpPath, filePath);
+                resolve();
+            });
             writer.on('error', (err) => { reject(err); });
             resp.data.on('error', (err) => { reject(err); });
         });

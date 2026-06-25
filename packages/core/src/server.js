@@ -107,6 +107,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         }
         if (o.cover) o.cover = toFileUrl(o.cover);
         if (Array.isArray(o.zoomImages)) o.zoomImages = o.zoomImages.map((x) => toFileUrl(x));
+        if (Array.isArray(o.images)) o.images = o.images.map((x) => toFileUrl(x));
         return o;
     }
 
