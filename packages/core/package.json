@@ -47,7 +47,7 @@
     "powertoast": "^1.2.3",
     "socks-proxy-agent": "^10.0.0",
     "supports-color": "^10.2.2",
-    "taskbar-progress": "^1.0.3",
+    "taskbar-progress": "^1.0.5",
     "tough-cookie": "^6.0.1",
     "tunnel": "^0.0.6",
     "typescript": "^5.9.3",
