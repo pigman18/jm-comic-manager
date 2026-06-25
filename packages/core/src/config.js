@@ -29,7 +29,8 @@ let defaultConfig = {
     "cookie": "",
     "debug": false,
     "toast": false,
-    "proxy": null
+    "proxy": null,
+    "harmony": false
 };
 
 /**
