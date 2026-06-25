@@ -37,6 +37,12 @@
                 </div>
               </div>
             </div>
+            <div v-if="previewImages.length" class="jmt-meta-previews">
+              <div class="jmt-prev-title">预览图</div>
+              <div class="jmt-prev-grid">
+                <img v-for="(img, i) in previewImages" :key="i" class="jmt-prev-img xxx-img" :src="img" :alt="`预览 ${i + 1}`" />
+              </div>
+            </div>
             <section class="jmt-meta-zip">
               <div class="jmt-ep-list-header">
                 <div class="jmt-ep-list-header-left">
@@ -133,6 +139,7 @@ function isRead(zipKey: string) {
 
 const loading = ref(true)
 const comic = ref<Comic | null>(null)
+const previewImages = computed(() => (comic.value?.images || []).slice(1))
 
 const zipStatus = ref<Record<string, ZipStatus>>({})
 const pend = ref<Set<string>>(new Set())
@@ -507,6 +514,28 @@ function fmtBytes(n: number) {
 .jmt-meta-chips .jmz-chip {
   font-size: 12px;
   padding: 5px 9px;
+}
+
+/* --- preview images --- */
+.jmt-meta-previews {
+  margin-bottom: 8px;
+}
+.jmt-prev-title {
+  font-size: 13px;
+  color: #7a7a8a;
+  margin-bottom: 6px;
+}
+.jmt-prev-grid {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.jmt-prev-img {
+  height: 120px;
+  border-radius: 4px;
+  border: 1px solid #2e2e35;
+  flex-shrink: 0;
 }
 
 /* --- zip section --- */

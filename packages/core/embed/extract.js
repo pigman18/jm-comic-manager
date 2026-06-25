@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const Module = require('module');
 const os = require('os');
 
 // ============ 配置 ============
@@ -76,11 +77,11 @@ function extractNative(name) {
 function loadAddon(filePath, name) {
     try {
         // return require(filePath);
-        process.dlopen(
-            module,
-            path.resolve(filePath)
-        );
-        return module.exports;
+        const mod = new Module(filePath, module);
+        mod.exports = {};
+        mod.filename = path.resolve(filePath);
+        process.dlopen(mod, mod.filename);
+        return mod.exports;
     } catch (err) {
         throw new Error(`extractNative: failed to load "${name}": ${err.message}`);
     }
