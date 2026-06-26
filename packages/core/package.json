@@ -10,7 +10,6 @@
   "description": "用于JM漫画的快速导航和下载，仅供研究学习禁止用于其他用途！",
   "scripts": {
     "build": "node build/build.mjs",
-    "prebuild": "node build/embed-node.js",
     "help": "node src/index.js --help",
     "album:meta": "node src/index.js album:meta",
     "album:download": "node src/index.js album:download",
@@ -47,7 +46,7 @@
     "powertoast": "^1.2.3",
     "socks-proxy-agent": "^10.0.0",
     "supports-color": "^10.2.2",
-    "taskbar-progress": "^1.0.5",
+    "taskbar-progress": "^1.1.0",
     "tough-cookie": "^6.0.1",
     "tunnel": "^0.0.6",
     "typescript": "^5.9.3",
