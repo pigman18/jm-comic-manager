@@ -214,17 +214,11 @@ function createStore(manifest, ctx, message, config, crawler) {
             )
         `);
         database.exec('CREATE INDEX IF NOT EXISTS idx_meta_tag_tag ON comic_meta_tag(tag)');
-        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_ai AFTER INSERT ON comic_meta BEGIN
-            INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
-            SELECT new.id, t.value FROM json_each(new.tags) t;
-        END`);
+        // 保留 DELETE 级联触发器，INSERT/UPDATE 改为显式管理避免偶发 UNIQUE 冲突
+        database.exec(`DROP TRIGGER IF EXISTS comic_meta_tag_ai`);
+        database.exec(`DROP TRIGGER IF EXISTS comic_meta_tag_au`);
         database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_ad AFTER DELETE ON comic_meta BEGIN
             DELETE FROM comic_meta_tag WHERE comic_id = old.id;
-        END`);
-        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_au AFTER UPDATE ON comic_meta BEGIN
-            DELETE FROM comic_meta_tag WHERE comic_id = old.id;
-            INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
-            SELECT new.id, t.value FROM json_each(new.tags) t;
         END`);
         // 自动同步标签表：已有数据但关联表为空
         try {
@@ -245,6 +239,17 @@ function createStore(manifest, ctx, message, config, crawler) {
         return database;
     }
 
+    function syncComicTags(conn, comicId, tagsJson) {
+        conn.prepare('DELETE FROM comic_meta_tag WHERE comic_id = ?').run(comicId);
+        const tags = JSON.parse(tagsJson || '[]');
+        if (!tags.length) return;
+        const stmt = conn.prepare('INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag) VALUES (?, ?)');
+        for (const t of tags) {
+            const tag = String(t).trim();
+            if (tag) stmt.run([comicId, tag]);
+        }
+    }
+
     async function saveOrUpdateBatch(anyList, toRow) {
         let conn = await connect();
         conn.exec('BEGIN TRANSACTION');
@@ -253,6 +258,7 @@ function createStore(manifest, ctx, message, config, crawler) {
             let row = await toRow(obj);
             if (row) {
                 stmt.run(row);
+                syncComicTags(conn, row.id, row.tags);
             }
         }
         conn.exec('COMMIT');
@@ -262,6 +268,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         let conn = await connect();
         const stmt = conn.prepare(insertSQl);
         stmt.run(row);
+        syncComicTags(conn, row.id, row.tags);
     }
 
     // ============ comicMeta sub-module ============

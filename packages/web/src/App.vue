@@ -91,10 +91,18 @@
                     <template #icon><n-icon :component="DownloadOutline" /></template>
                     <span>下载全部</span>
                   </n-button>
-                  <n-button text size="small" class="jmz-header-btn" @click="toggleHarmony">
-                    <template #icon><n-icon :component="harmonyEnabled ? EyeOutline : EyeOffOutline" :color="harmonyEnabled ? '#34d399' : undefined" /></template>
-                    <span :style="harmonyEnabled ? { color: '#34d399' } : {}">和谐模式</span>
-                  </n-button>
+                  <n-popover trigger="hover" placement="bottom" :width="180" :disabled="!harmonyEnabled">
+                    <template #trigger>
+                      <n-button text size="small" class="jmz-header-btn" @click="toggleHarmony">
+                        <template #icon><n-icon :component="harmonyEnabled ? EyeOutline : EyeOffOutline" :color="harmonyEnabled ? '#34d399' : undefined" /></template>
+                        <span :style="harmonyEnabled ? { color: '#34d399' } : {}">和谐模式</span>
+                      </n-button>
+                    </template>
+                    <div class="jmz-harmony-threshold">
+                      <span class="jmz-ht-label">和谐阈值: {{ harmonyThreshold }}</span>
+                      <n-slider v-model:value="harmonyThreshold" :min="1" :max="100" :step="1" @update:value="onThresholdChange" />
+                    </div>
+                  </n-popover>
                   <n-button text size="small" class="jmz-header-btn" @click="doSign" :loading="signLoading">
                     <template #icon><n-icon :component="CalendarOutline" /></template>
                     <span>每日签到</span>
@@ -201,6 +209,8 @@ const showBatchDownload = ref(false)
 
 const harmonyEnabled = ref(localStorage.getItem('harmonyEnabled') === 'true')
 provide('harmonyEnabled', harmonyEnabled)
+const harmonyThreshold = ref(Number(localStorage.getItem('harmonyThreshold')) || 50)
+provide('harmonyThreshold', harmonyThreshold)
 provide('applyHarmony', applyHarmony)
 provide('harmonyText', (text: string) => harmonyText(text))
 watch(harmonyEnabled, (v) => {
@@ -218,6 +228,8 @@ function harmonyText(text: string): string {
   if (!text) return text
   return text.replace(_sensitiveRe, match => '*'.repeat(match.length))
 }
+let _harmonyObserver: MutationObserver | null = null
+
 function applyHarmony() {
   document.documentElement.classList.toggle('harmonize', harmonyEnabled.value)
   if (harmonyEnabled.value) {
@@ -226,44 +238,20 @@ function applyHarmony() {
       if (!el.dataset.orig) el.dataset.orig = el.textContent || ''
       el.textContent = harmonyText(el.dataset.orig)
     })
-    document.querySelectorAll('.xxx-img').forEach(el => {
-      if (!(el instanceof HTMLImageElement)) return
-      if (el.dataset._harmonyPending) return
-      if (el.src === el.dataset._harmonySrc) return
-      // immediately stop original from loading, so the spinner stays
-      const origSrc = el.src
-      if (!origSrc || origSrc.startsWith('data:')) {
-        // already a data URL or no src, process directly if loaded
-        if (el.complete && el.naturalWidth > 0) { tryApplyHarmonyImg(el, origSrc); return }
-        el.dataset._harmonyPending = '1'
-        el.addEventListener('load', () => {
-          delete el.dataset._harmonyPending
-          if (!harmonyEnabled.value) return
-          tryApplyHarmonyImg(el, el.src)
-        }, { once: true })
-        return
-      }
-      el.dataset._harmonyOrig = origSrc
-      el.removeAttribute('src')
-      el.dataset._harmonyPending = '1'
-      const temp = new Image()
-      temp.crossOrigin = 'anonymous'
-      temp.onload = () => {
-        tryApplyHarmonyImg(el, origSrc, temp)
-      }
-      temp.onerror = () => {
-        // fallback: let the original image show
-        el.src = origSrc
-        delete el.dataset._harmonyPending
-        el.addEventListener('load', () => {
-          delete el.dataset._harmonyPending
-          if (!harmonyEnabled.value) return
-          tryApplyHarmonyImg(el, origSrc)
-        }, { once: true })
-      }
-      temp.src = origSrc
-    })
+    processImages(document.querySelectorAll('.xxx-img'))
+    if (!_harmonyObserver) {
+      _harmonyObserver = new MutationObserver(muts => {
+        for (const m of muts) {
+          for (const n of m.addedNodes) {
+            if (n instanceof HTMLImageElement && n.matches('.xxx-img')) { tryProcessImg(n); continue }
+            if (n instanceof Element) { const imgs = n.querySelectorAll('.xxx-img'); if (imgs.length) processImages(imgs) }
+          }
+        }
+      })
+      _harmonyObserver.observe(document.getElementById('jm-app-root')!, { childList: true, subtree: true })
+    }
   } else {
+    if (_harmonyObserver) { _harmonyObserver.disconnect(); _harmonyObserver = null }
     document.querySelectorAll('.xxx-text').forEach(el => {
       if (!(el instanceof HTMLElement)) return
       if (el.dataset.orig) el.textContent = el.dataset.orig
@@ -281,12 +269,35 @@ function applyHarmony() {
   }
 }
 
-function tryApplyHarmonyImg(img: HTMLImageElement, origSrc: string, tempImg?: HTMLImageElement) {
+function tryProcessImg(el: HTMLImageElement) {
+  if (el.dataset._harmonyPending) return
+  if (el.src === el.dataset._harmonySrc) return
+  if (el.complete && el.naturalWidth > 0) {
+    tryApplyHarmonyImg(el, el.src)
+    return
+  }
+  el.dataset._harmonyPending = '1'
+  el.addEventListener('load', () => {
+    delete el.dataset._harmonyPending
+    if (!harmonyEnabled.value) return
+    tryApplyHarmonyImg(el, el.src)
+  }, { once: true })
+}
+
+function processImages(list: NodeListOf<Element> | NodeListOf<HTMLImageElement>) {
+  list.forEach(el => {
+    if (!(el instanceof HTMLImageElement)) return
+    tryProcessImg(el)
+  })
+}
+
+function tryApplyHarmonyImg(img: HTMLImageElement, origSrc: string) {
   delete img.dataset._harmonyPending
+  img.dataset._harmonyOrig = origSrc
   try {
     const dw = parseInt(img.getAttribute('width') || '240', 10)
     const dh = parseInt(img.getAttribute('height') || '320', 10)
-    const dataUrl = createHarmonyDataUrl(tempImg || img, dw, dh)
+    const dataUrl = createHarmonyDataUrl(img, dw, dh, harmonyThreshold.value)
     img.dataset._harmonySrc = dataUrl
     img.src = dataUrl
   } catch {
@@ -382,7 +393,23 @@ function connectWs() {
 function toggleHarmony() {
   const next = !harmonyEnabled.value
   harmonyEnabled.value = next
-  putJson('/settings', { bundleConfig: { harmony: next } }).catch(() => {})
+  putJson('/settings', { bundleConfig: { harmony: next, harmonyThreshold: harmonyThreshold.value } }).catch(() => {})
+}
+
+function onThresholdChange(val: number) {
+  localStorage.setItem('harmonyThreshold', String(val))
+  putJson('/settings', { bundleConfig: { harmonyThreshold: val } }).catch(() => {})
+  // re-process all harmony images with new threshold
+  document.querySelectorAll('.xxx-img').forEach(el => {
+    if (!(el instanceof HTMLImageElement)) return
+    delete el.dataset._harmonySrc
+    delete el.dataset.harmonyReady
+    delete el.dataset._harmonyPending
+    if (el.dataset._harmonyOrig) {
+      el.src = el.dataset._harmonyOrig
+    }
+  })
+  nextTick(applyHarmony)
 }
 
 function onHarmonyChanged(v: boolean) {
@@ -406,8 +433,9 @@ onMounted(async () => {
   ;(window as any).__showSettingsModal = () => { showSettings.value = true }
   try {
     const j = await getJson('/settings')
-    if (j.ok && j.bundleConfig && j.bundleConfig.harmony) {
-      harmonyEnabled.value = true
+    if (j.ok && j.bundleConfig) {
+      if (j.bundleConfig.harmony) harmonyEnabled.value = true
+      if (j.bundleConfig.harmonyThreshold != null) harmonyThreshold.value = j.bundleConfig.harmonyThreshold
     }
   } catch {}
   if (harmonyEnabled.value) nextTick(applyHarmony)
@@ -417,6 +445,7 @@ onUnmounted(() => {
   if (pingTimer) clearInterval(pingTimer)
   if (reconnectTimer) clearTimeout(reconnectTimer)
   ws?.close()
+  if (_harmonyObserver) _harmonyObserver.disconnect()
 })
 </script>
 
@@ -634,6 +663,15 @@ onUnmounted(() => {
 
 .harmonize img.xxx-img {
   opacity: 0 !important;
+}
+.jmz-harmony-threshold {
+  padding: 4px 0;
+}
+.jmz-ht-label {
+  font-size: 12px;
+  color: #c4c4d6;
+  margin-bottom: 6px;
+  display: block;
 }
 .harmonize img.xxx-img[data-harmony-ready] {
   opacity: 1 !important;

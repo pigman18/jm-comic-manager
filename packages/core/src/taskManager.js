@@ -325,7 +325,14 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             let comicIcon = null;
             if (task.coverBase64) {
                 if (config.harmony) {
-                    comicIcon = null;
+                    try {
+                        const raw = task.coverBase64.replace(/^data:image\/\w+;base64,/, '');
+                        const pixelated = await harmonizeImage(Buffer.from(raw, 'base64'), 120, 160, config.harmonyThreshold || 50);
+                        const b64 = `data:image/jpeg;base64,${pixelated.toString('base64')}`;
+                        comicIcon = saveB64Image(b64, task.id + '.png');
+                    } catch (_) {
+                        comicIcon = saveB64Image(task.coverBase64, task.id + '.png');
+                    }
                 } else {
                     comicIcon = saveB64Image(task.coverBase64, task.id + '.png');
                 }

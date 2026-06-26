@@ -181,3 +181,31 @@
 - **禁止** JS 逻辑不生效时只盯着 JS 改 — 先检查 CSS 布局：目标元素（含其父容器）是否有宽高、是否被 `overflow: hidden` 裁剪、z-index 是否正确。用浏览器 DevTools 检查是最快的方式
 - **禁止** 遇到视觉问题时不先看同类实现的结构差异 — 同样都是 "spinner 覆盖在图片上"，ComicCard 的父容器有 `aspect-ratio: 3/4` 而 MetaPage 没有，一眼就能看出差异。先 grep 同类实现，对比 CSS 差异，再动手改
 - **禁止** 连续 3 次同一方向失败后仍然加更多 JS 逻辑 — 第 3 次还没解决就应该去查 CSS 了，而不是换第 4 种 JS 方案
+
+## 2026-06-27 教训：Harmony 图片处理的 MutationObserver 方案
+
+### 问题
+HomePage 的和谐图片一直黑屏。Toggle 和谐关/开才能恢复。
+
+### 根因
+**`applyHarmony()` 运行时 HomePage 的图片还没渲染**。
+- App.vue mount → `applyHarmony()` 跑了一次 → 此时 HomePage 还在 `loading=true`，没有 `.xxx-img` 元素
+- HomePage 数据加载完 → ComicCards 渲染出 `.xxx-img` → 没有再次触发 `applyHarmony()`
+- CSS `.harmonize img.xxx-img { opacity: 0 !important; }` 让所有 `xxx-img` 不可见
+- 没有 `data-harmony-ready` 被设置 → 图片永久透明 → 黑屏
+
+### 之前错误方向
+- 以为是图片懒加载/CORS 问题：改了 `applyHarmony()` 中 `xxx-img` 的处理逻辑（去掉 crossOrigin temp Image）
+- 但其实 HomePage 的数据加载路径根本没走到 `xxx-img` 处理
+
+### 正确方案
+**用 `MutationObserver` 持续监听新 `.xxx-img` 元素**，而不是依赖调用时序：
+- `applyHarmony()` 开启时，在 `#jm-app-root` 上挂一个 `MutationObserver({ childList: true, subtree: true })`
+- 任何新增的 `.xxx-img` 元素都会自动被 `tryProcessImg()` 处理（已加载的直接处理，未加载的等 load 事件）
+- 关闭和谐时 disconnect observer
+- 一次开启，全应用覆盖，不再需要每个页面 inject/manual call
+
+### 对应禁止事项
+- **禁止** 依赖调用时序处理动态 DOM — `applyHarmony()` mount 时跑一次 = HomePage 数据还没来。数据来了 = 没人再调 `applyHarmony()`。必须用 `MutationObserver` 或 `watch` 新数据源
+- **禁止** 当"某个功能在部分页面黑屏"时，只排查该页面的图片加载细节 — `applyHarmony()` 是否跑过、跑的时候目标 DOM 是否存在，比图片加载方式更先排查
+- **禁止** 设计全局 DOM 处理函数时不考虑"新元素后来才出现"的场景 — 用 `MutationObserver` 观察根节点，让新元素自动被处理，而不是依赖外部调用的时序
