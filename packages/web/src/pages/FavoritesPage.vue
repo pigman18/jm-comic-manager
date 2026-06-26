@@ -69,14 +69,17 @@
       </div>
     </div>
 
-    <div v-if="total > 0" class="jmz-fav-footer">
-      <n-pagination
-        v-model:page="currentPage"
-        :page-count="pageCount"
-        :page-slot="5"
-        size="small"
-        @update:page="onPageChange"
-      />
+    <div v-if="total > 0" class="jmz-pager-footer">
+      <div class="jmz-pager-pagination">
+        <n-pagination
+          v-model:page="currentPage"
+          :page-count="pageCount"
+          :page-slot="5"
+          size="small"
+          @update:page="onPageChange"
+        />
+      </div>
+      <div v-if="total > 0" class="jmz-pager-info">共 {{ total }} 条</div>
     </div>
   </div>
   <MetaPageDialog v-model:show="metaDialogShow" :num="metaDialogNum" />
@@ -481,12 +484,6 @@ async function onDeleteFolder() {
   padding: 0 12px;
 }
 
-.jmz-fav-footer {
-  flex-shrink: 0;
-  padding: 12px;
-  display: flex;
-  justify-content: center;
-}
 
 .jmz-card-grid-wrap {
   position: relative;

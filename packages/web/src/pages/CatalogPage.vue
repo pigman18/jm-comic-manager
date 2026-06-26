@@ -438,17 +438,20 @@ const orderOptions = [
         </div>
       </div>
     </div>
-    <div v-if="total > 0" class="jmz-catalog-footer">
-      <n-pagination
-          v-model:page="filters.page"
-          v-model:page-size="filters.pageSize"
-          :page-count="Math.ceil(total / filters.pageSize)"
-          :page-sizes="[10, 20, 30, 40, 50]"
-          :show-size-picker="true"
-          :simple="false"
-          @update:page="onPageChange"
-          @update:page-size="onPageChange"
-      />
+    <div v-if="total > 0" class="jmz-pager-footer">
+      <div class="jmz-pager-pagination">
+        <n-pagination
+            v-model:page="filters.page"
+            v-model:page-size="filters.pageSize"
+            :page-count="Math.ceil(total / filters.pageSize)"
+            :page-sizes="[10, 20, 30, 40, 50]"
+            :show-size-picker="true"
+            :simple="false"
+            @update:page="onPageChange"
+            @update:page-size="onPageChange"
+        />
+      </div>
+      <div v-if="total > 0" class="jmz-pager-info">共 {{ total }} 条</div>
     </div>
   </div>
   <MetaPageDialog v-model:show="metaDialogShow" :num="metaDialogNum" :fetch-remote="false" />
@@ -742,11 +745,5 @@ const orderOptions = [
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: #6a6a7a;
-}
-.jmz-catalog-footer {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  padding: 12px;
 }
 </style>

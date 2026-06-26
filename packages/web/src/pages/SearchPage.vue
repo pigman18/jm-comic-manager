@@ -231,8 +231,8 @@ function onCoverErr(e: Event, id: number) {
       </div>
     </div>
 
-    <div v-if="(pages > 1 || total > 0) && list.length > 0" class="jmz-search-footer">
-      <div class="jmz-search-pager">
+    <div v-if="(pages > 1 || total > 0) && list.length > 0" class="jmz-pager-footer">
+      <div class="jmz-pager-pagination">
         <n-pagination
           v-model:page="currentPage"
           :page-count="pages"
@@ -241,9 +241,7 @@ function onCoverErr(e: Event, id: number) {
           @update:page="doSearch"
         />
       </div>
-      <div v-if="total > 0" class="jmz-search-info">
-        共 {{ total }} 条结果
-      </div>
+      <div v-if="total > 0" class="jmz-pager-info">共 {{ total }} 条</div>
     </div>
   </div>
   <MetaPageDialog v-model:show="metaDialogShow" :num="metaDialogNum" />
@@ -342,15 +340,6 @@ function onCoverErr(e: Event, id: number) {
   min-height: 0;
   overflow-y: auto;
   padding: 0 12px;
-}
-
-.jmz-search-footer {
-  flex-shrink: 0;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
 }
 
 .jmz-card-grid {
@@ -530,19 +519,5 @@ function onCoverErr(e: Event, id: number) {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
 }
-
-.jmz-search-pager {
-  margin-top: 12px;
-  display: flex;
-  justify-content: center;
-}
-
-.jmz-search-info {
-  margin-top: 12px;
-  text-align: center;
-  font-size: 13px;
-  color: #7a7a8a;
-}
-
 
 </style>
