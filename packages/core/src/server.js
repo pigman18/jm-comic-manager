@@ -112,7 +112,34 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
     }
 
     /** 向所有已连接前端推送一条 JSON（与爬虫 dispatch 的 payload 一致，由前端自行解析） */
+    let _lastProgressSend = 0;
+    let _pendingProgress = null;
+    let _progressTimer = null;
     function sendMessage(payload) {
+        if (payload && typeof payload === 'object' && payload.type === 'progress') {
+            const now = Date.now();
+            if (now - _lastProgressSend < 200) {
+                _pendingProgress = payload;
+                if (!_progressTimer) {
+                    _progressTimer = setTimeout(() => {
+                        _progressTimer = null;
+                        if (_pendingProgress) {
+                            const p = _pendingProgress;
+                            _pendingProgress = null;
+                            _lastProgressSend = Date.now();
+                            const s = JSON.stringify(p);
+                            for (const ws of progressClients) {
+                                try { ws.send(s); } catch { /* */ }
+                            }
+                        }
+                    }, 200 - (now - _lastProgressSend));
+                }
+                return;
+            }
+            _lastProgressSend = now;
+            _pendingProgress = null;
+        }
+
         const s = typeof payload === 'string' ? payload : JSON.stringify(payload);
         for (const ws of progressClients) {
             try {
