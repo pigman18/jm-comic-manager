@@ -21,3 +21,4 @@ taskManager/.npmrc
 /packages/desktop/installer
 /packages/desktop/CONOUT$
 /CONOUT$
+releases
