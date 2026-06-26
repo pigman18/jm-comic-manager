@@ -874,6 +874,14 @@ function createCrawler(manifest, ctx, message, config) {
     };
 
     const forum = {
+        feed: async (mode = 'all', page = 1) => {
+            let resp = await expireRetry(async () => {
+                return await apiClient.get(`${getApiHost()}/forum`, {
+                    params: { mode, page }
+                });
+            });
+            return resp.data.data || { list: [], total: 0 };
+        },
         list: async (aid, page = 1) => {
             let resp = await expireRetry(async () => {
                 return await apiClient.get(`${getApiHost()}/forum`, {

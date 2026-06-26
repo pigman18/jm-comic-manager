@@ -38,6 +38,10 @@
               <span class="jmz-nav-icon">📢</span>
               <span>推广列表</span>
             </router-link>
+            <router-link :to="{ name: 'forum' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'forum' }">
+              <span class="jmz-nav-icon">💬</span>
+              <span>评论区</span>
+            </router-link>
             <router-link :to="{ name: 'latest' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'latest' }">
               <span class="jmz-nav-icon">🆕</span>
               <span>最新发布</span>
@@ -115,7 +119,7 @@
           </header>
           <main class="jmz-app-main">
             <router-view v-slot="{ Component }">
-              <keep-alive :include="['CatalogPage', 'HomePage', 'SearchPage', 'WeekPage', 'CategoryPage', 'SerialPage', 'PromoteListPage', 'LatestPage', 'FavoritesPage']">
+              <keep-alive :include="['CatalogPage', 'HomePage', 'SearchPage', 'WeekPage', 'CategoryPage', 'SerialPage', 'PromoteListPage', 'ForumPage', 'LatestPage', 'FavoritesPage']">
                 <component :is="Component" />
               </keep-alive>
             </router-view>
@@ -178,6 +182,8 @@ const pageTitle = computed(() => {
     week: '每周必看',
     category: '分类排行',
     serial: '每日连载',
+    'promote-list': '推广列表',
+    forum: '评论区',
     latest: '最新发布',
     favorites: '收藏列表',
     detail: '漫画详情',

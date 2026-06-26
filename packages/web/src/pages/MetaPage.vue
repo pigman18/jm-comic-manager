@@ -5,7 +5,7 @@
         <template #icon><n-icon :component="ArrowBackOutline" /></template>
       </n-button>
       <span class="jmz-meta-head-title xxx-text" v-if="comic">{{ comic.name }}</span>
-      <span class="jmz-meta-head-title" v-else>漫画元数据</span>
+      <span class="jmz-meta-head-title" v-else>JM{{ albumNum }}</span>
     </div>
 
     <div class="jmz-meta-body">
@@ -13,7 +13,10 @@
         <div class="jmt-meta-inner">
           <template v-if="comic">
             <div class="jmt-meta-hero">
-              <div class="jmt-meta-cover-wrap"><img class="jmt-meta-cover xxx-img" :src="comic.cover || ''" :alt="comic.name" /></div>
+              <div class="jmt-meta-cover-wrap">
+                <div v-if="!coverLoaded" class="jmt-cover-spinner"><n-spin size="small" /></div>
+                <img ref="coverRef" class="jmt-meta-cover xxx-img" :src="comic.cover || ''" :alt="comic.name" @load="coverLoaded = true" @error="coverLoaded = true" />
+              </div>
               <div class="jmt-meta-info">
                 <p class="jmt-meta-tags">
                   <span class="xxx-text">JM{{ comic.id }}</span>
@@ -84,7 +87,7 @@
             <section v-else class="jmt-meta-comments">
               <div class="jmt-cmt-form">
                 <div class="jmt-cmt-input-wrap">
-                  <n-input v-model:value="commentText" type="textarea" placeholder="发表评论（仅支持中文）" :disabled="postingComment" :autosize="{ minRows: 2, maxRows: 4 }" />
+                  <n-input v-model:value="commentText" type="textarea" placeholder="发表评论" :disabled="postingComment" :autosize="{ minRows: 2, maxRows: 4 }" />
                   <n-popover trigger="click" placement="bottom-end">
                     <template #trigger>
                       <n-button quaternary size="tiny" class="jmt-cmt-emoji-btn">
@@ -184,6 +187,7 @@ const commentPage = ref(1)
 const commentTotal = ref(0)
 const commentPages = computed(() => Math.ceil(commentTotal.value / 10))
 const expandedCids = ref<Set<string>>(new Set())
+const coverLoaded = ref(false)
 
 function avatarUrl(photo: string) {
   if (!photo || photo.startsWith('nopic')) {
@@ -311,6 +315,11 @@ function isRead(zipKey: string) {
 const loading = ref(true)
 const comic = ref<Comic | null>(null)
 const previewImages = computed(() => (comic.value?.images || []).slice(1))
+const coverRef = ref<HTMLImageElement | null>(null)
+
+watch(coverRef, (el) => {
+  if (el && el.complete && el.naturalWidth > 0) coverLoaded.value = true
+})
 
 const zipStatus = ref<Record<string, ZipStatus>>({})
 const pend = ref<Set<string>>(new Set())
@@ -358,7 +367,14 @@ async function loadDetail(silent = false) {
   }
 }
 
-watch(() => props.num || route.params.num, () => void loadDetail(false), { immediate: true })
+watch(() => props.num || route.params.num, (num) => {
+  const n = Math.floor(Number(num))
+  if (Number.isFinite(n) && n >= 1) {
+    emit('title-changed', `JM${n}`)
+    coverLoaded.value = false
+  }
+  void loadDetail(false)
+}, { immediate: true })
 watch(albumNum, (num) => { if (Number.isFinite(num) && num >= 1) live.clearZipByKey() }, { immediate: true })
 watch(activeTab, (tab) => { if (tab === 'comments') loadComments() })
 
@@ -613,21 +629,30 @@ function fmtBytes(n: number) {
   align-items: flex-start;
 }
 
+.jmt-meta-cover-wrap {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: #1e1e22;
+  flex-shrink: 0;
+}
 .jmz-meta--dialog .jmt-meta-cover-wrap {
   width: 30%;
-  flex-shrink: 0;
   border-radius: 4px;
-  overflow: hidden;
   border: 1px solid #2e2e35;
-  background: #1e1e22;
 }
 .jmz-meta--page .jmt-meta-cover-wrap {
   width: 20%;
-  flex-shrink: 0;
   border-radius: 6px;
-  overflow: hidden;
   border: 1px solid #2e2e35;
-  background: #1e1e22;
+}
+.jmt-cover-spinner {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .jmt-meta-cover {
   width: 100%;
