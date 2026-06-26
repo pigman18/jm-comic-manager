@@ -234,7 +234,9 @@ function fmtTime(ts: string | undefined): string {
 
 function filterByTag(t: string, ev?: Event) {
   ev?.stopPropagation?.()
-  router.replace({ name: 'catalog', query: { ...peekCatalogReturnQuery(), tags: String(t), page: '1' } })
+  t = t.trim()
+  if (!t) return
+  router.replace({ name: 'catalog', query: { ...peekCatalogReturnQuery(), tags: t, page: '1' } })
 }
 
 function filterByAuthor(name: string, ev?: Event) {

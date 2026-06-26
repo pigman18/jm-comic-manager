@@ -8,7 +8,7 @@ const express = require('express');
 const expressWs = require('express-ws');
 const compression = require('compression');
 
-const {writeToFileSync, isNotEmptySync, mkdirSyncIfNotExists, listFiles, getBaseName} = require('../util/file');
+const {writeToFileSync, isNotEmptySync, mkdirSyncIfNotExists} = require('../util/file');
 const {getMime, cdn2OriginUrl, url2DataPath} = require('../util/http');
 
 /** 构建时由 webpack 替换为 dist/bundles/jm.bundle/web-embedded.json；缺失或非对象时走磁盘 web/dist */
@@ -324,6 +324,14 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
+        app.post(`${api}/sync/rebuild-cache`, async (_req, res) => {
+            try {
+                await store.comicMeta.syncAllTags();
+                res.json({ok: true});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
     }
 
     /** 标签搜索结果缓存（key=查询词，value={tags, expireAt}） */
@@ -390,71 +398,20 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
     };
         app.get(`${api}/comics`, async (req, res) => {
             try {
-                const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
-                const pageSize = Math.min(50, Math.max(1, parseInt(String(req.query.pageSize || '10'), 10) || 10));
-                const name = String(req.query.title || req.query.name || '').trim();
-                const author = String(req.query.author || '').trim();
-                const id = String(req.query.number || req.query.id || '').trim();
-                const tagsRaw = String(req.query.tags || '').trim();
-                const kind = String(req.query.kind || '').trim();
-                const sort = sortMap[String(req.query.sort || 'update_time')] || 'update_time';
-                const orderRaw = String(req.query.order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-                const parts = ['1=1'];
-                const params = {};
-                if (name) {
-                    parts.push('name LIKE @n');
-                    params.n = `%${name}%`;
-                }
-                if (author) {
-                    parts.push('EXISTS (SELECT 1 FROM json_each(author) WHERE value = @a)');
-                    params.a = author;
-                }
-                if (id) {
-                    parts.push('CAST(id AS TEXT) LIKE @i');
-                    params.i = `%${id}%`;
-                } else {
-                    // 默认只显示主作品，不显示系列子项
-                    parts.push("(series_id IS NULL OR series_id = '' OR series_id = '0' OR series_id = id)");
-                }
-                if (tagsRaw) {
-                    tagsRaw.split(',').forEach((tag, i) => {
-                        const key = `tg${i}`;
-                        // parts.push(`tags LIKE @${key}`);
-                        // params[key] = `%${String(tag).trim()}%`;
-                        parts.push(`(EXISTS (
-                            SELECT 1 FROM json_each(tags) WHERE value = @${key}
-                        ))`);
-                        params[key] = `${String(tag).trim()}`;
-                    });
-                }
-                if (kind === 'single') {
-                    parts.push("(series IS NULL OR series = '' OR series = '[]' OR json_array_length(series) < 2)");
-                }
-                if (kind === 'series') {
-                    parts.push("json_array_length(COALESCE(series, '[]')) > 1");
-                }
-                const banned = String(req.query.banned || '').trim();
-                if (banned === 'true') {
-                    parts.push('EXISTS (SELECT 1 FROM comic_ban cb WHERE cb.id = comic_meta.id)');
-                } else {
-                    parts.push('NOT EXISTS (SELECT 1 FROM comic_ban cb WHERE cb.id = comic_meta.id)');
-                }
-                if (req.query.available === 'true') {
-                    const availDir = path.join(config.dataDir, 'comic');
-                    const zipIds = listFiles(availDir)
-                        .filter((f) => f.endsWith('.zip'))
-                        .map((f) => Number.parseInt(getBaseName(f)))
-                        .filter((n) => Number.isFinite(n));
-                    if (zipIds.length > 0) {
-                        const clauses = zipIds.map((_, i) => `@avail${i}`);
-                        parts.push(`id IN (${clauses.join(',')})`);
-                        zipIds.forEach((id, i) => { params[`avail${i}`] = id; });
-                    } else {
-                        parts.push('0');
-                    }
-                }
-                const where = `WHERE ${parts.join(' AND ')}`;
-                const {total, rows} = await store.comicMeta.page(params, page, pageSize, where, sort, orderRaw);
+                const qo = {
+                    name: String(req.query.title || req.query.name || '').trim(),
+                    author: String(req.query.author || '').trim(),
+                    id: String(req.query.number || req.query.id || '').trim(),
+                    tags: String(req.query.tags || '').trim(),
+                    kind: String(req.query.kind || '').trim(),
+                    banned: String(req.query.banned || '').trim(),
+                    sort: sortMap[String(req.query.sort || 'update_time')] || 'update_time',
+                    order: String(req.query.order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC',
+                    page: Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1),
+                    pageSize: Math.min(50, Math.max(1, parseInt(String(req.query.pageSize || '10'), 10) || 10)),
+                    availDir: req.query.available === 'true' ? path.join(config.dataDir, 'comic') : null,
+                };
+                const {total, rows} = await store.comicMeta.page(qo);
                 const comicDir = path.join(config.dataDir, 'comic');
                 const list = rows.map((row) => {
                     const j = rewriteComicMediaUrls(store.dbRowToJson(row));

@@ -317,8 +317,10 @@ function goBack() {
 
 function filterByTag(t: string, ev?: Event) {
   ev?.stopPropagation?.()
+  t = t.trim()
+  if (!t) return
   if (props.dialog) emit('close')
-  router.replace({ name: 'catalog', query: { tags: String(t), page: '1' } })
+  router.replace({ name: 'catalog', query: { tags: t, page: '1' } })
 }
 
 function filterByAuthor(name: string, ev?: Event) {

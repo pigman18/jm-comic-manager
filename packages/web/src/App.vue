@@ -53,6 +53,10 @@
               <span class="jmz-header-title">{{ pageTitle }}</span>
               <template v-if="!isDetail && route.name === 'catalog'">
                 <div class="jmz-header-sync-group">
+                  <n-button size="tiny" quaternary @click="syncApi('rebuild-cache')" :loading="rebuildBusy" :disabled="rebuildBusy">
+                    <template #icon><n-icon :component="RefreshOutline" /></template>
+                    <span>重建缓存</span>
+                  </n-button>
                   <n-button size="tiny" quaternary @click="syncApi('local2db')" :disabled="store.syncLocalToDb.busy" :loading="store.syncLocalToDb.busy">
                     <template #icon><n-icon :component="CloudUploadOutline" /></template>
                     <span>local→库</span>
@@ -122,7 +126,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, provide, onMounted, onUnmounted, nextTick } from 'vue'
 import { zhCN, dateZhCN, darkTheme, createDiscreteApi } from 'naive-ui'
-import { ArrowBack, CloudUploadOutline, CloudDownloadOutline, ListOutline, DownloadOutline, CalendarOutline, EyeOffOutline, EyeOutline } from '@vicons/ionicons5'
+import { ArrowBack, CloudUploadOutline, CloudDownloadOutline, ListOutline, DownloadOutline, CalendarOutline, EyeOffOutline, EyeOutline, RefreshOutline } from '@vicons/ionicons5'
 import { useRoute, useRouter } from 'vue-router'
 import { useJmLiveStore } from '@/stores/jmLive'
 import { useJmTasksStore } from '@/stores/jmTasks'
@@ -155,6 +159,7 @@ const tasksStore = useJmTasksStore()
 const showTasks = ref(false)
 const showLoginDialog = ref(false)
 const showSettings = ref(false)
+const rebuildBusy = ref(false)
 const isDetail = computed(() => route.name === 'detail')
 const userStore = useUserStore()
 const pageTitle = computed(() => {
@@ -335,8 +340,10 @@ function backToCatalog() {
     router.push({ name: 'catalog', query: peekCatalogReturnQuery() })
   }
 }
-async function syncApi(dir: 'local2db' | 'db2local') {
+async function syncApi(dir: 'local2db' | 'db2local' | 'rebuild-cache') {
+  if (dir === 'rebuild-cache') rebuildBusy.value = true
   try { await postJson(`/sync/${dir}`) } catch { /* ignore */ }
+  if (dir === 'rebuild-cache') rebuildBusy.value = false
 }
 
 const themeOverrides = {
