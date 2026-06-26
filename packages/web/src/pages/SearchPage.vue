@@ -9,6 +9,7 @@ import CardDownloadBtn from '@/components/CardDownloadBtn.vue'
 import CardReadBtn from '@/components/CardReadBtn.vue'
 import CardFavBtn from '@/components/CardFavBtn.vue'
 import MetaPageDialog from '@/components/MetaPageDialog.vue'
+import { RefreshOutline } from '@vicons/ionicons5'
 
 const router = useRouter()
 const route = useRoute()
@@ -116,6 +117,47 @@ async function doSearch(page?: number) {
   }
 }
 
+const hotTags = ref<string[]>([])
+const loadingHotTags = ref(false)
+async function loadHotTags() {
+  loadingHotTags.value = true
+  try {
+    const j = await getJson(`/search/hot-tags`)
+    if (j.ok) hotTags.value = j.list || []
+  } catch {} finally { loadingHotTags.value = false }
+}
+loadHotTags()
+
+function onHotTagClick(tag: string) {
+  keyword.value = tag
+  doSearch(1)
+}
+
+const randomRecs = ref<any[]>([])
+const loadingRecs = ref(false)
+async function loadRandomRecs() {
+  loadingRecs.value = true
+  try {
+    const j = await getJson(`/search/random-recommend`)
+    if (j.ok) randomRecs.value = j.list || []
+  } catch {} finally { loadingRecs.value = false }
+}
+loadRandomRecs()
+
+function onRecClick(id: number) {
+  metaDialogNum.value = id
+  metaDialogShow.value = true
+}
+
+const recCoverLoaded = reactive<Record<number, boolean>>({})
+function recCoverReady(id: number) { return recCoverLoaded[id] }
+function onRecCoverLoad(id: number) { recCoverLoaded[id] = true }
+function onRecCoverErr(e: Event, id: number) {
+  const img = e.target as HTMLImageElement
+  if (img && !img.src.includes('data:')) img.src = ''
+  recCoverLoaded[id] = true
+}
+
 const coverLoaded = reactive<Record<number, boolean>>({})
 
 function coverReady(id: number, cover?: string) {
@@ -155,6 +197,30 @@ function onCoverErr(e: Event, id: number) {
           :disabled="loading"
         />
         <n-button type="primary" :loading="loading" :disabled="loading" @click="doSearch(1)">搜索</n-button>
+      </div>
+      <div v-if="hotTags.length && !keyword.trim()" class="jmz-hot-tags">
+        <span class="jmz-hot-tags-label">热门搜索：</span>
+        <span v-for="t in hotTags" :key="t" class="jmz-chip jmz-chip--click" :title="t" @click="onHotTagClick(t)">{{ t }}</span>
+        <n-button quaternary size="tiny" class="jmz-hot-tags-refresh" :loading="loadingHotTags" @click="loadHotTags">
+          <template #icon><n-icon :component="RefreshOutline" /></template>
+        </n-button>
+      </div>
+      <div v-if="randomRecs.length && !keyword.trim()" class="jmz-search-suggest">
+        <div class="jmz-search-suggest-head">
+          <span class="jmz-hot-tags-label">随机推荐</span>
+          <n-button quaternary size="tiny" :loading="loadingRecs" @click="loadRandomRecs">
+            <template #icon><n-icon :component="RefreshOutline" /></template>
+          </n-button>
+        </div>
+        <div class="jmz-search-suggest-scroll">
+          <div v-for="r in randomRecs" :key="r.id" class="jmz-search-suggest-card" role="button" tabindex="0" @click="onRecClick(r.id)" @keyup.enter="onRecClick(r.id)">
+            <div class="jmz-search-suggest-cover-wrap">
+              <div v-if="!recCoverReady(r.id)" class="jmz-cover-spinner"><n-spin size="small" /></div>
+              <img class="jmz-search-suggest-cover xxx-img" :src="r.cover" :alt="r.name" loading="lazy" @load="onRecCoverLoad(r.id)" @error="onRecCoverErr($event, r.id)" />
+            </div>
+            <div class="jmz-search-suggest-name">{{ r.name }}</div>
+          </div>
+        </div>
       </div>
       <div v-if="loading" class="jmz-cat-bar-track"><div class="jmz-cat-bar-fill" /></div>
       <div v-if="loading" class="jmz-cat-bar-indicator">加载中...</div>
@@ -518,6 +584,74 @@ function onCoverErr(e: Event, id: number) {
 .jmz-card-date {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
+}
+
+.jmz-hot-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 10px;
+}
+.jmz-hot-tags-label {
+  font-size: 12px;
+  color: #7a7a8a;
+  flex-shrink: 0;
+}
+.jmz-hot-tags .jmz-chip {
+  font-size: 12px;
+}
+.jmz-hot-tags-refresh {
+  flex-shrink: 0;
+}
+
+.jmz-search-suggest {
+  margin-top: 10px;
+}
+.jmz-search-suggest-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.jmz-search-suggest-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.jmz-search-suggest-card {
+  flex-shrink: 0;
+  width: 100px;
+  cursor: pointer;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: transform 0.15s;
+}
+.jmz-search-suggest-card:hover {
+  transform: translateY(-2px);
+}
+.jmz-search-suggest-cover-wrap {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: #2a2a30;
+  border-radius: 4px;
+}
+.jmz-search-suggest-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.jmz-search-suggest-name {
+  font-size: 11px;
+  color: #9b9bb4;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
 }
 
 </style>

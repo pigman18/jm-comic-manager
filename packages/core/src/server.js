@@ -535,6 +535,41 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
+        app.get(`${api}/search/hot-tags`, async (req, res) => {
+            try {
+                const list = await crawler.search.hotTags();
+                res.json({ok: true, list});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.get(`${api}/search/random-recommend`, async (req, res) => {
+            try {
+                const list = await crawler.search.randomRecommend();
+                const comicDir = path.join(config.dataDir, 'comic');
+                const items = (list || []).map((item) => {
+                    const id = Number(item.id);
+                    const o = {
+                        id,
+                        name: String(item.name || ''),
+                        cover: String(item.image || ''),
+                        author: Array.isArray(item.author) ? item.author : (item.author ? [String(item.author)] : []),
+                        description: String(item.description || ''),
+                        category: item.category || null,
+                        category_sub: item.category_sub || null,
+                        liked: !!item.liked,
+                        is_favorite: !!item.is_favorite,
+                        update_at: item.update_at || 0,
+                        inStore: isNotEmptySync(path.join(config.dataDir, 'info', `${id}.json`)),
+                        canRead: isNotEmptySync(path.join(comicDir, `${id}.zip`)),
+                    };
+                    return rewriteComicMediaUrls(o);
+                });
+                res.json({ok: true, list: items});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
     }
 
     function handleWeekInfo(app, api) {
