@@ -213,6 +213,8 @@ function onTabClick(val: string) {
 }
 
 function onTagClick(tag: string) {
+  tag = tag.trim()
+  if (!tag) return
   router.push({ name: 'search', query: { keyword: tag } })
 }
 

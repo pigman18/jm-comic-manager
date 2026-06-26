@@ -228,6 +228,8 @@ function fmtTime(ts?: string): string {
 
 function filterByTag(t: string, ev?: Event): void {
   ev?.stopPropagation();
+  t = t.trim();
+  if (!t) return;
   const s = new Set(filters.tags);
   s.add(t);
   filters.tags = [...s];
