@@ -6,6 +6,7 @@ const toast = require('powertoast');
 
 const { PHASE, STATE, STEP } = require('./protocol');
 const {saveB64Image} = require('../util/app');
+const {harmonizeImage} = require('../util/image');
 
 const STATUSES = [
     { status: 'downloading', label: '下载中', icon: 'CloudDownloadOutline', color: '#1BA784' },
@@ -321,12 +322,19 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             broadcast({ type: 'completed', id: task.id });
             updateTaskbarProgress();
             let appIcon =  (manifest.icon && 'Microsoft.Windows.Shell.RunDialog' === manifest.appId) ? saveB64Image(manifest.icon, 'icon.ico') : null;
-            let comicIcon = task.coverBase64 ? saveB64Image(task.coverBase64, task.id + '.png') : null;
+            let comicIcon = null;
+            if (task.coverBase64) {
+                if (config.harmony) {
+                    comicIcon = null;
+                } else {
+                    comicIcon = saveB64Image(task.coverBase64, task.id + '.png');
+                }
+            }
             if (config.toast) {
                 await toast({
                     appID: manifest.appId,
                     title: '\u2705 \u4E0B\u8F7D\u5B8C\u6210',
-                    message: task.name || `JM${task.number}`,
+                    message: config.harmony ? `JM${task.number}` : (task.name || `JM${task.number}`),
                     icon: appIcon,
                     headerImg: comicIcon,
                 });

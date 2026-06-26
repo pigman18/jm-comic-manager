@@ -48,7 +48,7 @@
             </div>
             <div class="jmt-meta-tabs">
               <span :class="['jmt-meta-tab', { 'jmt-meta-tab--active': activeTab === 'eps' }]" @click="activeTab = 'eps'">章节列表</span>
-              <span :class="['jmt-meta-tab', { 'jmt-meta-tab--active': activeTab === 'comments' }]" @click="activeTab = 'comments'">评论</span>
+              <span :class="['jmt-meta-tab', { 'jmt-meta-tab--active': activeTab === 'comments' }]" @click="activeTab = 'comments'">漫画评论</span>
             </div>
             <section v-if="activeTab === 'eps'" class="jmt-meta-zip">
               <div class="jmt-ep-list-header">
