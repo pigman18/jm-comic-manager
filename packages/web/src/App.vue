@@ -14,6 +14,10 @@
               <span class="jmz-nav-icon">📂</span>
               <span>本地管理</span>
             </router-link>
+            <router-link :to="{ name: 'home' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'home' }">
+              <span class="jmz-nav-icon">🏠</span>
+              <span>主站首页</span>
+            </router-link>
             <router-link :to="{ name: 'search' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'search' }">
               <span class="jmz-nav-icon">🔍</span>
               <span>漫画搜索</span>
@@ -29,6 +33,10 @@
             <router-link :to="{ name: 'serial' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'serial' }">
               <span class="jmz-nav-icon">📆</span>
               <span>每日连载</span>
+            </router-link>
+            <router-link :to="{ name: 'promote-list' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'promote-list' }">
+              <span class="jmz-nav-icon">📢</span>
+              <span>推广列表</span>
             </router-link>
             <router-link :to="{ name: 'latest' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'latest' }">
               <span class="jmz-nav-icon">🆕</span>
@@ -107,7 +115,7 @@
           </header>
           <main class="jmz-app-main">
             <router-view v-slot="{ Component }">
-              <keep-alive :include="['CatalogPage', 'SearchPage', 'WeekPage', 'CategoryPage', 'SerialPage', 'LatestPage', 'FavoritesPage']">
+              <keep-alive :include="['CatalogPage', 'HomePage', 'SearchPage', 'WeekPage', 'CategoryPage', 'SerialPage', 'PromoteListPage', 'LatestPage', 'FavoritesPage']">
                 <component :is="Component" />
               </keep-alive>
             </router-view>
@@ -165,6 +173,7 @@ const userStore = useUserStore()
 const pageTitle = computed(() => {
   const map: Record<string, string> = {
     catalog: '本地管理',
+    home: '主站首页',
     search: '漫画搜索',
     week: '每周必看',
     category: '分类排行',

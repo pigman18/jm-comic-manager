@@ -99,3 +99,25 @@ body {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* pagination footer — shared by promote-list, category, search, etc. */
+.jmz-cat-footer,
+.jmz-pager-footer {
+  flex-shrink: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.jmz-cat-pager,
+.jmz-pager-pagination {
+  display: flex;
+  justify-content: center;
+}
+.jmz-cat-info,
+.jmz-pager-info {
+  text-align: center;
+  font-size: 13px;
+  color: #7a7a8a;
+}
