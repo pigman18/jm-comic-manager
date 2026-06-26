@@ -22,33 +22,33 @@
               <span class="jmz-nav-icon">🔍</span>
               <span>漫画搜索</span>
             </router-link>
-            <router-link :to="{ name: 'week' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'week' }">
-              <span class="jmz-nav-icon">📅</span>
-              <span>每周必看</span>
+            <router-link :to="{ name: 'latest' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'latest' }">
+              <span class="jmz-nav-icon">🆕</span>
+              <span>最新发布</span>
             </router-link>
             <router-link :to="{ name: 'category' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'category' }">
               <span class="jmz-nav-icon">🏷️</span>
               <span>分类排行</span>
             </router-link>
-            <router-link :to="{ name: 'serial' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'serial' }">
-              <span class="jmz-nav-icon">📆</span>
-              <span>每日连载</span>
-            </router-link>
             <router-link :to="{ name: 'promote-list' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'promote-list' }">
               <span class="jmz-nav-icon">📢</span>
               <span>推广列表</span>
             </router-link>
-            <router-link :to="{ name: 'forum' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'forum' }">
-              <span class="jmz-nav-icon">💬</span>
-              <span>评论区</span>
+            <router-link :to="{ name: 'serial' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'serial' }">
+              <span class="jmz-nav-icon">📆</span>
+              <span>每日连载</span>
             </router-link>
-            <router-link :to="{ name: 'latest' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'latest' }">
-              <span class="jmz-nav-icon">🆕</span>
-              <span>最新发布</span>
+            <router-link :to="{ name: 'week' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'week' }">
+              <span class="jmz-nav-icon">📅</span>
+              <span>每周必看</span>
             </router-link>
             <router-link :to="{ name: 'favorites' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'favorites' }">
               <span class="jmz-nav-icon">⭐</span>
               <span>收藏列表</span>
+            </router-link>
+            <router-link :to="{ name: 'forum' }" class="jmz-nav-item" :class="{ 'jmz-nav-item--active': route.name === 'forum' }">
+              <span class="jmz-nav-icon">💬</span>
+              <span>评论区</span>
             </router-link>
           </nav>
           <div class="jmz-sidebar-foot">
