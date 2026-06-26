@@ -1118,6 +1118,42 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         });
     }
 
+    function handleForum(app, api) {
+        app.get(`${api}/forum`, async (req, res) => {
+            try {
+                const aid = String(req.query.aid || '');
+                let uid = String(req.query.uid || '');
+                const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+                let data;
+                if (aid) {
+                    data = await crawler.forum.list(aid, page);
+                } else if (uid || req.query.my === '1') {
+                    if (!uid) uid = String(config.memberInfo?.uid || '');
+                    if (!uid) { res.json({ok: false, message: '未登录'}); return }
+                    data = await crawler.forum.byUser(uid, page);
+                } else {
+                    res.json({ok: false, message: 'aid 或 uid 参数必填'});
+                    return;
+                }
+                res.json({ok: true, ...data});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.post(`${api}/comment`, async (req, res) => {
+            try {
+                const comment = String(req.body.comment || '').trim();
+                const aid = String(req.body.aid || '');
+                if (!comment) { res.json({ok: false, message: '评论内容不能为空'}); return }
+                if (!aid) { res.json({ok: false, message: 'aid 必填'}); return }
+                const data = await crawler.forum.post(comment, aid);
+                res.json({ok: data.status === 'ok', ...data});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+    }
+
     async function start() {
         const app = express();
         expressWs(app);
@@ -1161,6 +1197,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         handleReads(app, api);
         handleOpenViewer(app, api);
         handleBrowse(app, api);
+        handleForum(app, api);
         await new Promise((resolve, reject) => {
             _server = app.listen(port, host, () => {
                 if (typeof ctx?.log === 'function') {

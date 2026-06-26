@@ -15,6 +15,7 @@ const {retryAndCatch} = require('../util/common');
 const {url2DataPath, downloadResume, getResponseStream, getAxiosResponseText, withRetry, toQueryString, fetchAllPageData} = require('../util/http');
 const {touchFileSync, writeToFileSync, isNotEmptySync, renameSync} = require('../util/file');
 const {parseComicRankingPage, parseSerializationList, parseWeekList, parseComicWeekList, parseMeta, parseNumber} = require('./parser');
+const FormData = require('form-data');
 const {JmMagicConstants, decideHeadersAndTs, decodeDomainServerData, decodeRespData} = require('./mobile');
 
 const UserAgents = require('../build/userAgents.json');
@@ -874,6 +875,36 @@ function createCrawler(manifest, ctx, message, config) {
         }
     };
 
+    const forum = {
+        list: async (aid, page = 1) => {
+            let resp = await expireRetry(async () => {
+                return await apiClient.get(`${getApiHost()}/forum`, {
+                    params: { mode: 'all', page, aid }
+                });
+            });
+            return resp.data.data || { list: [], total: 0 };
+        },
+        byUser: async (uid, page = 1) => {
+            let resp = await expireRetry(async () => {
+                return await apiClient.get(`${getApiHost()}/forum`, {
+                    params: { uid, page }
+                });
+            });
+            return resp.data.data || { list: [], total: 0 };
+        },
+        post: async (comment, aid) => {
+            const fd = new FormData();
+            fd.append('comment', comment);
+            fd.append('aid', String(aid));
+            let resp = await expireRetry(async () => {
+                return await apiClient.post(`${getApiHost()}/comment`, fd, {
+                    headers: fd.getHeaders()
+                });
+            });
+            return resp.data.data || {};
+        }
+    };
+
     return {
         httpClient,
         close,
@@ -883,6 +914,7 @@ function createCrawler(manifest, ctx, message, config) {
         comic,
         search,
         rank,
+        forum,
         fetchLatestApiHosts
     };
 }

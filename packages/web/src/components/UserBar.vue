@@ -35,8 +35,8 @@ const memberInfo = computed(() => userStore.memberInfo)
 
 const avatarUrl = computed(() => {
   if (!memberInfo.value?.photo || memberInfo.value.photo.startsWith('nopic')) return ''
-  const originUrl = `https://cdn-msp.18comic.vip/media/users/orig/${memberInfo.value.photo}`
-  return `/file/cdn-msp.18comic.vip/media/users/orig/${memberInfo.value.photo}?originUrl=${encodeURIComponent(originUrl)}`
+  const originUrl = `https://www.cdngwc.cc/media/users/orig/${memberInfo.value.photo}`
+  return `/file/www.cdngwc.cc/media/users/orig/${memberInfo.value.photo}?originUrl=${encodeURIComponent(originUrl)}`
 })
 
 async function handleLogout() {
