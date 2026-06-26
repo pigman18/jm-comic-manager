@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
+import readmeMd from 'readme.md';
+import changelogMd from 'changelog.md';
+import { parse as mdParse } from 'marked';
 
 interface Config {
     username?: string;
@@ -299,6 +302,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
     const [config, setConfig] = useState<Config>({});
     const [tab, setTab] = useState('basic');
     const [showPwd, setShowPwd] = useState(false);
+    const [aboutOpen, setAboutOpen] = useState(false);
     const loaded = useRef(false);
 
     useEffect(() => {
@@ -422,8 +426,33 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
                     )}
                 </div>
                 <div className="settings-footer">
+                    <button className="btn-about" onClick={() => setAboutOpen(true)} title="关于">ℹ️</button>
+                    <div style={{ flex: 1 }} />
                     <button className="btn-quit" onClick={onClose}>取消</button>
                     <button className="btn-save" onClick={handleSave}>保存</button>
+                </div>
+            </div>
+            {aboutOpen && (
+                <AboutModal onClose={() => setAboutOpen(false)} />
+            )}
+        </div>
+    );
+}
+
+function AboutModal({ onClose }: { onClose: () => void }) {
+    const [tab, setTab] = useState<'readme' | 'changelog'>('readme');
+    return (
+        <div className="about-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+            <div className="about-modal">
+                <div className="about-tabs">
+                    <button className={`about-tab ${tab === 'readme' ? 'active' : ''}`} onClick={() => setTab('readme')}>说明</button>
+                    <button className={`about-tab ${tab === 'changelog' ? 'active' : ''}`} onClick={() => setTab('changelog')}>更新日志</button>
+                </div>
+                <div className="about-body">
+                    <div className="about-content" dangerouslySetInnerHTML={{ __html: mdParse(tab === 'readme' ? readmeMd : changelogMd) }} />
+                </div>
+                <div className="about-footer">
+                    <button className="btn-quit" onClick={onClose}>关闭</button>
                 </div>
             </div>
         </div>
