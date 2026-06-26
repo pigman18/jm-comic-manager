@@ -101,6 +101,7 @@ const modeOptions: ModeOption[] = [
   { label: '全部', value: 'all' },
   { label: '漫画', value: 'manhua' },
   { label: '闲聊', value: 'chat' },
+  { label: '我的', value: 'mine' },
 ]
 
 const loading = ref(false)
@@ -234,7 +235,10 @@ async function loadData() {
   loading.value = true
   list.value = []
   try {
-    const j = await getJson(`/forum/list?mode=${activeMode.value}&page=${currentPage.value}`)
+    const url = activeMode.value === 'mine'
+      ? `/forum?my=1&page=${currentPage.value}`
+      : `/forum/list?mode=${activeMode.value}&page=${currentPage.value}`
+    const j = await getJson(url)
     if (j.ok) {
       list.value = j.list || []
       total.value = j.total || 0
