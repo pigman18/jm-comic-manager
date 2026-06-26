@@ -69,8 +69,38 @@
             <div v-if="c.expinfo?.level_name" class="jmz-forum-level">{{ c.expinfo.level_name }}</div>
             <div class="jmz-forum-content" v-html="c.content"></div>
             <div class="jmz-forum-actions">
+              <span class="jmz-forum-action-btn" role="button" tabindex="0" @click="startReply(c)" @keyup.enter="startReply(c)">回复</span>
               <span class="jmz-forum-likes">👍 {{ c.likes || 0 }}</span>
               <span v-if="c.AID && c.AID !== '0'" class="jmz-forum-aid" role="link" tabindex="0" @click="openMeta(Number(c.AID))" @keyup.enter="openMeta(Number(c.AID))">JM{{ c.AID }}</span>
+            </div>
+            <div v-if="replyingTo === c.CID" class="jmt-cmt-reply-box">
+              <div class="jmt-cmt-reply-indicator">
+                <span class="jmt-cmt-reply-label">回复 @{{ c.nickname || c.username }}</span>
+              </div>
+              <div class="jmt-cmt-reply-input-wrap">
+                <n-input v-model:value="replyText" type="textarea"
+                  placeholder="输入回复内容"
+                  :disabled="postingReply"
+                  :autosize="{ minRows: 2, maxRows: 4 }" />
+                <n-popover trigger="click" placement="bottom-end">
+                  <template #trigger>
+                    <n-button quaternary size="tiny" class="jmt-cmt-emoji-btn">
+                      <template #icon><n-icon :component="HappyOutline" size="18" /></template>
+                    </n-button>
+                  </template>
+                  <div class="jmt-cmt-emoji-grid">
+                    <img v-for="e in emojis" :key="e" :src="emojiImageUrl(e)"
+                      :alt="e" class="jmt-cmt-emoji-item" @click="replyText += e" />
+                  </div>
+                </n-popover>
+              </div>
+              <div class="jmt-cmt-reply-actions">
+                <n-button size="tiny" quaternary @click="replyingTo = null">取消</n-button>
+                <n-button size="tiny" type="primary"
+                  :disabled="!replyText.trim()"
+                  :loading="postingReply"
+                  @click="postReply(c.CID)">回复</n-button>
+              </div>
             </div>
           </div>
         </div>
@@ -128,6 +158,9 @@ const pages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
 
 const commentText = ref('')
 const postingComment = ref(false)
+const replyingTo = ref<string | null>(null)
+const replyText = ref('')
+const postingReply = ref(false)
 
 const emojis = [
   '😀','😂','🤣','😊','😍','🤔','😜','😎',
@@ -262,6 +295,37 @@ function onModeClick(mode: string) {
   cachedList.value = []
   syncUrl()
   loadData()
+}
+
+function startReply(c: any) {
+  if (replyingTo.value === c.CID) {
+    replyingTo.value = null
+    replyText.value = ''
+    return
+  }
+  replyingTo.value = c.CID
+  replyText.value = ''
+}
+
+async function postReply(cid: string) {
+  const text = replyText.value.trim()
+  if (!text) return
+  postingReply.value = true
+  try {
+    const j = await postJson(`/comment`, { comment: text, aid: '', comment_id: cid })
+    if (j.ok) {
+      message.success(j.msg || j.message || '回复成功')
+      replyText.value = ''
+      replyingTo.value = null
+      loadData()
+    } else {
+      message.error(j.message || '回复失败')
+    }
+  } catch (e: any) {
+    message.error(String(e?.message || e))
+  } finally {
+    postingReply.value = false
+  }
 }
 
 function openMeta(id: number) {
@@ -402,7 +466,7 @@ function avatarUrl(photo: string) {
 .jmz-forum-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   margin-top: 4px;
 }
 
@@ -411,11 +475,22 @@ function avatarUrl(photo: string) {
   color: #7a7a8a;
 }
 
+.jmz-forum-action-btn {
+  font-size: 12px;
+  color: #7a7a8a;
+  cursor: pointer;
+  user-select: none;
+}
+.jmz-forum-action-btn:hover {
+  color: #3b82f6;
+}
+
 .jmz-forum-aid {
   font-size: 12px;
   color: #3b82f6;
   cursor: pointer;
   font-weight: 600;
+  margin-left: auto;
 }
 .jmz-forum-aid:hover {
   text-decoration: underline;
@@ -428,6 +503,30 @@ function avatarUrl(photo: string) {
   flex-shrink: 0;
 }
 .jmt-cmt-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.jmt-cmt-reply-box {
+  margin-top: 8px;
+  padding: 8px;
+  background: #25252b;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.jmt-cmt-reply-input-wrap {
+  position: relative;
+}
+.jmt-cmt-reply-indicator {
+  font-size: 12px;
+  color: #9b9bb4;
+}
+.jmt-cmt-reply-label {
+  font-weight: 600;
+}
+.jmt-cmt-reply-actions {
   display: flex;
   justify-content: flex-end;
   gap: 6px;

@@ -1156,8 +1156,9 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
             try {
                 const comment = String(req.body.comment || '').trim();
                 const aid = String(req.body.aid || '');
+                const comment_id = req.body.comment_id ? String(req.body.comment_id).trim() : '';
                 if (!comment) { res.json({ok: false, message: '评论内容不能为空'}); return }
-                const data = await crawler.forum.post(comment, aid);
+                const data = await crawler.forum.post(comment, aid, comment_id);
                 res.json({ok: data.status === 'ok', ...data});
             } catch (e) {
                 res.status(500).json({ok: false, message: String(e.message || e)});
