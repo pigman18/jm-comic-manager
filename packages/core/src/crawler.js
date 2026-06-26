@@ -762,6 +762,18 @@ function createCrawler(manifest, ctx, message, config) {
                 // pageSize固定为80，手动计算总页数
                 pages: Math.ceil(total / 80)
             };
+        },
+        hotTags: async () => {
+            let resp = await expireRetry(async () => {
+                return await apiClient.get(`${getApiHost()}/hot_tags`);
+            });
+            return resp?.data?.data || [];
+        },
+        randomRecommend: async () => {
+            let resp = await expireRetry(async () => {
+                return await apiClient.get(`${getApiHost()}/random_recommend`);
+            });
+            return resp?.data?.data || [];
         }
     };
     let rank = {
