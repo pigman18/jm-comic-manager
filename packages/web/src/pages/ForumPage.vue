@@ -63,8 +63,8 @@
           <div class="jmz-forum-body">
             <div class="jmz-forum-top">
               <span class="jmz-forum-user">{{ c.nickname || c.username }}</span>
-              <span class="jmz-forum-time">{{ c.addtime }}</span>
               <n-tag v-if="c.spoiler === '1'" size="tiny" type="warning" bordered>含剧透</n-tag>
+              <span class="jmz-forum-time">{{ c.addtime }}</span>
             </div>
             <div v-if="c.expinfo?.level_name" class="jmz-forum-level">{{ c.expinfo.level_name }}</div>
             <div class="jmz-forum-content" v-html="c.content"></div>
@@ -383,6 +383,7 @@ function avatarUrl(photo: string) {
 }
 
 .jmz-forum-time {
+  margin-left: auto;
   font-size: 11px;
   color: #7a7a8a;
 }

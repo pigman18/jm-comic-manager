@@ -116,8 +116,8 @@
                     <div class="jmt-cmt-body">
                       <div class="jmt-cmt-top">
                         <span class="jmt-cmt-user">{{ c.nickname || c.username }}</span>
-                        <span class="jmt-cmt-time">{{ fmtCommentTime(c.update_at || c.addtime) }}</span>
                         <n-tag v-if="c.spoiler === '1'" size="tiny" type="warning" bordered>含剧透</n-tag>
+                        <span class="jmt-cmt-time">{{ fmtCommentTime(c.update_at || c.addtime) }}</span>
                       </div>
                       <div class="jmt-cmt-level">{{ c.expinfo?.level_name || '' }}</div>
                       <div class="jmt-cmt-content" v-html="c.content"></div>
@@ -915,6 +915,7 @@ function fmtBytes(n: number) {
   color: #e0e0e6;
 }
 .jmt-cmt-time {
+  margin-left: auto;
   font-size: 11px;
   color: #7a7a8a;
 }
