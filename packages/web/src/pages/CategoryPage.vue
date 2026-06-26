@@ -343,8 +343,8 @@ function onSubChange(val: string) {
       </template>
     </div>
 
-    <div v-if="activeTab && activeTab !== '_blocks'" class="jmz-cat-footer">
-      <div class="jmz-cat-pager">
+    <div v-if="activeTab && activeTab !== '_blocks'" class="jmz-pager-footer">
+      <div class="jmz-pager-pagination">
         <n-pagination
           v-model:page="currentPage"
           :page-count="pages"
@@ -353,7 +353,7 @@ function onSubChange(val: string) {
           @update:page="loadCategory"
         />
       </div>
-      <div v-if="total > 0" class="jmz-cat-info">共 {{ total }} 条</div>
+      <div v-if="total > 0" class="jmz-pager-info">共 {{ total }} 条</div>
     </div>
     </template>
   </div>
@@ -395,14 +395,6 @@ function onSubChange(val: string) {
   padding: 0 12px;
 }
 
-.jmz-cat-footer {
-  flex-shrink: 0;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
 
 .jmz-cat-tabs {
   display: flex;
@@ -534,17 +526,6 @@ function onSubChange(val: string) {
 }
 
 /* main */
-.jmz-cat-pager {
-  display: flex;
-  justify-content: center;
-}
-
-.jmz-cat-info {
-  text-align: center;
-  font-size: 13px;
-  color: #7a7a8a;
-}
-
 /* shared card grid styles (same as other pages) */
 .jmz-card-grid-wrap {
   position: relative;
