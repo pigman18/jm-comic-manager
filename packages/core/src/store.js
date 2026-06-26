@@ -298,11 +298,23 @@ function createStore(manifest, ctx, message, config, crawler) {
 
     function makeFtsTerms(value) {
         const parts = [];
-        const cjkRuns = value.match(/[\u4e00-\u9fff\u3400-\u4dbf]+/g) || [];
-        const remaining = value.replace(/[\u4e00-\u9fff\u3400-\u4dbf]+/g, ' ');
-        const latinWords = remaining.match(/[a-zA-Z0-9]+/g) || [];
-        for (const run of cjkRuns) parts.push(`${run}*`);
-        for (const w of latinWords) parts.push(`${w}*`);
+        // CJK
+        const cjkRuns = value.match(/[\p{Script=Han}]+/gu) || [];
+        for (const run of cjkRuns) {
+            parts.push(`${run}*`);
+        }
+        // Latin / number
+        const latinWords = value.match(/[a-zA-Z0-9]+/g) || [];
+        for (const w of latinWords) {
+            parts.push(`${w}*`);
+        }
+        // 日文 / 韩文 / 其他 Unicode：强制短语
+        const covered = value.replace(/[\p{Script=Han}a-zA-Z0-9]+/gu, '');
+        const others = covered.trim();
+        if (others.length > 0) {
+            const escaped = others.replace(/"/g, '""');
+            parts.push(`"${escaped}"`);
+        }
         return parts;
     }
 
@@ -313,17 +325,10 @@ function createStore(manifest, ctx, message, config, crawler) {
 
     function buildFtsMatch({ query, author, tags } = {}) {
         const parts = [];
-        if (query) {
-            const terms = makeFtsTerms(query);
-            parts.push(terms.join(' AND '));
-        }
-        if (author) {
-            parts.push(`(${columnMatch('author', author)})`);
-        }
-        if (tags) {
-            parts.push(`(${columnMatch('tags', tags)})`);
-        }
-        return parts.join(' AND ');
+        if (query) parts.push(makeFtsTerms(query).join(' AND '));
+        if (author) parts.push(`(${columnMatch('author', author)})`);
+        if (tags) parts.push(`(${columnMatch('tags', tags)})`);
+        return parts.filter(Boolean).join(' AND ');
     }
 
     async function rebuildFtsIndex() {

@@ -43,7 +43,11 @@
                 <img v-for="(img, i) in previewImages" :key="i" class="jmt-prev-img xxx-img" :src="img" :alt="`预览 ${i + 1}`" />
               </div>
             </div>
-            <section class="jmt-meta-zip">
+            <div class="jmt-meta-tabs">
+              <span :class="['jmt-meta-tab', { 'jmt-meta-tab--active': activeTab === 'eps' }]" @click="activeTab = 'eps'">章节列表</span>
+              <span :class="['jmt-meta-tab', { 'jmt-meta-tab--active': activeTab === 'comments' }]" @click="activeTab = 'comments'">评论</span>
+            </div>
+            <section v-if="activeTab === 'eps'" class="jmt-meta-zip">
               <div class="jmt-ep-list-header">
                 <div class="jmt-ep-list-header-left">
                   <n-checkbox v-model:checked="showReadable" size="small">可读</n-checkbox>
@@ -54,29 +58,86 @@
                   <n-button v-if="showDownloadAll" type="primary" size="tiny" @click="downloadAllMissing">全部下载</n-button>
                 </div>
               </div>
-            <div v-if="filteredRows.length" class="jmt-ep-list">
-              <div v-for="row in filteredRows" :key="row.zipKey" class="jmt-ep-row">
-                <span class="jmt-ep-num xxx-text">{{ row.zipLabel }}</span>
-                <span class="jmt-ep-title xxx-text">{{ row.epTitle }}</span>
-                <n-tag v-if="dlUi(row).kind === 'ready' && isRead(row.zipKey)" size="small" type="success" bordered>已读</n-tag>
-                <n-button v-if="dlUi(row).kind === 'ready'" size="tiny" type="success" @click="onRead(row)">阅读</n-button>
-                <n-button v-else-if="dlUi(row).kind === 'idle'" size="tiny" type="primary" @click="postDownload(row.zipKey, row.label)">下载</n-button>
-                <n-tag v-else-if="dlUi(row).kind === 'queued'" size="small" type="info">{{ (dlUi(row) as any).label || '排队中' }}</n-tag>
-                <n-button v-else-if="dlUi(row).kind === 'connect'" size="tiny" disabled>{{ (dlUi(row) as any).stepText || '进行中' }}</n-button>
-                <span v-else-if="dlUi(row).kind === 'pct'" style="display:flex;align-items:center;gap:6px">
-                  <div class="jmz-dl-track" :class="{ 'jmz-dl-track--busy': (dlUi(row) as any).indeterminate }">
-                    <div v-if="!(dlUi(row) as any).indeterminate" class="jmz-dl-fill" :style="{ width: `${(dlUi(row) as any).pct}%` }" />
-                  </div>
-                  <span class="jmz-dl-pct-text">{{ (dlUi(row) as any).sub }}</span>
-                </span>
-                <span v-else-if="dlUi(row).kind === 'error'" style="display:flex;align-items:center;gap:6px">
-                  <span style="font-size:11px;color:#f06060">{{ (dlUi(row) as any).msg }}</span>
-                  <n-button size="tiny" quaternary type="error" @click="postDownload(row.zipKey, row.label)">重试</n-button>
-                </span>
+              <div v-if="filteredRows.length" class="jmt-ep-list">
+                <div v-for="row in filteredRows" :key="row.zipKey" class="jmt-ep-row">
+                  <span class="jmt-ep-num xxx-text">{{ row.zipLabel }}</span>
+                  <span class="jmt-ep-title xxx-text">{{ row.epTitle }}</span>
+                  <n-tag v-if="dlUi(row).kind === 'ready' && isRead(row.zipKey)" size="small" type="success" bordered>已读</n-tag>
+                  <n-button v-if="dlUi(row).kind === 'ready'" size="tiny" type="success" @click="onRead(row)">阅读</n-button>
+                  <n-button v-else-if="dlUi(row).kind === 'idle'" size="tiny" type="primary" @click="postDownload(row.zipKey, row.label)">下载</n-button>
+                  <n-tag v-else-if="dlUi(row).kind === 'queued'" size="small" type="info">{{ (dlUi(row) as any).label || '排队中' }}</n-tag>
+                  <n-button v-else-if="dlUi(row).kind === 'connect'" size="tiny" disabled>{{ (dlUi(row) as any).stepText || '进行中' }}</n-button>
+                  <span v-else-if="dlUi(row).kind === 'pct'" style="display:flex;align-items:center;gap:6px">
+                    <div class="jmz-dl-track" :class="{ 'jmz-dl-track--busy': (dlUi(row) as any).indeterminate }">
+                      <div v-if="!(dlUi(row) as any).indeterminate" class="jmz-dl-fill" :style="{ width: `${(dlUi(row) as any).pct}%` }" />
+                    </div>
+                    <span class="jmz-dl-pct-text">{{ (dlUi(row) as any).sub }}</span>
+                  </span>
+                  <span v-else-if="dlUi(row).kind === 'error'" style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:11px;color:#f06060">{{ (dlUi(row) as any).msg }}</span>
+                    <n-button size="tiny" quaternary type="error" @click="postDownload(row.zipKey, row.label)">重试</n-button>
+                  </span>
+                </div>
               </div>
-            </div>
-            <n-empty v-else description="无 ZIP 项" style="padding:20px 0" />
-          </section>
+              <n-empty v-else description="无 ZIP 项" style="padding:20px 0" />
+            </section>
+            <section v-else class="jmt-meta-comments">
+              <div class="jmt-cmt-form">
+                <div class="jmt-cmt-input-wrap">
+                  <n-input v-model:value="commentText" type="textarea" placeholder="发表评论（仅支持中文）" :disabled="postingComment" :autosize="{ minRows: 2, maxRows: 4 }" />
+                  <n-popover trigger="click" placement="bottom-end">
+                    <template #trigger>
+                      <n-button quaternary size="tiny" class="jmt-cmt-emoji-btn">
+                        <template #icon><n-icon :component="HappyOutline" size="18" /></template>
+                      </n-button>
+                    </template>
+                    <div class="jmt-cmt-emoji-grid" style="background:#1e1e22;border:1px solid #2e2e35;border-radius:6px">
+                      <img v-for="e in emojis" :key="e" :src="emojiImageUrl(e)" :alt="e" class="jmt-cmt-emoji-item" @click="insertEmoji(e)" />
+                    </div>
+                  </n-popover>
+                </div>
+                <div class="jmt-cmt-form-actions">
+                  <n-button size="tiny" type="primary" :disabled="!commentText.trim()" :loading="postingComment" @click="postComment">发表</n-button>
+                </div>
+              </div>
+              <div class="jmt-cmt-header">
+                <n-pagination :page="commentPage" :page-count="Math.max(commentPages, 1)" :page-size="1" size="small" @update:page="goCommentPage" />
+              </div>
+              <div class="jmt-cmt-list">
+                <template v-if="commentsLoading">
+                  <div class="jmt-cmt-loading">加载中...</div>
+                </template>
+                <template v-else-if="comments.length">
+                  <div v-for="c in comments" :key="c.CID" class="jmt-cmt-card">
+                    <img :src="avatarUrl(c.photo)" alt="" class="jmt-cmt-avatar-img" />
+                    <div class="jmt-cmt-body">
+                      <div class="jmt-cmt-top">
+                        <span class="jmt-cmt-user">{{ c.nickname || c.username }}</span>
+                        <span class="jmt-cmt-time">{{ fmtCommentTime(c.update_at || c.addtime) }}</span>
+                        <n-tag v-if="c.spoiler === '1'" size="tiny" type="warning" bordered>含剧透</n-tag>
+                      </div>
+                      <div class="jmt-cmt-level">{{ c.expinfo?.level_name || '' }}</div>
+                      <div class="jmt-cmt-content" v-html="c.content"></div>
+                      <div class="jmt-cmt-actions">
+                        <span class="jmt-cmt-likes"><n-icon :component="ThumbsUpOutline" size="12" /> {{ c.likes || 0 }}</span>
+                        <span v-if="c.replys?.length" class="jmt-cmt-reply-toggle" @click="toggleReplies(c)">{{ expandedReply(c) ? '收起回复' : `${c.replys.length} 条回复` }}</span>
+                      </div>
+                      <div v-if="expandedReply(c) && c.replys?.length" class="jmt-cmt-replies">
+                        <div v-for="r in c.replys" :key="r.CID" class="jmt-cmt-reply">
+                          <img :src="avatarUrl(r.photo)" alt="" class="jmt-cmt-reply-avatar" />
+                          <div class="jmt-cmt-reply-body">
+                            <span class="jmt-cmt-reply-user">{{ r.nickname || r.username }}</span>
+                            <span class="jmt-cmt-reply-text" v-html="r.content"></span>
+                            <span class="jmt-cmt-reply-time">{{ fmtCommentTime(r.addtime) }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+                <n-empty v-else description="暂无评论" />
+              </div>
+            </section>
         </template>
         <div v-else-if="loading" class="jmt-meta-loading" />
         <n-empty v-else description="未找到该漫画" />
@@ -90,7 +151,7 @@
 import { ref, computed, watch, inject, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { ArrowBackOutline, EyeOutline, HeartOutline } from '@vicons/ionicons5'
+import { ArrowBackOutline, EyeOutline, HeartOutline, ThumbsUpOutline, HappyOutline } from '@vicons/ionicons5'
 import { getJson, postJson } from '@/api'
 import { useZipReader } from '@/composables/useZipReader'
 import { useJmLiveStore } from '@/stores/jmLive'
@@ -109,11 +170,121 @@ const emit = defineEmits<{ close: []; 'title-changed': [title: string] }>()
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
-
 const applyHarmony = inject<(() => void) | undefined>('applyHarmony', undefined)
 const live = useJmLiveStore()
 const { openComic } = useZipReader()
 const withMeta = ref(true)
+const activeTab = ref('eps')
+
+const comments = ref<any[]>([])
+const commentsLoading = ref(false)
+const commentText = ref('')
+const postingComment = ref(false)
+const commentPage = ref(1)
+const commentTotal = ref(0)
+const commentPages = computed(() => Math.ceil(commentTotal.value / 10))
+const expandedCids = ref<Set<string>>(new Set())
+
+function avatarUrl(photo: string) {
+  if (!photo || photo.startsWith('nopic')) {
+    return '/file/www.cdngwc.cc/media/users/nopic-null.gif?originUrl=https%3A%2F%2Fwww.cdngwc.cc%2Fmedia%2Fusers%2Fnopic-null.gif'
+  }
+  return `/file/www.cdngwc.cc/media/users/orig/${photo}?originUrl=${encodeURIComponent('https://www.cdngwc.cc/media/users/orig/' + photo)}`
+}
+
+function expandedReply(c: any) {
+  return expandedCids.value.has(String(c.CID))
+}
+function toggleReplies(c: any) {
+  const s = new Set(expandedCids.value)
+  const id = String(c.CID)
+  if (s.has(id)) s.delete(id); else s.add(id)
+  expandedCids.value = s
+}
+
+async function loadComments(page?: number) {
+  const aid = albumNum.value
+  if (!Number.isFinite(aid)) return
+  const p = page ?? commentPage.value
+  commentsLoading.value = true
+  try {
+    const j = await getJson(`/forum?aid=${aid}&page=${p}`)
+    if (j.ok) {
+      comments.value = j.list || []
+      commentTotal.value = Number(j.total) || 0
+      commentPage.value = p
+    } else {
+      message.error(j.message || '加载评论失败')
+    }
+  } catch (e: any) {
+    message.error(String(e?.message || e))
+  } finally {
+    commentsLoading.value = false
+  }
+}
+
+function goCommentPage(p: number) {
+  if (p === commentPage.value) return
+  loadComments(p)
+}
+
+async function postComment() {
+  const text = commentText.value.trim()
+  if (!text) return
+  const aid = albumNum.value
+  if (!Number.isFinite(aid)) return
+  postingComment.value = true
+  try {
+    const j = await postJson(`/comment`, { comment: text, aid })
+    if (j.ok) {
+      message.success(j.msg || j.message || '评论成功')
+      commentText.value = ''
+      loadComments()
+    } else {
+      message.error(j.message || '评论失败')
+    }
+  } catch (e: any) {
+    message.error(String(e?.message || e))
+  } finally {
+    postingComment.value = false
+  }
+}
+
+function fmtCommentTime(ts: string | undefined): string {
+  if (!ts) return ''
+  const n = Number(ts)
+  if (!Number.isFinite(n)) return ts
+  const d = new Date(n * 1000)
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
+  if (diff < 2592000000) return `${Math.floor(diff / 86400000)} 天前`
+  const Y = d.getFullYear()
+  const M = String(d.getMonth() + 1).padStart(2, '0')
+  const D = String(d.getDate()).padStart(2, '0')
+  return `${Y}-${M}-${D}`
+}
+
+const emojis = [
+  '😀','😂','🤣','😊','😍','🤔','😜','😎',
+  '👍','🔥','💯','⭐','🎉','❤️','😢','😡',
+  '🥺','😱','🤗','😈','👻','🎃','💀','👽',
+  '👋','✌️','🤞','👌','🤙','💪','🙏','💅',
+  '🐱','🐶','🐼','🐸','🐷','🌹','🌸','🌺',
+  '🍕','🍔','🌮','🍩','🎂','🍺','☕','🎵',
+  '✨','💥','💫','🌈','⚡','🎶','🎈','🎊',
+]
+
+function emojiImageUrl(e: string): string {
+  const code = e.codePointAt(0)
+  if (!code) return ''
+  return `https://cdn.jsdelivr.net/emojione/assets/3.1/png/32/${code.toString(16)}.png`
+}
+function insertEmoji(e: string) {
+  commentText.value += e
+}
 
 const filterText = ref('')
 const showReadable = ref(false)
@@ -189,6 +360,7 @@ async function loadDetail(silent = false) {
 
 watch(() => props.num || route.params.num, () => void loadDetail(false), { immediate: true })
 watch(albumNum, (num) => { if (Number.isFinite(num) && num >= 1) live.clearZipByKey() }, { immediate: true })
+watch(activeTab, (tab) => { if (tab === 'comments') loadComments() })
 
 interface ZipRow {
   zipKey: string; num: number; zipLabel: string; epTitle: string; label: string; st: ZipStatus
@@ -365,8 +537,14 @@ function fmtBytes(n: number) {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: 16px;
   overflow: hidden;
+  background: rgb(44, 44, 50);
+}
+.jmz-meta--page .jmz-meta-body {
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 12px;
 }
 .jmz-meta--dialog {
   min-height: 0;
@@ -414,22 +592,15 @@ function fmtBytes(n: number) {
   flex-direction: column;
   min-height: 0;
 }
-.jmz-meta--page .jmt-meta-zip {
+.jmt-meta-zip {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
-.jmz-meta--page .jmt-ep-list {
+.jmt-ep-list {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  border: 1px solid #2e2e35;
-  border-radius: 6px;
-  background: #1e1e22;
-}
-.jmz-meta--dialog .jmt-ep-list {
-  max-height: 220px;
   overflow-y: auto;
   border: 1px solid #2e2e35;
   border-radius: 6px;
@@ -440,15 +611,8 @@ function fmtBytes(n: number) {
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  margin-bottom: 12px;
 }
-.jmz-meta--page .jmt-meta-hero {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #1a1a20;
-  padding-bottom: 8px;
-}
+
 .jmz-meta--dialog .jmt-meta-cover-wrap {
   width: 30%;
   flex-shrink: 0;
@@ -469,6 +633,7 @@ function fmtBytes(n: number) {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 .jmt-meta-info {
   flex: 1;
@@ -542,7 +707,7 @@ function fmtBytes(n: number) {
 
 /* --- zip section --- */
 .jmt-meta-zip {
-  margin-top: 2px;
+  margin-top: 8px;
 }
 .jmt-ep-list-header {
   display: flex;
@@ -626,5 +791,223 @@ function fmtBytes(n: number) {
   font-size: 11px;
   color: #7a7a8a;
   white-space: nowrap;
+}
+
+/* --- tabs --- */
+.jmt-meta-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #2e2e35;
+  flex-shrink: 0;
+}
+.jmt-meta-tab {
+  padding: 6px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #7a7a8a;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.jmt-meta-tab:hover {
+  color: #c4c4d6;
+}
+.jmt-meta-tab--active {
+  color: #e0e0e6;
+  border-bottom-color: #3b82f6;
+}
+
+/* --- comments --- */
+.jmt-meta-comments {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 8px;
+}
+.jmt-cmt-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+.jmt-cmt-pages {
+  display: flex;
+  gap: 4px;
+}
+.jmt-cmt-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #2e2e35;
+  border-radius: 6px;
+  background: #1e1e22;
+  padding: 8px;
+}
+.jmt-cmt-loading {
+  padding: 30px 0;
+  text-align: center;
+  color: #7a7a8a;
+  font-size: 13px;
+}
+.jmt-cmt-card {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: #1e1e22;
+  border-radius: 6px;
+  border: 1px solid #2e2e35;
+}
+.jmt-cmt-avatar-img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid #2e2e35;
+}
+.jmt-cmt-level {
+  font-size: 10px;
+  color: #6b9fff;
+  font-weight: 600;
+}
+.jmt-cmt-body {
+  flex: 1;
+  min-width: 0;
+}
+.jmt-cmt-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.jmt-cmt-user {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0e0e6;
+}
+.jmt-cmt-time {
+  font-size: 11px;
+  color: #7a7a8a;
+}
+.jmt-cmt-content {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c4c4d6;
+  word-break: break-word;
+}
+.jmt-cmt-content :deep(p),
+.jmt-cmt-content :deep(div) {
+  margin: 0;
+}
+.jmt-cmt-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #7a7a8a;
+}
+.jmt-cmt-likes {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.jmt-cmt-reply-toggle {
+  cursor: pointer;
+  color: #3b82f6;
+}
+.jmt-cmt-reply-toggle:hover {
+  text-decoration: underline;
+}
+.jmt-cmt-replies {
+  margin-top: 6px;
+  padding-left: 8px;
+  border-left: 2px solid #2e2e35;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.jmt-cmt-reply {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+.jmt-cmt-reply-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid #2e2e35;
+}
+.jmt-cmt-reply-body {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.jmt-cmt-reply-user {
+  font-weight: 600;
+  color: #9b9bb4;
+  margin-right: 4px;
+}
+.jmt-cmt-reply-text {
+  color: #c4c4d6;
+}
+.jmt-cmt-reply-text :deep(p),
+.jmt-cmt-reply-text :deep(div) {
+  margin: 0;
+  display: inline;
+}
+.jmt-cmt-reply-time {
+  display: block;
+  font-size: 10px;
+  color: #7a7a8a;
+  margin-top: 1px;
+}
+.jmt-cmt-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.jmt-cmt-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.jmt-cmt-input-wrap {
+  position: relative;
+}
+.jmt-cmt-emoji-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+}
+.jmt-cmt-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  max-height: 200px;
+  overflow-y: auto;
+  width: 260px;
+  padding: 6px;
+}
+.jmt-cmt-emoji-item {
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  text-align: center;
+  padding: 2px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+.jmt-cmt-emoji-item:hover {
+  background: #2e2e35;
 }
 </style>
