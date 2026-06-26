@@ -42,15 +42,14 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
 
     const _taskbar = (() => {
         try {
-            const { extractNative } = require('../embed/extract.js');
-            return extractNative('taskbar_progress');
+            const { loadEmbedded } = require('taskbar-progress/embed/loader.js');
+            return loadEmbedded();
         } catch { return null }
     })();
 
     function setProgress(value) { try { _taskbar?.setProgress(value) } catch {} }
     function setIndeterminate() { try { _taskbar?.setIndeterminate() } catch {} }
     function setError() { try { _taskbar?.setError() } catch {} }
-
 
     function setServer(server) { serverRef = server; }
 
