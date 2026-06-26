@@ -1121,6 +1121,16 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
     }
 
     function handleForum(app, api) {
+        app.get(`${api}/forum/list`, async (req, res) => {
+            try {
+                const mode = String(req.query.mode || 'all');
+                const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+                const data = await crawler.forum.feed(mode, page);
+                res.json({ok: true, ...data});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
         app.get(`${api}/forum`, async (req, res) => {
             try {
                 const aid = String(req.query.aid || '');
@@ -1147,7 +1157,6 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const comment = String(req.body.comment || '').trim();
                 const aid = String(req.body.aid || '');
                 if (!comment) { res.json({ok: false, message: '评论内容不能为空'}); return }
-                if (!aid) { res.json({ok: false, message: 'aid 必填'}); return }
                 const data = await crawler.forum.post(comment, aid);
                 res.json({ok: data.status === 'ok', ...data});
             } catch (e) {

@@ -157,3 +157,27 @@
 - **必须** 主站 API 返回了 `total` 字段（表示总条数）的，使用传统分页（`n-pagination` 页码组件），不要用无限滚动
 - **必须** 只有 API 不返回 `total`、以返回空数据或 `error` 字段表示结束的，才用无限滚动
 - **必须** crawler 方法的 page 入参从 1 开始（符合常识），调用接口时做兼容转换（如 page-1），而不是要求调用者传 0-based 的 page
+
+## 2026-06-27 教训：图片加载动画的 4 次无用循环
+
+### 问题
+给 MetaPage 的封面加一个加载转圈。用户说了 4 次"还是没加载动画"，中间试了：
+1. `@load` + opacity 过渡 → 用户说图片变黑了
+2. `new Image()` 预加载 watch → 还是没动画
+3. 去掉 opacity，加 `watch(comic?.cover)` preloader → 还是没
+4. 加上 `ref` + `complete` 检测 → 还是没
+
+### 根因
+**CSS 容器没高度** — `jmt-meta-cover-wrap` 只有 `width: 20%`，没有 `aspect-ratio` 或固定高度。spinner 的 `position: absolute; inset: 0` 在高度为 0 的容器里不可见。ComicCard 有 `aspect-ratio: 3/4`，所以同样的 spinner 代码能正常显示。
+
+### 每次失败的原因
+- 第 1 次：在高度为 0 的容器上加了 opacity 过渡，图片本身也不可见
+- 第 2 次：加了 `new Image()` JS 预加载，但容器高度为 0 的问题没修
+- 第 3 次：去掉了 opacity 但容器高度还是 0
+- 第 4 次：加了 ref+complete 检测，容器高度还是 0
+
+### 对应的禁止事项
+
+- **禁止** JS 逻辑不生效时只盯着 JS 改 — 先检查 CSS 布局：目标元素（含其父容器）是否有宽高、是否被 `overflow: hidden` 裁剪、z-index 是否正确。用浏览器 DevTools 检查是最快的方式
+- **禁止** 遇到视觉问题时不先看同类实现的结构差异 — 同样都是 "spinner 覆盖在图片上"，ComicCard 的父容器有 `aspect-ratio: 3/4` 而 MetaPage 没有，一眼就能看出差异。先 grep 同类实现，对比 CSS 差异，再动手改
+- **禁止** 连续 3 次同一方向失败后仍然加更多 JS 逻辑 — 第 3 次还没解决就应该去查 CSS 了，而不是换第 4 种 JS 方案
