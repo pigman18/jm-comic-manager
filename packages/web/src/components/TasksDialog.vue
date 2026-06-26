@@ -10,10 +10,10 @@
     >
       <template #cell-name="{ task }">
         <div class="jmt-name-cell">
-          <img v-if="task.coverBase64" class="jmt-name-thumb" :src="task.coverBase64" alt="" />
+          <img v-if="task.coverBase64" class="jmt-name-thumb xxx-img" width="28" height="28" :src="task.coverBase64" alt="" />
           <div class="jmt-name-lines">
-            <span v-if="task.status === 'completed'" class="jmt-name-text jmt-name-link" @click.stop="readComic(task)">{{ task.name || `JM${task.number}` }}</span>
-            <span v-else class="jmt-name-text">{{ task.name || `JM${task.number}` }}</span>
+            <span v-if="task.status === 'completed'" class="jmt-name-text jmt-name-link" @click.stop="readComic(task)">{{ harmonyEnabled ? harmonyText(task.name || `JM${task.number}`) : (task.name || `JM${task.number}`) }}</span>
+            <span v-else class="jmt-name-text">{{ harmonyEnabled ? harmonyText(task.name || `JM${task.number}`) : (task.name || `JM${task.number}`) }}</span>
           </div>
         </div>
       </template>
@@ -95,7 +95,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, reactive, inject, provide } from 'vue'
+import { ref, computed, watch, reactive, nextTick, inject, provide, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { TaskManager } from '@pigman17/task-manager'
 import type { TaskItem as TmTaskItem } from '@pigman17/task-manager'
@@ -115,6 +115,16 @@ watch(() => tasksStore.statuses, (s) => { statusesRef.value = s }, { immediate: 
 provide('statuses', statusesRef)
 
 const { openComic } = useZipReader()
+
+const harmonyEnabled = inject<Ref<boolean>>('harmonyEnabled', ref(false))
+const harmonyText = inject<(text: string) => string>('harmonyText', (s: string) => s)
+const applyHarmony = inject<() => void>('applyHarmony', () => {})
+
+watch(model, (show) => {
+  if (show && harmonyEnabled.value) {
+    nextTick(() => applyHarmony())
+  }
+})
 
 const taskManagerTasks = computed<TmTaskItem[]>(() => {
   void tasksStore._taskVersion
