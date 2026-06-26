@@ -16,10 +16,10 @@
         <div v-if="sec.type === 'library' || sec.type === 'novels'" class="jmz-home-placeholder">暂未实现</div>
         <div v-else class="jmz-home-card-row">
           <ComicCard
-            v-for="c in sec.content"
+            v-for="(c, index) in sec.content"
             :key="c.id"
             :comic="c"
-            :tone-class="cardToneClass($index)"
+            :tone-class="cardToneClass(index)"
             :cover-ready="coverReady(c.id, c.cover)"
             :fetching="false"
             :meta-open="metaOpen"

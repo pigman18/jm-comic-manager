@@ -30,7 +30,8 @@ let defaultConfig = {
     "debug": false,
     "toast": false,
     "proxy": null,
-    "harmony": false
+    "harmony": false,
+    "harmonyThreshold": 50
 };
 
 /**

@@ -12,10 +12,12 @@ function buffer2Base64Image(buffer) {
     return `data:${mimeType};base64,${base64}`;
 }
 
-const BLOCK = 108;
-
 function _quantize5(c) {
     return (c >> 3) & 0x1f;
+}
+
+function _blockSize(threshold) {
+    return Math.max(1, threshold * 2 + 8);
 }
 
 function _dominantColor(tiny) {
@@ -40,10 +42,12 @@ function _dominantColor(tiny) {
  * @param {Buffer|string} input - 图片 Buffer 或文件路径
  * @param {number} outW - 输出宽度
  * @param {number} outH - 输出高度
+ * @param {number} [threshold=50] - 和谐阈值 1-100，默认 50
  * @returns {Promise<Buffer>} - JPEG Buffer
  */
-async function harmonizeImage(input, outW, outH) {
+async function harmonizeImage(input, outW, outH, threshold = 50) {
     const src = await Jimp.read(input);
+    const BLOCK = _blockSize(threshold);
     const bw = Math.max(1, Math.ceil(outW / BLOCK));
     const bh = Math.max(1, Math.ceil(outH / BLOCK));
 

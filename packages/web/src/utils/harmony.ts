@@ -1,5 +1,5 @@
-export function createHarmonyDataUrl(srcImg: HTMLImageElement, outW: number, outH: number): string {
-  const BLOCK = 108
+export function createHarmonyDataUrl(srcImg: HTMLImageElement, outW: number, outH: number, threshold = 50): string {
+  const BLOCK = Math.max(1, threshold * 2 + 8)
   const bw = Math.max(1, Math.ceil(outW / BLOCK))
   const bh = Math.max(1, Math.ceil(outH / BLOCK))
   const tiny = document.createElement('canvas')
