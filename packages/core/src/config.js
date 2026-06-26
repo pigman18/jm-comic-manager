@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {appDataDir} = require('../util/app');
+const {mkdirSyncIfNotExists} = require('../util/file');
 
 const CHANGE = 'handleChangeConfig';
 
@@ -61,6 +62,9 @@ function createConfig(manifest, ctx) {
 
   let _config = get();
   const out = { ..._config };
+    mkdirSyncIfNotExists(`${_config.dataDir}/comic`);
+    mkdirSyncIfNotExists(`${_config.dataDir}/file`);
+    mkdirSyncIfNotExists(`${_config.dataDir}/info`);
 
   function trigger(bundle) {
     if (!bundle || bundle.id !== manifest.id) return;

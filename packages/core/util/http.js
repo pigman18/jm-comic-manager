@@ -379,6 +379,7 @@ async function downloadResume(url, filePath, options = {}) {
     const { onProgress, proxy, signal, ...axiosOpts } = options;
     let resumeSize = 0;
     const tmpPath = filePath + '.tmp';
+    touchFileSync(tmpPath);
 
     if (signal?.aborted) throw createAbortError();
 
