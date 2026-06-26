@@ -17,7 +17,7 @@
       </section>
     </div>
 
-    <div class="jmz-serial-main" ref="mainScrollRef">
+    <div class="jmz-serial-main" ref="mainScrollRef" @scroll="onScroll">
       <n-empty v-if="!loading && !list.length" description="暂无内容" />
       <div v-else class="jmz-card-grid-wrap">
         <div v-if="loading" class="jmz-card-grid jmz-skel-grid" aria-hidden="true">
@@ -44,6 +44,10 @@
               <span v-if="c.likes" class="jmz-card-pages">{{ c.likes }}❤</span>
             </template>
           </ComicCard>
+        </div>
+        <div class="jmz-serial-sentinel">
+          <div v-if="loadingMore" class="jmz-serial-loading">加载中...</div>
+          <div v-else-if="!hasMore && list.length" class="jmz-serial-end">已全部加载</div>
         </div>
       </div>
     </div>
@@ -82,9 +86,12 @@ const route = useRoute()
 const message = useMessage()
 
 const loading = ref(false)
+const loadingMore = ref(false)
 const fetching = ref<Record<number, boolean>>({})
 const list = shallowRef<Comic[]>([])
 const activeDay = ref(0)
+const page = ref(1)
+const hasMore = ref(true)
 
 const currentPageComics = inject<Ref<Comic[]>>('currentPageComics')!
 watch(list, (v) => { currentPageComics.value = v }, { immediate: true })
@@ -102,7 +109,6 @@ const coverLoaded = reactive<Record<number, boolean>>({})
 const total = computed(() => list.value.length)
 
 let _syncingUrl = false
-let _loaded = false
 
 watch(() => route.query, (q) => {
   if (route.name !== 'serial' || _syncingUrl) return
@@ -110,7 +116,6 @@ watch(() => route.query, (q) => {
   if (Number.isFinite(d)) {
     activeDay.value = d
     if (!cachedList.value.length) {
-      _loaded = true
       loadComics()
     }
   }
@@ -174,17 +179,51 @@ function syncUrl() {
 }
 
 async function loadComics() {
+  page.value = 1
+  hasMore.value = true
   loading.value = true
   list.value = []
   coverLoaded.value = {}
   try {
-    const j = await getJson(`/serial/comics?day=${activeDay.value}`)
+    const j = await getJson(`/serial/comics?day=${activeDay.value}&page=1`)
     if (!j.ok) throw new Error(j.message || '获取失败')
     list.value = j.list || []
+    hasMore.value = j.hasMore !== false
   } catch (e: any) {
     message.error(e.message || '获取每日连载失败')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadMore() {
+  if (loadingMore.value || !hasMore.value) return
+  loadingMore.value = true
+  const nextPage = page.value + 1
+  try {
+    const j = await getJson(`/serial/comics?day=${activeDay.value}&page=${nextPage}`)
+    if (!j.ok) throw new Error(j.message || '获取失败')
+    const items = j.list || []
+    hasMore.value = j.hasMore !== false
+    if (items.length) {
+      list.value = [...list.value, ...items]
+      page.value = nextPage
+    } else {
+      hasMore.value = false
+    }
+  } catch (e: any) {
+    message.error(e.message || '加载更多失败')
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function onScroll(e: Event) {
+  const el = e.target as HTMLElement
+  if (!el || loadingMore.value || !hasMore.value) return
+  const threshold = 200
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - threshold) {
+    loadMore()
   }
 }
 
@@ -475,5 +514,18 @@ function onDayClick(day: number) {
 }
 .jmz-card-pages {
   font-variant-numeric: tabular-nums;
+}
+
+.jmz-serial-sentinel {
+  padding: 16px 0;
+  text-align: center;
+}
+.jmz-serial-loading {
+  font-size: 13px;
+  color: #7a7a8a;
+}
+.jmz-serial-end {
+  font-size: 12px;
+  color: #5a5a6a;
 }
 </style>

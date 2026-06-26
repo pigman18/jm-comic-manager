@@ -801,17 +801,15 @@ function createCrawler(manifest, ctx, message, config) {
          * @param date
          * 分类与排行
          */
-        serialization: async (date) => {
+        serialization: async (date, page = 1) => {
             let data = await expireRetry(async () => {
-                let resp = await apiClient.get(`${getApiHost()}/serialization?date=${date}`);
-                let {
-                    list
-                } = resp.data.data;
-                return {
-                    list
+                let resp = await apiClient.get(`${getApiHost()}/serialization?type=all&date=${date}&page=${page}`);
+                let body = resp.data.data;
+                if (body && body.error) {
+                    return { list: [], error: body.error };
                 }
+                return { list: body.list || [] };
             });
-            // 手动兼容 is_favorite
             (data?.list || []).forEach((obj) => {
                 obj.is_favorite = obj.favorite;
             });
@@ -905,6 +903,47 @@ function createCrawler(manifest, ctx, message, config) {
         }
     };
 
+    const promote = {
+        list: async () => {
+            let resp = await expireRetry(async () => {
+                return await apiClient.get(`${getApiHost()}/promote`);
+            });
+            return resp.data.data || [];
+        },
+        sections: async () => {
+            return [
+                { id: '10', title: '推广10' },
+                { id: '13', title: '推广13' },
+                { id: '26', title: '推广26' },
+                { id: '27', title: '推广27' },
+                { id: '28', title: '推广28' },
+                { id: '29', title: 'C107&推荐本本' },
+                { id: '30', title: '禁漫去码&全彩化' },
+                { id: '31', title: '推广31' },
+                { id: '32', title: '推广32' },
+                { id: '33', title: '推广33' },
+                { id: '34', title: '推广34' },
+                { id: '35', title: '推广35' },
+                { id: '36', title: '推广36' },
+                { id: '37', title: '推广37' },
+                { id: '38', title: '推广38' },
+            ];
+        },
+        promoteList: async (id, page = 1) => {
+            const apiPage = Math.max(0, page - 1);
+            let data = await expireRetry(async () => {
+                let resp = await apiClient.get(`${getApiHost()}/promote_list?id=${id}&page=${apiPage}`);
+                let body = resp.data.data;
+                if (!body) return { total: 0, list: [] };
+                return { total: parseInt(body.total || '0', 10), list: body.list || [] };
+            });
+            (data?.list || []).forEach((obj) => {
+                obj.is_favorite = obj.is_favorite || obj.favorite;
+            });
+            return data;
+        }
+    };
+
     return {
         httpClient,
         close,
@@ -915,6 +954,7 @@ function createCrawler(manifest, ctx, message, config) {
         search,
         rank,
         forum,
+        promote,
         fetchLatestApiHosts
     };
 }

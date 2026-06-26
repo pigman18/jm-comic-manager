@@ -592,7 +592,8 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         app.get(`${api}/serial/comics`, async (req, res) => {
             try {
                 const day = parseInt(req.query.day, 10) || 0;
-                const result = await crawler.rank.serialization(day);
+                const page = parseInt(req.query.page, 10) || 1;
+                const result = await crawler.rank.serialization(day, page);
                 const comicDir = path.join(config.dataDir, 'comic');
                 const list = (result?.list || []).map((item) => {
                     const id = Number(item.aid || item.id);
@@ -615,7 +616,8 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     o.inStore = !!dbRow;
                     o.canRead = isNotEmptySync(path.join(comicDir, `${o.id}.zip`));
                 }));
-                res.json({ok: true, list});
+                const hasMore = !result?.error;
+                res.json({ok: true, list, hasMore});
             } catch (e) {
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
@@ -1154,6 +1156,81 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         });
     }
 
+    function handlePromote(app, api) {
+        app.get(`${api}/promote`, async (req, res) => {
+            try {
+                const list = await crawler.promote.list();
+                const sections = (list || []).map((s) => ({
+                    id: String(s.id || ''),
+                    title: String(s.title || ''),
+                    slug: String(s.slug || ''),
+                    type: String(s.type || ''),
+                    filter_val: String(s.filter_val || ''),
+                    content: (s.content || []).map((item) => {
+                        const id = Number(item.id || item.aid);
+                        const o = {
+                            id,
+                            name: String(item.name || item.title || ''),
+                            author: Array.isArray(item.author) ? item.author : (item.author ? [String(item.author)] : []),
+                            cover: String(item.image || ''),
+                            category: item.category || null,
+                            category_sub: item.category_sub || null,
+                            liked: !!item.liked,
+                            is_favorite: !!item.is_favorite,
+                            update_at: item.update_at || 0,
+                        };
+                        return rewriteComicMediaUrls(o);
+                    }),
+                }));
+                res.json({ok: true, list: sections});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+
+        app.get(`${api}/promote/sections`, async (req, res) => {
+            try {
+                const list = await crawler.promote.sections();
+                res.json({ok: true, list});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+
+        app.get(`${api}/promote/list`, async (req, res) => {
+            try {
+                const id = parseInt(req.query.id, 10);
+                const page = parseInt(req.query.page, 10);
+                if (!Number.isFinite(id)) {
+                    return res.status(400).json({ok: false, message: 'missing id'});
+                }
+                const result = await crawler.promote.promoteList(id, Number.isFinite(page) ? page : 0);
+                const comicDir = path.join(config.dataDir, 'comic');
+                const list = (result?.list || []).map((item) => {
+                    const id = Number(item.aid || item.id);
+                    const o = {
+                        ...item,
+                        id,
+                        name: String(item.title || item.name || ''),
+                        cover: String(item.cover || item.image || ''),
+                        author: Array.isArray(item.author) ? item.author : (item.author ? [String(item.author)] : []),
+                        inStore: false,
+                        canRead: false,
+                    };
+                    return rewriteComicMediaUrls(o);
+                });
+                await Promise.all(list.map(async (o) => {
+                    const dbRow = await store.comicMeta.get(o.id);
+                    o.inStore = !!dbRow;
+                    o.canRead = isNotEmptySync(path.join(comicDir, `${o.id}.zip`));
+                }));
+                res.json({ok: true, list, total: result?.total || 0});
+            } catch (e) {
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+    }
+
     async function start() {
         const app = express();
         expressWs(app);
@@ -1198,6 +1275,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         handleOpenViewer(app, api);
         handleBrowse(app, api);
         handleForum(app, api);
+        handlePromote(app, api);
         await new Promise((resolve, reject) => {
             _server = app.listen(port, host, () => {
                 if (typeof ctx?.log === 'function') {

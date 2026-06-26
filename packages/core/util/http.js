@@ -52,14 +52,11 @@ function cdn2OriginUrl(cdnUrl, host, cdnHosts) {
     if (!cdnUrl) {
         return cdnUrl;
     }
-    let url = cdnUrl;
-    for (let cdnHost of (cdnHosts || [])) {
-        if (url.indexOf(cdnHost) !== -1) {
-            url = url.split(cdnHost).join(host);
-            break;
-        }
+    if (!cdnUrl.startsWith(host)) {
+        return cdnUrl;
     }
-    return url;
+    let cdnHost = cdnHosts[Math.floor(Math.random() * cdnHosts.length)];
+    return cdnUrl.split(host).join(cdnHost);
 }
 
 /**
