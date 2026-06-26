@@ -122,8 +122,29 @@
                       <div class="jmt-cmt-level">{{ c.expinfo?.level_name || '' }}</div>
                       <div class="jmt-cmt-content" v-html="c.content"></div>
                       <div class="jmt-cmt-actions">
+                        <span class="jmt-cmt-action-btn" role="button" tabindex="0" @click="startReply(c)" @keyup.enter="startReply(c)">回复</span>
                         <span class="jmt-cmt-likes"><n-icon :component="ThumbsUpOutline" size="12" /> {{ c.likes || 0 }}</span>
                         <span v-if="c.replys?.length" class="jmt-cmt-reply-toggle" @click="toggleReplies(c)">{{ expandedReply(c) ? '收起回复' : `${c.replys.length} 条回复` }}</span>
+                      </div>
+                      <div v-if="replyingTo === c.CID" class="jmt-cmt-reply-box">
+                        <div class="jmt-cmt-reply-indicator">回复 @{{ c.nickname || c.username }}</div>
+                        <div class="jmt-cmt-reply-input-wrap">
+                          <n-input v-model:value="replyText" type="textarea" placeholder="输入回复内容" :disabled="postingReply" :autosize="{ minRows: 2, maxRows: 4 }" />
+                          <n-popover trigger="click" placement="bottom-end">
+                            <template #trigger>
+                              <n-button quaternary size="tiny" class="jmt-cmt-emoji-btn">
+                                <template #icon><n-icon :component="HappyOutline" size="18" /></template>
+                              </n-button>
+                            </template>
+                            <div class="jmt-cmt-emoji-grid" style="background:#1e1e22;border:1px solid #2e2e35;border-radius:6px">
+                              <img v-for="e in emojis" :key="e" :src="emojiImageUrl(e)" :alt="e" class="jmt-cmt-emoji-item" @click="replyText += e" />
+                            </div>
+                          </n-popover>
+                        </div>
+                        <div class="jmt-cmt-reply-actions">
+                          <n-button size="tiny" quaternary @click="replyingTo = null">取消</n-button>
+                          <n-button size="tiny" type="primary" :disabled="!replyText.trim()" :loading="postingReply" @click="postReply(c.CID)">回复</n-button>
+                        </div>
                       </div>
                       <div v-if="expandedReply(c) && c.replys?.length" class="jmt-cmt-replies">
                         <div v-for="r in c.replys" :key="r.CID" class="jmt-cmt-reply">
@@ -131,7 +152,30 @@
                           <div class="jmt-cmt-reply-body">
                             <span class="jmt-cmt-reply-user">{{ r.nickname || r.username }}</span>
                             <span class="jmt-cmt-reply-text" v-html="r.content"></span>
-                            <span class="jmt-cmt-reply-time">{{ fmtCommentTime(r.addtime) }}</span>
+                            <div class="jmt-cmt-reply-foot">
+                              <span class="jmt-cmt-reply-time">{{ fmtCommentTime(r.addtime) }}</span>
+                              <span class="jmt-cmt-action-btn" role="button" tabindex="0" @click="startReply(r)" @keyup.enter="startReply(r)">回复</span>
+                            </div>
+                            <div v-if="replyingTo === r.CID" class="jmt-cmt-reply-box">
+                              <div class="jmt-cmt-reply-indicator">回复 @{{ r.nickname || r.username }}</div>
+                              <div class="jmt-cmt-reply-input-wrap">
+                                <n-input v-model:value="replyText" type="textarea" placeholder="输入回复内容" :disabled="postingReply" :autosize="{ minRows: 2, maxRows: 4 }" />
+                                <n-popover trigger="click" placement="bottom-end">
+                                  <template #trigger>
+                                    <n-button quaternary size="tiny" class="jmt-cmt-emoji-btn">
+                                      <template #icon><n-icon :component="HappyOutline" size="18" /></template>
+                                    </n-button>
+                                  </template>
+                                  <div class="jmt-cmt-emoji-grid" style="background:#1e1e22;border:1px solid #2e2e35;border-radius:6px">
+                                    <img v-for="e in emojis" :key="e" :src="emojiImageUrl(e)" :alt="e" class="jmt-cmt-emoji-item" @click="replyText += e" />
+                                  </div>
+                                </n-popover>
+                              </div>
+                              <div class="jmt-cmt-reply-actions">
+                                <n-button size="tiny" quaternary @click="replyingTo = null">取消</n-button>
+                                <n-button size="tiny" type="primary" :disabled="!replyText.trim()" :loading="postingReply" @click="postReply(r.CID)">回复</n-button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -188,6 +232,9 @@ const commentTotal = ref(0)
 const commentPages = computed(() => Math.ceil(commentTotal.value / 10))
 const expandedCids = ref<Set<string>>(new Set())
 const coverLoaded = ref(false)
+const replyingTo = ref<string | null>(null)
+const replyText = ref('')
+const postingReply = ref(false)
 
 function avatarUrl(photo: string) {
   if (!photo || photo.startsWith('nopic')) {
@@ -251,6 +298,39 @@ async function postComment() {
     message.error(String(e?.message || e))
   } finally {
     postingComment.value = false
+  }
+}
+
+function startReply(c: any) {
+  if (replyingTo.value === c.CID) {
+    replyingTo.value = null
+    replyText.value = ''
+    return
+  }
+  replyingTo.value = c.CID
+  replyText.value = ''
+}
+
+async function postReply(cid: string) {
+  const text = replyText.value.trim()
+  if (!text) return
+  const aid = albumNum.value
+  if (!Number.isFinite(aid)) return
+  postingReply.value = true
+  try {
+    const j = await postJson(`/comment`, { comment: text, aid, comment_id: cid })
+    if (j.ok) {
+      message.success(j.msg || j.message || '回复成功')
+      replyText.value = ''
+      replyingTo.value = null
+      loadComments()
+    } else {
+      message.error(j.message || '回复失败')
+    }
+  } catch (e: any) {
+    message.error(String(e?.message || e))
+  } finally {
+    postingReply.value = false
   }
 }
 
@@ -989,11 +1069,45 @@ function fmtBytes(n: number) {
   margin: 0;
   display: inline;
 }
+.jmt-cmt-reply-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 1px;
+}
 .jmt-cmt-reply-time {
-  display: block;
   font-size: 10px;
   color: #7a7a8a;
-  margin-top: 1px;
+}
+.jmt-cmt-action-btn {
+  cursor: pointer;
+  color: #7a7a8a;
+  user-select: none;
+}
+.jmt-cmt-action-btn:hover {
+  color: #3b82f6;
+}
+.jmt-cmt-reply-box {
+  margin-top: 6px;
+  padding: 6px;
+  background: #25252b;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.jmt-cmt-reply-indicator {
+  font-size: 12px;
+  color: #9b9bb4;
+  font-weight: 600;
+}
+.jmt-cmt-reply-input-wrap {
+  position: relative;
+}
+.jmt-cmt-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 .jmt-cmt-form {
   display: flex;

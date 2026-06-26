@@ -898,10 +898,11 @@ function createCrawler(manifest, ctx, message, config) {
             });
             return resp.data.data || { list: [], total: 0 };
         },
-        post: async (comment, aid) => {
+        post: async (comment, aid, comment_id) => {
             const fd = new FormData();
             fd.append('comment', comment);
             fd.append('aid', String(aid));
+            if (comment_id) fd.append('comment_id', String(comment_id));
             let resp = await expireRetry(async () => {
                 return await apiClient.post(`${getApiHost()}/comment`, fd, {
                     headers: fd.getHeaders()
