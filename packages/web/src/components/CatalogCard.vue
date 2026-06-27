@@ -50,6 +50,7 @@
           <span v-if="comic.likes" class="jmz-card-pages" style="margin-left:6px">
             <n-icon :component="HeartOutline" size="13" style="vertical-align:-2px;margin-right:2px" />{{ comic.likes }}
           </span>
+          <span style="margin-left:auto;cursor:pointer;font-size:16px;line-height:1" role="button" tabindex="0" @click.stop="toggleStar" @keyup.enter.stop="toggleStar">{{ starStore.isStarred(comic.id) ? '⭐' : '☆' }}</span>
         </slot>
       </div>
     </div>
@@ -63,8 +64,11 @@ import CardBanBtn from './CardBanBtn.vue'
 import CardDownloadBtn from './CardDownloadBtn.vue'
 import CardReadBtn from './CardReadBtn.vue'
 import { EyeOutline, HeartOutline } from '@vicons/ionicons5'
+import { useStarStore } from '@/stores/star'
 
-defineProps<{
+const starStore = useStarStore()
+
+const props = defineProps<{
   comic: Comic
   toneClass?: string
   coverReady: boolean
@@ -78,6 +82,10 @@ defineProps<{
   fetchRemote?: boolean
   onBanToggle?: () => void
 }>()
+
+async function toggleStar() {
+  await starStore.toggleStar(props.comic.id)
+}
 </script>
 
 <style scoped>

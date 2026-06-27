@@ -275,7 +275,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     res.setHeader('Cache-Control', 'public, max-age=86400');
                     fs.createReadStream(abs).pipe(res);
                 } catch (err) {
-                    console.error(err);
+                    console.error('[server]', err);
                     if (!res.headersSent) res.status(500).end();
                 }
             });
@@ -412,6 +412,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     tags: String(req.query.tags || '').trim(),
                     kind: String(req.query.kind || '').trim(),
                     banned: String(req.query.banned || '').trim(),
+                    starred: String(req.query.starred || '').trim(),
                     sort: sortMap[String(req.query.sort || 'update_time')] || 'update_time',
                     order: String(req.query.order || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC',
                     page: Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1),
@@ -1134,6 +1135,43 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         app.get(`${api}/bans`, async (_req, res) => {
             try {
                 const ids = await store.comicBan.listBans();
+                res.json({ok: true, ids});
+            } catch (e) {
+                console.error('[server]', e);
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.post(`${api}/comics/:num/star`, async (req, res) => {
+            try {
+                const num = Math.floor(Number(req.params.num));
+                if (!Number.isFinite(num) || num < 1) {
+                    res.status(400).json({ok: false, message: '无效编码'});
+                    return;
+                }
+                const starred = await store.comicStar.toggleStar(num);
+                res.json({ok: true, starred});
+            } catch (e) {
+                console.error('[server]', e);
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.post(`${api}/stars/check`, async (req, res) => {
+            try {
+                const ids = req.body.ids;
+                if (!Array.isArray(ids)) {
+                    res.json({ok: false, message: 'ids 必须是数组'});
+                    return;
+                }
+                const starredIds = await store.comicStar.checkStars(ids.map((id) => Math.floor(Number(id))).filter(Number.isFinite));
+                res.json({ok: true, starredIds});
+            } catch (e) {
+                console.error('[server]', e);
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+        app.get(`${api}/stars`, async (_req, res) => {
+            try {
+                const ids = await store.comicStar.listStars();
                 res.json({ok: true, ids});
             } catch (e) {
                 console.error('[server]', e);
