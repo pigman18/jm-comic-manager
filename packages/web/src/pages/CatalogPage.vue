@@ -138,14 +138,12 @@ async function loadList(): Promise<void> {
 function resetPage(): void {
   filters.page = 1;
   router.replace({ name: 'catalog', query: filtersToQuery() });
-  loadList();
 }
 
 /* ✅ 分页变化（修好分页点击） */
 function onPageChange(): void {
   router.replace({ name: 'catalog', query: filtersToQuery() });
   mainScrollRef.value?.scrollTo({ top: 0 });
-  loadList();
 }
 
 onMounted(() => {
