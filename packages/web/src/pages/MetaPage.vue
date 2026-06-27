@@ -22,9 +22,11 @@
                   <span class="xxx-text">JM{{ comic.id }}</span>
                   <span class="xxx-text">{{ comic.displayKindLabel }}</span>
                 </p>
-                <div v-if="comic.author?.length" class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作者：</span><span v-for="a in comic.author" :key="a" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByAuthor(a, $event)" @keyup.enter="filterByAuthor(a, $event)">{{ a }}</span></div>
+                <div v-if="comic.author?.length" class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作者：</span><span v-for="a in visibleAuthor" :key="a" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByAuthor(a, $event)" @keyup.enter="filterByAuthor(a, $event)">{{ a }}</span><span v-if="comic.author.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandAuthor = !expandAuthor" @keyup.enter="expandAuthor = !expandAuthor">{{ expandAuthor ? '收起' : `+${comic.author.length - SHOW_LIMIT}` }}</span></div>
                 <div v-if="comic.tags?.length" class="jmt-meta-chips">
-                  <span v-for="t in comic.tags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByTag(t, $event)" @keyup.enter="filterByTag(t, $event)">{{ t }}</span>
+                  <span style="font-size:14px;color:#c4c4d6;margin-right:2px">标签：</span>
+                  <span v-for="t in visibleTags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByTag(t, $event)" @keyup.enter="filterByTag(t, $event)">{{ t }}</span>
+                  <span v-if="comic.tags.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandTags = !expandTags" @keyup.enter="expandTags = !expandTags">{{ expandTags ? '收起' : `+${comic.tags.length - SHOW_LIMIT}` }}</span>
                 </div>
                 <p v-if="comic.description" class="jmt-meta-desc xxx-text">{{ comic.description }}</p>
                 <div v-if="comic" class="jmt-meta-stats">
@@ -239,6 +241,9 @@ const commentTotal = ref(0)
 const commentPages = computed(() => Math.ceil(commentTotal.value / 10))
 const expandedCids = ref<Set<string>>(new Set())
 const coverLoaded = ref(false)
+const SHOW_LIMIT = 8
+const expandAuthor = ref(false)
+const expandTags = ref(false)
 const replyingTo = ref<string | null>(null)
 const replyText = ref('')
 const postingReply = ref(false)
@@ -402,6 +407,8 @@ function isRead(zipKey: string) {
 const loading = ref(true)
 const comic = ref<Comic | null>(null)
 const previewImages = computed(() => (comic.value?.images || []).slice(1))
+const visibleAuthor = computed(() => expandAuthor.value ? (comic.value?.author || []) : (comic.value?.author || []).slice(0, SHOW_LIMIT))
+const visibleTags = computed(() => expandTags.value ? (comic.value?.tags || []) : (comic.value?.tags || []).slice(0, SHOW_LIMIT))
 const coverRef = ref<HTMLImageElement | null>(null)
 
 watch(coverRef, (el) => {
