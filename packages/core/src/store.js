@@ -153,43 +153,76 @@ function createStore(manifest, ctx, message, config, crawler) {
         try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_addtime ON comic_meta(addtime, id)'); } catch (_) {}
         // FTS5 全文索引
         try {
-            // FTS5 不支持 ALTER TABLE，旧表缺少新列时必须 DROP 重建
+            // 检查 schema 版本（v2: content='comic_meta' 已移除, author/tags 标准化存储）
+            const currentVersion = (() => {
+                try {
+                    const row = database.prepare('PRAGMA user_version').get();
+                    if (typeof row === 'object' && row) {
+                        return Number(row.user_version || row['user_version'] || 0);
+                    }
+                    return Number(row) || 0;
+                } catch (_) { return 0; }
+            })();
+            // 旧版 FTS（content='comic_meta'）迁移：删除后重新创建
+            if (currentVersion < 2) {
+                database.exec('DROP TABLE IF EXISTS comic_meta_fts');
+                database.exec('DROP TRIGGER IF EXISTS comic_meta_ai');
+                database.exec('DROP TRIGGER IF EXISTS comic_meta_ad');
+                database.exec('DROP TRIGGER IF EXISTS comic_meta_au');
+            }
+            // 检查 FTS 表是否已有正确列
             const recreateFts = (() => {
                 try {
                     database.exec('SELECT tags FROM comic_meta_fts LIMIT 0');
-                    return false; // tags 列已存在
+                    return false;
                 } catch (_) {
                     database.exec('DROP TABLE IF EXISTS comic_meta_fts');
                     return true;
                 }
             })();
+            // 不再使用 content='comic_meta'，手动管理标准化数据
             database.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS comic_meta_fts USING fts5(
                 name, author, description, tags, works, actors,
-                content='comic_meta',
-                content_rowid='id',
                 tokenize='unicode61'
             )`);
-            if (recreateFts) {
+            if (recreateFts || currentVersion < 2) {
                 database.exec(`INSERT OR IGNORE INTO comic_meta_fts(rowid, name, author, description, tags, works, actors)
-                    SELECT id, name, author, description, tags, works, actors FROM comic_meta`);
+                    SELECT id, name,
+                        TRIM(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(comic_meta.author,'[]'),'[',''),']',''),'"',''),',',' ')),
+                        description,
+                        TRIM(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(comic_meta.tags,'[]'),'[',''),']',''),'"',''),',',' ')),
+                        works, actors
+                    FROM comic_meta`);
             }
             database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_ai');
             database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_ad');
             database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_au');
             database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_fts_ai AFTER INSERT ON comic_meta BEGIN
                 INSERT INTO comic_meta_fts(rowid, name, author, description, tags, works, actors)
-                VALUES (new.id, new.name, new.author, new.description, new.tags, new.works, new.actors);
+                VALUES (
+                    new.id, new.name,
+                    TRIM(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(new.author,'[]'),'[',''),']',''),'"',''),',',' ')),
+                    new.description,
+                    TRIM(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(new.tags,'[]'),'[',''),']',''),'"',''),',',' ')),
+                    new.works, new.actors
+                );
             END`);
             database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_fts_ad AFTER DELETE ON comic_meta BEGIN
-                INSERT INTO comic_meta_fts(comic_meta_fts, rowid, name, author, description, tags, works, actors)
-                VALUES ('delete', old.id, old.name, old.author, old.description, old.tags, old.works, old.actors);
+                DELETE FROM comic_meta_fts WHERE rowid = old.id;
             END`);
             database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_fts_au AFTER UPDATE ON comic_meta BEGIN
-                INSERT INTO comic_meta_fts(comic_meta_fts, rowid, name, author, description, tags, works, actors)
-                VALUES ('delete', old.id, old.name, old.author, old.description, old.tags, old.works, old.actors);
+                DELETE FROM comic_meta_fts WHERE rowid = old.id;
                 INSERT INTO comic_meta_fts(rowid, name, author, description, tags, works, actors)
-                VALUES (new.id, new.name, new.author, new.description, new.tags, new.works, new.actors);
+                VALUES (
+                    new.id, new.name,
+                    TRIM(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(new.author,'[]'),'[',''),']',''),'"',''),',',' ')),
+                    new.description,
+                    TRIM(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(new.tags,'[]'),'[',''),']',''),'"',''),',',' ')),
+                    new.works, new.actors);
             END`);
+            if (currentVersion < 2) {
+                database.exec('PRAGMA user_version = 2');
+            }
         } catch (e) {
             console.warn('[store] FTS5 不可用，将使用 LIKE 搜索:', e.message);
         }
@@ -214,9 +247,17 @@ function createStore(manifest, ctx, message, config, crawler) {
             )
         `);
         database.exec('CREATE INDEX IF NOT EXISTS idx_meta_tag_tag ON comic_meta_tag(tag)');
-        // 保留 DELETE 级联触发器，INSERT/UPDATE 改为显式管理避免偶发 UNIQUE 冲突
         database.exec(`DROP TRIGGER IF EXISTS comic_meta_tag_ai`);
         database.exec(`DROP TRIGGER IF EXISTS comic_meta_tag_au`);
+        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_ai AFTER INSERT ON comic_meta BEGIN
+            INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
+            SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.tags) THEN new.tags ELSE '[]' END) t;
+        END`);
+        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_au AFTER UPDATE ON comic_meta BEGIN
+            DELETE FROM comic_meta_tag WHERE comic_id = old.id;
+            INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
+            SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.tags) THEN new.tags ELSE '[]' END) t;
+        END`);
         database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_ad AFTER DELETE ON comic_meta BEGIN
             DELETE FROM comic_meta_tag WHERE comic_id = old.id;
         END`);
@@ -225,7 +266,38 @@ function createStore(manifest, ctx, message, config, crawler) {
             const tagCount = database.prepare('SELECT COUNT(*) as c FROM comic_meta_tag').get({}).c;
             if (tagCount === 0) {
                 database.exec(`INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
-                    SELECT c.id, t.value FROM comic_meta c, json_each(c.tags) t`);
+                    SELECT c.id, t.value FROM comic_meta c, json_each(CASE WHEN json_valid(c.tags) THEN c.tags ELSE '[]' END) t`);
+            }
+        } catch (_) {}
+        // 作者关联表（代替 json_each 全表扫描）
+        database.exec(`
+            CREATE TABLE IF NOT EXISTS comic_meta_author (
+                comic_id INTEGER NOT NULL,
+                author TEXT NOT NULL,
+                PRIMARY KEY (comic_id, author)
+            )
+        `);
+        database.exec('CREATE INDEX IF NOT EXISTS idx_meta_author_value ON comic_meta_author(author)');
+        database.exec(`DROP TRIGGER IF EXISTS comic_meta_author_ai`);
+        database.exec(`DROP TRIGGER IF EXISTS comic_meta_author_au`);
+        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_ai AFTER INSERT ON comic_meta BEGIN
+            INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
+            SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.author) THEN new.author ELSE '[]' END) t;
+        END`);
+        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_au AFTER UPDATE ON comic_meta BEGIN
+            DELETE FROM comic_meta_author WHERE comic_id = old.id;
+            INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
+            SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.author) THEN new.author ELSE '[]' END) t;
+        END`);
+        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_ad AFTER DELETE ON comic_meta BEGIN
+            DELETE FROM comic_meta_author WHERE comic_id = old.id;
+        END`);
+        // 自动同步作者表：已有数据但关联表为空
+        try {
+            const authorCount = database.prepare('SELECT COUNT(*) as c FROM comic_meta_author').get({}).c;
+            if (authorCount === 0) {
+                database.exec(`INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
+                    SELECT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.author) THEN c.author ELSE '[]' END) t`);
             }
         } catch (_) {}
         // 自动重建 FTS：已有数据但 FTS 表为空
@@ -233,21 +305,15 @@ function createStore(manifest, ctx, message, config, crawler) {
             const ftsCount = database.prepare('SELECT COUNT(*) as c FROM comic_meta_fts').get({}).c;
             if (ftsCount === 0) {
                 database.exec(`INSERT OR IGNORE INTO comic_meta_fts(rowid, name, author, description, tags, works, actors)
-                    SELECT id, name, author, description, tags, works, actors FROM comic_meta`);
+                    SELECT id, name,
+                        TRIM(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(comic_meta.author,'[]'),'[',''),']',''),'"',''),',',' ')),
+                        description,
+                        TRIM(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(comic_meta.tags,'[]'),'[',''),']',''),'"',''),',',' ')),
+                        works, actors
+                    FROM comic_meta`);
             }
         } catch (_) {}
         return database;
-    }
-
-    function syncComicTags(conn, comicId, tagsJson) {
-        conn.prepare('DELETE FROM comic_meta_tag WHERE comic_id = ?').run(comicId);
-        const tags = JSON.parse(tagsJson || '[]');
-        if (!tags.length) return;
-        const stmt = conn.prepare('INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag) VALUES (?, ?)');
-        for (const t of tags) {
-            const tag = String(t).trim();
-            if (tag) stmt.run([comicId, tag]);
-        }
     }
 
     async function saveOrUpdateBatch(anyList, toRow) {
@@ -256,10 +322,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         const stmt = conn.prepare(insertSQl);
         for (let obj of anyList) {
             let row = await toRow(obj);
-            if (row) {
-                stmt.run(row);
-                syncComicTags(conn, row.id, row.tags);
-            }
+            if (row) stmt.run(row);
         }
         conn.exec('COMMIT');
     }
@@ -268,7 +331,6 @@ function createStore(manifest, ctx, message, config, crawler) {
         let conn = await connect();
         const stmt = conn.prepare(insertSQl);
         stmt.run(row);
-        syncComicTags(conn, row.id, row.tags);
     }
 
     // ============ comicMeta sub-module ============
@@ -300,42 +362,20 @@ function createStore(manifest, ctx, message, config, crawler) {
         const conn = await connect();
         conn.exec('DELETE FROM comic_meta_tag');
         conn.exec(`INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
-            SELECT c.id, TRIM(t.value) FROM comic_meta c, json_each(c.tags) t`);
+            SELECT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.tags) THEN c.tags ELSE '[]' END) t`);
+    }
+
+    async function syncAllAuthors() {
+        const conn = await connect();
+        conn.exec('DELETE FROM comic_meta_author');
+        conn.exec(`INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
+            SELECT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.author) THEN c.author ELSE '[]' END) t`);
     }
 
     function makeFtsTerms(value) {
-        const parts = [];
-        // CJK
-        const cjkRuns = value.match(/[\p{Script=Han}]+/gu) || [];
-        for (const run of cjkRuns) {
-            parts.push(`${run}*`);
-        }
-        // Latin / number
-        const latinWords = value.match(/[a-zA-Z0-9]+/g) || [];
-        for (const w of latinWords) {
-            parts.push(`${w}*`);
-        }
-        // 日文 / 韩文 / 其他 Unicode：强制短语
-        const covered = value.replace(/[\p{Script=Han}a-zA-Z0-9]+/gu, '');
-        const others = covered.trim();
-        if (others.length > 0) {
-            const escaped = others.replace(/"/g, '""');
-            parts.push(`"${escaped}"`);
-        }
-        return parts;
-    }
-
-    function columnMatch(column, value) {
-        const terms = makeFtsTerms(value);
-        return terms.map(t => `${column}:${t}`).join(' AND ');
-    }
-
-    function buildFtsMatch({ query, author, tags } = {}) {
-        const parts = [];
-        if (query) parts.push(makeFtsTerms(query).join(' AND '));
-        if (author) parts.push(`(${columnMatch('author', author)})`);
-        if (tags) parts.push(`(${columnMatch('tags', tags)})`);
-        return parts.filter(Boolean).join(' AND ');
+        const words = value.match(/\S+/gu);
+        if (!words || !words.length) return [];
+        return words.map(w => `${w}*`);
     }
 
     async function rebuildFtsIndex() {
@@ -343,7 +383,12 @@ function createStore(manifest, ctx, message, config, crawler) {
         try {
             conn.exec('DELETE FROM comic_meta_fts');
             conn.exec(`INSERT INTO comic_meta_fts(rowid, name, author, description, tags, works, actors)
-                SELECT id, name, author, description, tags, works, actors FROM comic_meta`);
+                SELECT id, name,
+                    TRIM(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(comic_meta.author,'[]'),'[',''),']',''),'"',''),',',' ')),
+                    description,
+                    TRIM(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(comic_meta.tags,'[]'),'[',''),']',''),'"',''),',',' ')),
+                    works, actors
+                FROM comic_meta`);
         } catch (e) {
             console.warn('[store] FTS 索引重建失败:', e.message);
         }
@@ -387,18 +432,35 @@ function createStore(manifest, ctx, message, config, crawler) {
             }
         }
 
+        // 严格匹配 author（多个逗号分隔，AND 语义）
+        if (author) {
+            author.split(',').filter(Boolean).forEach((a, i) => {
+                parts.push(`EXISTS (SELECT 1 FROM comic_meta_author WHERE comic_id = comic_meta.id AND author = @author${i})`);
+                params[`author${i}`] = a.trim();
+            });
+        }
+        // 严格匹配 tags（多个逗号分隔，AND 语义）
+        if (tags) {
+            tags.split(',').filter(Boolean).forEach((t, i) => {
+                parts.push(`EXISTS (SELECT 1 FROM comic_meta_tag WHERE comic_id = comic_meta.id AND tag = @tag${i})`);
+                params[`tag${i}`] = t.trim();
+            });
+        }
+
         const where = parts.join(' AND ');
         const orderBy = sort || 'update_time';
         const orderDir = order === 'ASC' ? 'ASC' : 'DESC';
 
-        const hasSearch = !!(name || author || tags);
-        if (hasSearch) {
-            params.ftsMatch = buildFtsMatch({ query: name, author, tags });
-            const ftsSQL = 'SELECT comic_meta.* FROM comic_meta INNER JOIN comic_meta_fts ON comic_meta.id = comic_meta_fts.rowid';
-            const ftsWhere = `comic_meta_fts MATCH @ftsMatch AND ${where}`;
-            const total = conn.prepare(`SELECT COUNT(*) as c FROM (${ftsSQL} WHERE ${ftsWhere})`).get(params).c;
-            const rows = conn.prepare(`${ftsSQL} WHERE ${ftsWhere} ORDER BY ${orderBy} ${orderDir} LIMIT @lim OFFSET @off`).all({ ...params, lim: pageSize, off: (page - 1) * pageSize });
-            return { total, rows };
+        if (name) {
+            const ftsTerms = makeFtsTerms(name);
+            if (ftsTerms.length) {
+                params.ftsMatch = ftsTerms.join(' AND ');
+                const ftsSQL = 'SELECT comic_meta.* FROM comic_meta INNER JOIN comic_meta_fts ON comic_meta.id = comic_meta_fts.rowid';
+                const ftsWhere = `comic_meta_fts MATCH @ftsMatch AND ${where}`;
+                const total = conn.prepare(`SELECT COUNT(*) as c FROM (${ftsSQL} WHERE ${ftsWhere})`).get(params).c;
+                const rows = conn.prepare(`${ftsSQL} WHERE ${ftsWhere} ORDER BY ${orderBy} ${orderDir} LIMIT @lim OFFSET @off`).all({ ...params, lim: pageSize, off: (page - 1) * pageSize });
+                return { total, rows };
+            }
         }
 
         const plainSQL = `SELECT * FROM comic_meta`;
@@ -415,6 +477,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         page,
         rebuildFtsIndex,
         syncAllTags,
+        syncAllAuthors,
         saveOrUpdate,
         saveOrUpdateBatch,
     };
