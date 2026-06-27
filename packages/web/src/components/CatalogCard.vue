@@ -50,7 +50,7 @@
           <span v-if="comic.likes" class="jmz-card-pages" style="margin-left:6px">
             <n-icon :component="HeartOutline" size="13" style="vertical-align:-2px;margin-right:2px" />{{ comic.likes }}
           </span>
-          <span style="margin-left:auto;cursor:pointer;font-size:16px;line-height:1" role="button" tabindex="0" @click.stop="toggleStar" @keyup.enter.stop="toggleStar">{{ starStore.isStarred(comic.id) ? '⭐' : '☆' }}</span>
+          <span style="margin-left:auto;cursor:pointer;line-height:1" role="button" tabindex="0" @click.stop="toggleStar" @keyup.enter.stop="toggleStar"><n-icon v-if="starStore.isStarred(comic.id)" :component="Star" size="16" color="#facc15" /><n-icon v-else :component="StarOutline" size="16" /></span>
         </slot>
       </div>
     </div>
@@ -63,7 +63,7 @@ import CardMetaBtn from './CardMetaBtn.vue'
 import CardBanBtn from './CardBanBtn.vue'
 import CardDownloadBtn from './CardDownloadBtn.vue'
 import CardReadBtn from './CardReadBtn.vue'
-import { EyeOutline, HeartOutline } from '@vicons/ionicons5'
+import { EyeOutline, HeartOutline, Star, StarOutline } from '@vicons/ionicons5'
 import { useStarStore } from '@/stores/star'
 
 const starStore = useStarStore()
