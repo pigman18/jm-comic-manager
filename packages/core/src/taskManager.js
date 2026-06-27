@@ -126,6 +126,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
                 task: { status: 'downloading', step: task.step, stepState: task.stepState, stepStatus, name: task.name },
             });
         } else if (st === STATE.RUNNING) {
+            if (task.status === 'completed') return;
             task.status = 'downloading';
             if (payload.step === 'download') {
                 const complete = Number(payload.complete) || 0;
