@@ -445,6 +445,7 @@ const orderOptions = [
             :page-sizes="[10, 20, 30, 40, 50]"
             :show-size-picker="true"
             :simple="false"
+            :disabled="loading"
             @update:page="onPageChange"
             @update:page-size="onPageChange"
         />
