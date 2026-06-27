@@ -114,7 +114,7 @@
                   </n-button>
                 </div>
               </div>
-              <div class="jmt-cmt-list">
+              <div ref="cmtListRef" class="jmt-cmt-list">
                 <n-spin :show="commentsLoading">
                   <div style="min-height:80px">
                   <template v-if="comments.length">
@@ -232,6 +232,7 @@ const { openComic } = useZipReader()
 const withMeta = ref(true)
 const activeTab = ref('eps')
 
+const cmtListRef = ref<HTMLElement | null>(null)
 const comments = ref<any[]>([])
 const commentsLoading = ref(false)
 const commentText = ref('')
@@ -288,6 +289,7 @@ async function loadComments(page?: number) {
 
 function goCommentPage(p: number) {
   commentPage.value = p
+  cmtListRef.value?.scrollTo({ top: 0 })
   loadComments(p)
 }
 
