@@ -942,7 +942,7 @@ function fmtBytes(n: number) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-bottom: 8px;
+  margin: 8px 0;
 }
 .jmt-cmt-pages {
   display: flex;
