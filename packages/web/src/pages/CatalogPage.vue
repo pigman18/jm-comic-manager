@@ -14,6 +14,7 @@ import { buildQuery, getJson, postJson } from '@/api';
 
 import { useJmLiveStore } from '@/stores/jmLive';
 import { useBanStore } from '@/stores/ban';
+import { useStarStore } from '@/stores/star';
 import type { Comic } from '@/types';
 
 const route = useRoute();
@@ -23,6 +24,7 @@ const message = useMessage();
 const live = useJmLiveStore();
 const { syncLocalToDb, syncDbToLocal } = storeToRefs(live);
 const banStore = useBanStore();
+const starStore = useStarStore();
 
 const tagsOptions = ref<string[]>([]);
 const tagsLoading = ref(false);
@@ -56,6 +58,7 @@ const filters = reactive({
   kind: '',
   available: false,
   banned: false,
+  starred: false,
   sort: 'update_time',
   order: 'desc',
   page: 1,
@@ -72,6 +75,7 @@ function readFiltersFromRoute(): void {
   filters.kind = String(q.kind || '');
   filters.available = q.available === 'true';
   filters.banned = q.banned === 'true';
+  filters.starred = q.starred === 'true';
   filters.sort = String(q.sort || 'update_time');
   filters.order = String(q.order || 'desc');
   filters.page = Math.max(1, Number(q.page) || 1);
@@ -89,6 +93,7 @@ function filtersToQuery(): Record<string, string> {
   if (filters.kind) q.kind = filters.kind;
   if (filters.available) q.available = 'true';
   if (filters.banned) q.banned = 'true';
+  if (filters.starred) q.starred = 'true';
   if (filters.sort !== 'update_time') q.sort = filters.sort;
   if (filters.order !== 'desc') q.order = filters.order;
   if (filters.page > 1) q.page = String(filters.page);
@@ -110,6 +115,7 @@ const requestParams = computed(() => ({
   kind: filters.kind || undefined,
   available: filters.available ? 'true' : undefined,
   banned: filters.banned ? 'true' : undefined,
+  starred: filters.starred ? 'true' : undefined,
 }));
 
 /* ===== 加载 ===== */
@@ -126,7 +132,10 @@ async function loadList(): Promise<void> {
     list.value = j.list || [];
     total.value = j.total ?? 0;
     currentPageComics.value = j.list || [];
-    if (list.value.length) banStore.checkBans(list.value.map((c) => c.id));
+    if (list.value.length) {
+      banStore.checkBans(list.value.map((c) => c.id));
+      starStore.checkStars(list.value.map((c) => c.id));
+    }
   } catch (e: any) {
     message.error(String(e?.message || e));
   } finally {
@@ -373,6 +382,7 @@ const orderOptions = [
             <n-select v-model:value="filters.kind" placeholder="类型" clearable :options="kindOptions" @clear="clearKind" @update:value="resetPage" />
             <n-checkbox v-model:checked="filters.available" @update:checked="resetPage">可读</n-checkbox>
             <n-checkbox v-model:checked="filters.banned" @update:checked="resetPage">黑名单</n-checkbox>
+            <n-checkbox v-model:checked="filters.starred" @update:checked="resetPage">特别关注</n-checkbox>
           </div>
           <div class="jmz-sort-row">
             <n-select v-model:value="filters.sort" :options="sortOptions" @update:value="resetPage" />

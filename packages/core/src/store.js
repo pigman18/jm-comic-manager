@@ -170,6 +170,12 @@ function createStore(manifest, ctx, message, config, crawler) {
         banned_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
       );
     `);
+        database.exec(`
+      CREATE TABLE IF NOT EXISTS comic_star (
+        id INTEGER PRIMARY KEY,
+        star_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+      );
+    `);
         // 标签关联表（代替 json_each 全表扫描）
         database.exec(`
             CREATE TABLE IF NOT EXISTS comic_meta_tag (
@@ -293,7 +299,7 @@ function createStore(manifest, ctx, message, config, crawler) {
 
     async function page(qo) {
         const conn = await connect();
-        const { name, author, id, tags, kind, banned, sort, order, page, pageSize, availDir } = qo;
+        const { name, author, id, tags, kind, banned, starred, sort, order, page, pageSize, availDir } = qo;
 
         const parts = ['1=1'];
         const params = {};
@@ -311,9 +317,12 @@ function createStore(manifest, ctx, message, config, crawler) {
             parts.push("json_array_length(COALESCE(series, '[]')) > 1");
         }
         if (banned === 'true') {
-            parts.push('EXISTS (SELECT 1 FROM comic_ban cb WHERE cb.id = comic_meta.id)');
+            parts.push('comic_meta.id IN (SELECT id FROM comic_ban)');
         } else {
-            parts.push('NOT EXISTS (SELECT 1 FROM comic_ban cb WHERE cb.id = comic_meta.id)');
+            parts.push('comic_meta.id NOT IN (SELECT id FROM comic_ban)');
+        }
+        if (starred === 'true') {
+            parts.push('comic_meta.id IN (SELECT id FROM comic_star)');
         }
         if (availDir) {
             const zipIds = listFiles(availDir)
@@ -354,8 +363,12 @@ function createStore(manifest, ctx, message, config, crawler) {
         const orderDir = order === 'ASC' ? 'ASC' : 'DESC';
 
         const sql = 'SELECT * FROM comic_meta';
-        const total = conn.prepare(`SELECT COUNT(*) as c FROM (${sql} WHERE ${where})`).get(params).c;
-        const rows = conn.prepare(`${sql} WHERE ${where} ORDER BY ${orderBy} ${orderDir} LIMIT @lim OFFSET @off`).all({ ...params, lim: pageSize, off: (page - 1) * pageSize });
+        const countSQL = `SELECT COUNT(*) as c FROM (${sql} WHERE ${where})`;
+        const dataSQL = `${sql} WHERE ${where} ORDER BY ${orderBy} ${orderDir} LIMIT @lim OFFSET @off`;
+        console.log('[store]', countSQL, JSON.stringify(params));
+        const total = conn.prepare(countSQL).get(params).c;
+        console.log('[store]', dataSQL, JSON.stringify({ ...params, lim: pageSize, off: (page - 1) * pageSize }));
+        const rows = conn.prepare(dataSQL).all({ ...params, lim: pageSize, off: (page - 1) * pageSize });
         return { total, rows };
     }
 
@@ -438,6 +451,53 @@ function createStore(manifest, ctx, message, config, crawler) {
         listBans,
         checkBans,
         toggleBan,
+    };
+
+    // ============ comicStar sub-module ============
+
+    async function addStar(comicId) {
+        const conn = await connect();
+        const existing = conn.prepare('SELECT id FROM comic_star WHERE id = ?').get(comicId);
+        if (existing) return false;
+        conn.prepare('INSERT INTO comic_star (id) VALUES (?)').run(comicId);
+        return true;
+    }
+
+    async function removeStar(comicId) {
+        const conn = await connect();
+        const existing = conn.prepare('SELECT id FROM comic_star WHERE id = ?').get(comicId);
+        if (!existing) return false;
+        conn.prepare('DELETE FROM comic_star WHERE id = ?').run(comicId);
+        return true;
+    }
+
+    async function listStars() {
+        const conn = await connect();
+        const rows = conn.prepare('SELECT id FROM comic_star ORDER BY star_time DESC').all({});
+        return rows.map(r => (typeof r.id === 'bigint' ? Number(r.id) : r.id));
+    }
+
+    async function checkStars(ids) {
+        if (!Array.isArray(ids) || ids.length === 0) return [];
+        const conn = await connect();
+        const placeholders = ids.map(() => '?').join(',');
+        const rows = conn.prepare(`SELECT id FROM comic_star WHERE id IN (${placeholders})`).all(ids);
+        return rows.map(r => (typeof r.id === 'bigint' ? Number(r.id) : r.id));
+    }
+
+    async function toggleStar(comicId) {
+        const existing = await addStar(comicId);
+        if (existing) return true;
+        await removeStar(comicId);
+        return false;
+    }
+
+    const comicStar = {
+        addStar,
+        removeStar,
+        listStars,
+        checkStars,
+        toggleStar,
     };
 
     async function runLocal2Db() {
@@ -564,6 +624,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         comicMeta,
         comicRead,
         comicBan,
+        comicStar,
         runLocal2Db,
         runDb2Local,
         close
