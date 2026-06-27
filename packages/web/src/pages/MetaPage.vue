@@ -104,13 +104,18 @@
                 </div>
               </div>
               <div class="jmt-cmt-header">
-                <n-pagination :page="commentPage" :page-count="Math.max(commentPages, 1)" :page-size="1" size="small" @update:page="goCommentPage" />
+                <div style="flex:1" />
+                <n-pagination :page="commentPage" :page-count="Math.max(commentPages, 1)" :page-size="1" size="small" :disabled="commentsLoading" @update:page="goCommentPage" />
+                <div style="flex:1;display:flex;justify-content:flex-end">
+                  <n-button quaternary size="tiny" @click="loadComments()">
+                    <template #icon><n-icon :component="RefreshOutline" /></template>
+                  </n-button>
+                </div>
               </div>
               <div class="jmt-cmt-list">
-                <template v-if="commentsLoading">
-                  <div class="jmt-cmt-loading">加载中...</div>
-                </template>
-                <template v-else-if="comments.length">
+                <n-spin :show="commentsLoading">
+                  <div style="min-height:80px">
+                  <template v-if="comments.length">
                   <div v-for="c in comments" :key="c.CID" class="jmt-cmt-card">
                     <img :src="avatarUrl(c.photo)" alt="" class="jmt-cmt-avatar-img" />
                     <div class="jmt-cmt-body">
@@ -182,7 +187,9 @@
                     </div>
                   </div>
                 </template>
-                <n-empty v-else description="暂无评论" />
+                <n-empty v-if="!commentsLoading && !comments.length" description="暂无评论" />
+                  </div>
+                </n-spin>
               </div>
             </section>
         </template>
@@ -198,7 +205,7 @@
 import { ref, computed, watch, inject, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { ArrowBackOutline, EyeOutline, HeartOutline, ThumbsUpOutline, HappyOutline } from '@vicons/ionicons5'
+import { ArrowBackOutline, EyeOutline, HeartOutline, ThumbsUpOutline, HappyOutline, RefreshOutline } from '@vicons/ionicons5'
 import { getJson, postJson } from '@/api'
 import { useZipReader } from '@/composables/useZipReader'
 import { useJmLiveStore } from '@/stores/jmLive'
@@ -275,7 +282,7 @@ async function loadComments(page?: number) {
 }
 
 function goCommentPage(p: number) {
-  if (p === commentPage.value) return
+  commentPage.value = p
   loadComments(p)
 }
 

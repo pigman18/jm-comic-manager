@@ -76,6 +76,7 @@
           :page-count="pageCount"
           :page-slot="5"
           size="small"
+          :disabled="loading"
           @update:page="onPageChange"
         />
       </div>
