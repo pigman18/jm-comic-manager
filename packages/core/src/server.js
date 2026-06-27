@@ -77,6 +77,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -302,6 +303,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -313,6 +315,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 store.runLocal2Db();
                 res.json({ok: true});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -321,14 +324,17 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 store.runDb2Local();
                 res.json({ok: true});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
         app.post(`${api}/sync/rebuild-cache`, async (_req, res) => {
             try {
                 await store.comicMeta.syncAllTags();
+                await store.comicMeta.syncAllAuthors();
                 res.json({ok: true});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -381,6 +387,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
 
                 res.json({ok: true, tags, fromCache: false}).end();
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -420,6 +427,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 });
                 res.json({ok: true, list, total});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -468,6 +476,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     allDone,
                 });
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -492,6 +501,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const zipStatus = await buildZipStatusMap(comic);
                 res.json({ok: true, comic, zipStatus});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -532,6 +542,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: result.total || 0, pages: result.pages || 1});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -540,6 +551,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const list = await crawler.search.hotTags();
                 res.json({ok: true, list});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -567,6 +579,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 });
                 res.json({ok: true, list: items});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -578,6 +591,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const info = await crawler.rank.weekInfo();
                 res.json({ok: true, categories: info?.categories || [], type: info?.type || []});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -618,6 +632,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: result?.total || list.length});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -654,6 +669,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const hasMore = !result?.error;
                 res.json({ok: true, list, hasMore});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -688,6 +704,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: result?.total || list.length});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -724,6 +741,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: list.length, folders});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -732,6 +750,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const data = await crawler.account.getFavorites(1);
                 res.json({ok: true, folders: data?.folder_list || []});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -754,6 +773,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true, favorite});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -776,6 +796,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     res.status(400).json({ok: false, message: '无效操作'});
                 }
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -799,6 +820,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 await crawler.account.moveToFolder(album_id, source, target_folder_id);
                 res.json({ok: true});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -862,6 +884,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const info = await crawler.rank.categories();
                 res.json({ok: true, categories: info?.categories || [], blocks: info?.blocks || []});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -900,6 +923,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: result?.total || list.length, pages: result?.pages || 1});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -968,6 +992,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1004,6 +1029,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 });
                 res.json(result);
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1056,6 +1082,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 await store.comicRead.saveRead(episodeId);
                 res.json({ok: true});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1069,6 +1096,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const readIds = await store.comicRead.checkReads(ids.map(id => Math.floor(Number(id))).filter(Number.isFinite));
                 res.json({ok: true, readIds});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1085,6 +1113,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const banned = await store.comicBan.toggleBan(num);
                 res.json({ok: true, banned});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1098,6 +1127,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const bannedIds = await store.comicBan.checkBans(ids.map((id) => Math.floor(Number(id))).filter(Number.isFinite));
                 res.json({ok: true, bannedIds});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1106,6 +1136,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const ids = await store.comicBan.listBans();
                 res.json({ok: true, ids});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1150,6 +1181,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 spawn(exeAbs, args, {detached: true, stdio: 'ignore'}).unref();
                 res.json({ok: true, useBrowser: false});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1163,6 +1195,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const data = await crawler.forum.feed(mode, page);
                 res.json({ok: true, ...data});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1184,6 +1217,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true, ...data});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1196,6 +1230,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const data = await crawler.forum.post(comment, aid, comment_id);
                 res.json({ok: data.status === 'ok', ...data});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1229,6 +1264,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list: sections});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1238,6 +1274,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const list = await crawler.promote.sections();
                 res.json({ok: true, list});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
@@ -1271,6 +1308,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: result?.total || 0});
             } catch (e) {
+                console.error('[server]', e);
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
