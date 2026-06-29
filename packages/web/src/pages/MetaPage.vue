@@ -40,6 +40,13 @@
                     <n-icon :component="HeartOutline" size="14" style="vertical-align:-2px;margin-right:3px" />{{ comic.likes }}
                   </span>
                 </div>
+                <div v-if="comic.price > 0" class="jmt-meta-redeem">
+                  <n-button size="tiny" @click="onRedeem">
+                    <template #icon><img :src="coinIcon" style="width:12px;height:12px;vertical-align:-2px" /></template>
+                    需要 {{ comic.price }}
+                  </n-button>
+                  <span class="xxx-text" style="font-size:11px;opacity:.6;margin-left:6px">当前 {{ userStore.memberInfo?.coin ?? 0 }}</span>
+                </div>
               </div>
             </div>
             <div v-if="previewImages.length" class="jmt-meta-previews">
@@ -209,10 +216,12 @@ import { ref, computed, watch, inject, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { ArrowBackOutline, EyeOutline, HeartOutline, ThumbsUpOutline, HappyOutline, RefreshOutline } from '@vicons/ionicons5'
+import coinIcon from '@/assets/icons/JCOIN-01.png'
 import { getJson, postJson } from '@/api'
 import { useZipReader } from '@/composables/useZipReader'
 import { useJmLiveStore } from '@/stores/jmLive'
 import { useReadStore } from '@/stores/reads'
+import { useUserStore } from '@/stores/user'
 import type { Comic, ZipStatus } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -412,6 +421,7 @@ const filteredRows = computed(() => {
 
 const albumNum = computed(() => Math.floor(Number(props.num || route.params.num)))
 const readStore = useReadStore()
+const userStore = useUserStore()
 
 function isRead(zipKey: string) {
   return readStore.isRead(Number(zipKey))
@@ -662,6 +672,10 @@ function onTagClick(t: string, ev: MouseEvent | KeyboardEvent) {
   if (!props.disableDefaultChip) filterByTag(t, ev)
 }
 
+function onRedeem() {
+  message.info('兑换功能待实现')
+}
+
 function fmtTime(ts: string | undefined): string {
   if (!ts) return ''
   const n = Number(ts)
@@ -838,7 +852,11 @@ function fmtBytes(n: number) {
   font-size: 12px;
   color: #7a7a8a;
 }
-
+.jmt-meta-redeem {
+  display: flex;
+  align-items: center;
+  margin-top: 6px;
+}
 /* --- chips (tags) --- */
 .jmt-meta-chips {
   display: flex;

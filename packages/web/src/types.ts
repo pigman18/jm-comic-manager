@@ -14,6 +14,8 @@ export interface Comic {
   canRead?: boolean
   inStore?: boolean
   series?: ComicSeries[]
+  price?: number
+  purchased?: string
 }
 
 export interface ComicSeries {
