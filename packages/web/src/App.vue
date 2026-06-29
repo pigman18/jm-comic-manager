@@ -384,6 +384,8 @@ function connectWs() {
 
   ws.onopen = () => {
     if (pingTimer) clearInterval(pingTimer)
+    // 重连后刷新任务列表，防止错过 completed/error 等状态
+    try { ws.send(JSON.stringify({ type: 'list' })) } catch { /* ignore */ }
     pingTimer = setInterval(() => {
       try { ws?.send(JSON.stringify({ type: 'ping' })) } catch { /* ignore */ }
     }, 15000)
