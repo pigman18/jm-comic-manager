@@ -348,6 +348,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
 
     /** 标签搜索结果缓存（key=查询词，value={tags, expireAt}） */
     const tagsCache = new Map();
+    const worksCache = new Map();
     const TAGS_CACHE_TTL = 5 * 60 * 1000; // 5 分钟
     const TAGS_CACHE_MAX = 100; // 最多缓存 100 个查询
 
@@ -397,6 +398,37 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
+
+        app.get(`${api}/works`, async (req, res) => {
+            try {
+                const query = String(req.query.query || '').trim();
+                if (!query) {
+                    res.json({ok: true, works: []}).end();
+                    return;
+                }
+                const now = Date.now();
+                const cached = worksCache.get(query);
+                if (cached && cached.expireAt > now) {
+                    res.json({ok: true, works: cached.works, fromCache: true}).end();
+                    return;
+                }
+                let works = await store.comicMeta.listWorks(query);
+                works = [...new Set(works)]
+                    .filter((w) => w && w.trim())
+                    .sort((a, b) => a.localeCompare(b))
+                    .slice(0, 50);
+                worksCache.set(query, {works, expireAt: now + TAGS_CACHE_TTL});
+                if (worksCache.size > TAGS_CACHE_MAX) {
+                    for (const [key, value] of worksCache.entries()) {
+                        if (value.expireAt <= now) worksCache.delete(key);
+                    }
+                }
+                res.json({ok: true, works, fromCache: false}).end();
+            } catch (e) {
+                console.error('[server]', e);
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
     }
 
     function handleComicsList(app, api) {
@@ -416,6 +448,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     author: String(req.query.author || '').trim(),
                     id: String(req.query.number || req.query.id || '').trim(),
                     tags: String(req.query.tags || '').trim(),
+                    works: String(req.query.works || '').trim(),
                     kind: String(req.query.kind || '').trim(),
                     banned: String(req.query.banned || '').trim(),
                     starred: String(req.query.starred || '').trim(),
