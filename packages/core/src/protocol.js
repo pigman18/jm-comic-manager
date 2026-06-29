@@ -74,7 +74,8 @@ let ERR = {
 let ApiPath = {
     GetChapter:  "/chapter",
     GetScrambleId: "/chapter_view_template",
-    GetFavoriteFolder: "/favorite"
+    GetFavoriteFolder: "/favorite",
+    CoinBuyComics: "/coin_buy_comics",
 };
 
 /**

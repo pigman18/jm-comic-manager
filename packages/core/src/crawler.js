@@ -735,6 +735,21 @@ function createCrawler(manifest, ctx, message, config) {
 </ComicInfo>`;
             // 5、写入压缩包
             await injectComicInfo(file, comicInfoXml);
+        },
+
+        /**
+         * 金币购买漫画
+         * @param number 漫画 ID
+         * @returns {Promise<{data: object}>}
+         */
+        buyAlbum: async (number) => {
+            number = parseNumber(number);
+            let fd = new URLSearchParams();
+            fd.append('id', number);
+            let resp = await apiClient.post(`${getApiHost()}${ApiPath.CoinBuyComics}`, fd.toString(), {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            });
+            return resp.data;
         }
     };
     let search = {

@@ -538,6 +538,37 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         });
     }
 
+    function handleBuyComic(app, api) {
+        app.post(`${api}/comics/:num/buy`, async (req, res) => {
+            try {
+                const n = Math.floor(Number(req.params.num));
+                const result = await crawler.comic.buyAlbum(n);
+                let memberInfo = null;
+                if (result?.data?.coin !== undefined) {
+                    memberInfo = config.memberInfo;
+                    if (memberInfo) {
+                        memberInfo.coin = result.data.coin;
+                        config.setValue('memberInfo', memberInfo);
+                    }
+                } else {
+                    const loginResult = await crawler.account.login();
+                    memberInfo = loginResult?.memberInfo || null;
+                }
+                const row = await store.comicMeta.get(n);
+                if (row) {
+                    const dbRow = store.jsonRowToDb(store.dbRowToJson(row));
+                    dbRow.purchased = result?.data?.purchased || row.purchased || '1';
+                    await store.comicMeta.saveOrUpdate(dbRow);
+                }
+                const comic = row ? rewriteComicMediaUrls(store.dbRowToJson(row)) : null;
+                res.json({ ok: true, comic, memberInfo });
+            } catch (e) {
+                console.error('[server]', e);
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
+    }
+
     function handleComicDetail(app, api) {
         app.get(`${api}/comics/:num`, async (req, res) => {
             try {
@@ -1409,6 +1440,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         handleTags(app, api);
         handleComicsList(app, api);
         handleFetchMeta(app, api);
+        handleBuyComic(app, api);
         handleComicDetail(app, api);
         handleComicSearch(app, api);
         handleWeekInfo(app, api);

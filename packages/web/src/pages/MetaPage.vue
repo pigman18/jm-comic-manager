@@ -41,11 +41,17 @@
                   </span>
                 </div>
                 <div v-if="comic.price > 0" class="jmt-meta-redeem">
-                  <n-button size="tiny" @click="onRedeem">
+                  <n-button v-if="comic.purchased && comic.purchased !== 'false'" size="tiny" disabled>
                     <template #icon><img :src="coinIcon" style="width:12px;height:12px;vertical-align:-2px" /></template>
-                    需要 {{ comic.price }}
+                    已兑换
                   </n-button>
-                  <span class="xxx-text" style="font-size:11px;opacity:.6;margin-left:6px">当前 {{ userStore.memberInfo?.coin ?? 0 }}</span>
+                  <template v-else>
+                    <n-button size="tiny" @click="onRedeem">
+                      <template #icon><img :src="coinIcon" style="width:12px;height:12px;vertical-align:-2px" /></template>
+                      需要 {{ comic.price }}
+                    </n-button>
+                    <span class="xxx-text" style="font-size:11px;opacity:.6;margin-left:6px">当前 {{ userStore.memberInfo?.coin ?? 0 }}</span>
+                  </template>
                 </div>
               </div>
             </div>
@@ -214,7 +220,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, inject, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useMessage } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 import { ArrowBackOutline, EyeOutline, HeartOutline, ThumbsUpOutline, HappyOutline, RefreshOutline } from '@vicons/ionicons5'
 import coinIcon from '@/assets/icons/JCOIN-01.png'
 import { getJson, postJson } from '@/api'
@@ -244,6 +250,7 @@ const emit = defineEmits<{
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
+const nDialog = useDialog()
 const applyHarmony = inject<(() => void) | undefined>('applyHarmony', undefined)
 const live = useJmLiveStore()
 const { openComic } = useZipReader()
@@ -672,8 +679,38 @@ function onTagClick(t: string, ev: MouseEvent | KeyboardEvent) {
   if (!props.disableDefaultChip) filterByTag(t, ev)
 }
 
-function onRedeem() {
-  message.info('兑换功能待实现')
+async function onRedeem() {
+  if (!comic.value) return
+  const price = comic.value.price ?? 0
+  const coin = userStore.memberInfo?.coin ?? 0
+  const d = nDialog.warning({
+    title: '确认兑换',
+    content: `需要 ${price} 金币（当前 ${coin} 金币），确认兑换吗？`,
+    positiveText: '确定',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      d.loading = true
+      try {
+        const j = await postJson(`/comics/${comic.value!.id}/buy`)
+        if (!j.ok) {
+          message.error(j.message || '兑换失败')
+          d.loading = false
+          return false
+        }
+        if (j.memberInfo) {
+          userStore.memberInfo = j.memberInfo
+        }
+        if (j.comic) {
+          comic.value = { ...comic.value!, ...j.comic }
+        }
+        message.success('兑换成功')
+      } catch (e: any) {
+        message.error(String(e?.message || e))
+        d.loading = false
+        return false
+      }
+    }
+  })
 }
 
 function fmtTime(ts: string | undefined): string {
