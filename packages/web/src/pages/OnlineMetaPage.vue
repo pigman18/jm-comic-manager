@@ -1,5 +1,5 @@
 <template>
-  <MetaPage :num="num" :dialog="dialog" :fetch-remote="true" :disable-default-chip="true" @close="emit('close')" @title-changed="emit('title-changed', $event)" @work-click="onWorkClick" @author-click="onAuthorClick" @tag-click="onTagClick">
+  <MetaPage :num="num" :dialog="dialog" :fetch-remote="true" :disable-default-chip="true" @close="emit('close')" @title-changed="emit('title-changed', $event)" @work-click="onWorkClick" @author-click="onAuthorClick" @tag-click="onTagClick" @actor-click="onActorClick">
     <template #info-suffix>
       <n-button v-if="inStore === false" size="tiny" type="primary" @click="addToStore">加入库</n-button>
     </template>
@@ -67,5 +67,10 @@ function onAuthorClick(a: string) {
 function onTagClick(t: string) {
   if (props.dialog) emit('close')
   router.push({ name: 'search', query: { keyword: t, page: '1' } })
+}
+
+function onActorClick(a: string) {
+  if (props.dialog) emit('close')
+  router.push({ name: 'search', query: { keyword: a, page: '1' } })
 }
 </script>

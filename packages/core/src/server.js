@@ -429,6 +429,21 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 res.status(500).json({ok: false, message: String(e.message || e)});
             }
         });
+
+        app.get(`${api}/actors`, async (req, res) => {
+            try {
+                const query = String(req.query.query || '').trim();
+                if (!query) {
+                    res.json({ok: true, actors: []}).end();
+                    return;
+                }
+                const actors = await store.comicMeta.listActors(query);
+                res.json({ok: true, actors}).end();
+            } catch (e) {
+                console.error('[server]', e);
+                res.status(500).json({ok: false, message: String(e.message || e)});
+            }
+        });
     }
 
     function handleComicsList(app, api) {
@@ -449,6 +464,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     id: String(req.query.number || req.query.id || '').trim(),
                     tags: String(req.query.tags || '').trim(),
                     works: String(req.query.works || '').trim(),
+                    actors: String(req.query.actors || '').trim(),
                     kind: String(req.query.kind || '').trim(),
                     banned: String(req.query.banned || '').trim(),
                     starred: String(req.query.starred || '').trim(),
