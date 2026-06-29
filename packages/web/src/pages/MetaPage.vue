@@ -19,14 +19,19 @@
               </div>
               <div class="jmt-meta-info">
                 <p class="jmt-meta-tags">
+                  <span style="display:inline-flex;align-items:center;margin-right:4px">
+                    <slot name="source-badge">
+                      <n-icon :component="ServerOutline" size="18" style="color:#63e2b7" />
+                    </slot>
+                  </span>
                   <span class="xxx-text">JM{{ comic.id }}</span>
                   <span class="xxx-text">{{ comic.displayKindLabel }}</span>
                 </p>
-                <div class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作品：</span><span v-for="w in visibleWorks" :key="w" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByWork(w, $event)" @keyup.enter="filterByWork(w, $event)">{{ w }}</span><span v-if="comic.works?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandWorks = !expandWorks" @keyup.enter="expandWorks = !expandWorks">{{ expandWorks ? '收起' : `+${comic.works.length - SHOW_LIMIT}` }}</span></div>
-                <div class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作者：</span><span v-for="a in visibleAuthor" :key="a" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByAuthor(a, $event)" @keyup.enter="filterByAuthor(a, $event)">{{ a }}</span><span v-if="comic.author?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandAuthor = !expandAuthor" @keyup.enter="expandAuthor = !expandAuthor">{{ expandAuthor ? '收起' : `+${comic.author.length - SHOW_LIMIT}` }}</span></div>
+                <div class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作品：</span><span v-for="w in visibleWorks" :key="w" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="onWorkClick(w, $event)" @keyup.enter="onWorkClick(w, $event)">{{ w }}</span><span v-if="comic.works?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandWorks = !expandWorks" @keyup.enter="expandWorks = !expandWorks">{{ expandWorks ? '收起' : `+${comic.works.length - SHOW_LIMIT}` }}</span></div>
+                <div class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作者：</span><span v-for="a in visibleAuthor" :key="a" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="onAuthorClick(a, $event)" @keyup.enter="onAuthorClick(a, $event)">{{ a }}</span><span v-if="comic.author?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandAuthor = !expandAuthor" @keyup.enter="expandAuthor = !expandAuthor">{{ expandAuthor ? '收起' : `+${comic.author.length - SHOW_LIMIT}` }}</span></div>
                 <div class="jmt-meta-chips">
                   <span style="font-size:14px;color:#c4c4d6;margin-right:2px">标签：</span>
-                  <span v-for="t in visibleTags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByTag(t, $event)" @keyup.enter="filterByTag(t, $event)">{{ t }}</span>
+                  <span v-for="t in visibleTags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="onTagClick(t, $event)" @keyup.enter="onTagClick(t, $event)">{{ t }}</span>
                   <span v-if="comic.tags?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandTags = !expandTags" @keyup.enter="expandTags = !expandTags">{{ expandTags ? '收起' : `+${comic.tags.length - SHOW_LIMIT}` }}</span>
                 </div>
                 <p v-if="comic.description" class="jmt-meta-desc xxx-text">{{ comic.description }}</p>
@@ -111,7 +116,7 @@
                 <n-pagination :page="commentPage" :page-count="Math.max(commentPages, 1)" :page-size="1" size="small" :disabled="commentsLoading" @update:page="goCommentPage" />
                 <div style="flex:1;display:flex;justify-content:flex-end">
                   <n-button quaternary size="tiny" @click="loadComments()">
-                    <template #icon><n-icon :component="RefreshOutline" /></template>
+                    <template #icon><n-icon size="16" :component="RefreshOutline" /></template>
                   </n-button>
                 </div>
               </div>
@@ -182,8 +187,9 @@
                               <div class="jmt-cmt-reply-actions">
                                 <n-button size="tiny" quaternary @click="replyingTo = null">取消</n-button>
                                 <n-button size="tiny" type="primary" :disabled="!replyText.trim()" :loading="postingReply" @click="postReply(r.CID)">回复</n-button>
-                              </div>
-                            </div>
+                </div>
+                <slot name="info-suffix" />
+              </div>
                           </div>
                         </div>
                       </div>
@@ -208,7 +214,7 @@
 import { ref, computed, watch, inject, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { ArrowBackOutline, EyeOutline, HeartOutline, ThumbsUpOutline, HappyOutline, RefreshOutline } from '@vicons/ionicons5'
+import { ArrowBackOutline, EyeOutline, HeartOutline, ThumbsUpOutline, HappyOutline, RefreshOutline, CloudOutline, ServerOutline } from '@vicons/ionicons5'
 import { getJson, postJson } from '@/api'
 import { useZipReader } from '@/composables/useZipReader'
 import { useJmLiveStore } from '@/stores/jmLive'
@@ -219,10 +225,17 @@ const props = withDefaults(defineProps<{
   num?: string
   dialog?: boolean
   fetchRemote?: boolean
+  disableDefaultChip?: boolean
 }>(), {
   fetchRemote: true
 })
-const emit = defineEmits<{ close: []; 'title-changed': [title: string] }>()
+const emit = defineEmits<{
+  close: []
+  'title-changed': [title: string]
+  'work-click': [work: string, event: MouseEvent | KeyboardEvent]
+  'author-click': [author: string, event: MouseEvent | KeyboardEvent]
+  'tag-click': [tag: string, event: MouseEvent | KeyboardEvent]
+}>()
 
 const route = useRoute()
 const router = useRouter()
@@ -618,6 +631,29 @@ function filterByAuthor(name: string, ev?: Event) {
   router.replace({ name: 'catalog', query: { author: a, page: '1' } })
 }
 
+function filterByWork(w: string, ev?: Event) {
+  ev?.stopPropagation?.()
+  w = w.trim()
+  if (!w) return
+  if (props.dialog) emit('close')
+  router.replace({ name: 'catalog', query: { works: w, page: '1' } })
+}
+
+function onWorkClick(w: string, ev: MouseEvent | KeyboardEvent) {
+  emit('work-click', w, ev)
+  if (!props.disableDefaultChip) filterByWork(w, ev)
+}
+
+function onAuthorClick(a: string, ev: MouseEvent | KeyboardEvent) {
+  emit('author-click', a, ev)
+  if (!props.disableDefaultChip) filterByAuthor(a, ev)
+}
+
+function onTagClick(t: string, ev: MouseEvent | KeyboardEvent) {
+  emit('tag-click', t, ev)
+  if (!props.disableDefaultChip) filterByTag(t, ev)
+}
+
 function fmtTime(ts: string | undefined): string {
   if (!ts) return ''
   const n = Number(ts)
@@ -743,7 +779,6 @@ function fmtBytes(n: number) {
 .jmz-meta--page .jmt-meta-cover-wrap {
   width: 20%;
   border-radius: 6px;
-  border: 1px solid #2e2e35;
 }
 .jmt-cover-spinner {
   position: absolute;

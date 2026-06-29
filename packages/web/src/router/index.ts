@@ -23,7 +23,7 @@ export const router = createRouter({
     {
       path: '/meta/:num',
       name: 'meta',
-      component: () => import('@/pages/MetaPage.vue'),
+      component: () => import('@/pages/OnlineMetaPage.vue'),
       props: true,
     },
   ],
