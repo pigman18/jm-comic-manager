@@ -47,7 +47,7 @@ async function addToStore() {
       inStore.value = true
       message.success('已加入库')
     } else {
-      message.error(j.message || '加入失败')
+      message.error(j.msg || j.message || '加入失败')
     }
   } catch (e: any) {
     message.error(String(e?.message || e))

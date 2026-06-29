@@ -46,7 +46,7 @@ async function loadDetail(silent = false) {
   if (!silent) loading.value = true
   try {
     const j = await getJson(`/comics/${n}`)
-    if (!j.ok) throw new Error(j.message || '加载失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '加载失败')
     comic.value = j.comic
     zipStatus.value = j.zipStatus || {}
     const base = zipStatus.value
@@ -186,7 +186,7 @@ async function postDownload(zipKey: string, label: string, silent = false) {
       episodeTitle: zipRows.value.find(r => r.zipKey === zipKey)?.epTitle || '',
       withMeta: withMeta.value,
     })
-    if (!j.ok) throw new Error(j.message || '排队失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '排队失败')
     if (!silent) message.success('已加入下载队列')
   } catch (e: any) { delPending(zipKey); if (!silent) message.error(String(e?.message || e)); throw e }
   finally { posting.delete(zipKey) }

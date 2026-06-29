@@ -129,7 +129,7 @@ async function loadFirstPage() {
   coverLoaded.value = {}
   try {
     const j = await getJson(`/latest/comics?page=1`)
-    if (!j.ok) throw new Error(j.message || '获取失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取失败')
     const items = j.list || []
     list.value = items
     if (!items.length) noMore.value = true
@@ -146,7 +146,7 @@ async function loadMore() {
   loadingMore.value = true
   try {
     const j = await getJson(`/latest/comics?page=${nextPage}`)
-    if (!j.ok) throw new Error(j.message || '获取失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取失败')
     const items = j.list || []
     if (items.length) {
       list.value = [...list.value, ...items]

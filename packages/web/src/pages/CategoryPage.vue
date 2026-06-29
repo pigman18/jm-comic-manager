@@ -171,7 +171,7 @@ async function loadInfo() {
   infoLoading.value = true
   try {
     const j = await getJson('/category/info')
-    if (!j.ok) throw new Error(j.message || '获取分类失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取分类失败')
     categories.value = j.categories || []
     blocks.value = j.blocks || []
     if (!activeTab.value) {
@@ -233,7 +233,7 @@ async function loadCategory(p?: number) {
     const params = new URLSearchParams({ page: String(pg), slug: cat.slug, sort: sortFilter.value, time: timeFilter.value })
     if (subSlugFilter.value) params.set('sub', subSlugFilter.value)
     const j = await getJson(`/category/filter?${params}`)
-    if (!j.ok) throw new Error(j.message || '获取失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取失败')
     list.value = j.list || []
     total.value = j.total || 0
     pages.value = j.pages || 1

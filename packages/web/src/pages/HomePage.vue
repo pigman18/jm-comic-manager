@@ -115,7 +115,7 @@ async function loadData() {
     if (j.ok) {
       list.value = j.list || []
     } else {
-      message.error(j.message || '加载失败')
+      message.error(j.msg || j.message || '加载失败')
     }
   } catch (e: any) {
     message.error(String(e?.message || e))

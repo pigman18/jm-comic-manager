@@ -27,7 +27,7 @@ async function handleClick() {
   try {
     const j = await postJson(`/comics/${c.id}/fetch-meta`)
     if (!j.ok) {
-      message.warning(j.message || '拉取失败')
+      message.warning(j.msg || j.message || '拉取失败')
       return
     }
     message.success(`#${c.id} 元数据已更新`)

@@ -199,7 +199,7 @@ async function fetchInfo() {
   fetchedInfo.value = null
   try {
     const j = await postJson(`/comics/${num}/fetch-meta`)
-    if (!j.ok) throw new Error(j.message || '查询失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '查询失败')
     fetchedInfo.value = j
     for (const ep of j.series) if (!ep.done) epChecked[ep.id] = true
   } catch {

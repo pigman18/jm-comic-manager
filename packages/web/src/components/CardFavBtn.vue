@@ -51,7 +51,7 @@ async function openDialog() {
     busy.value = true
     try {
       const j = await postJson(`/favorites/comics/${props.comic.id}/toggle`, { favorite: false })
-      if (!j.ok) throw new Error(j.message || '操作失败')
+      if (!j.ok) throw new Error(j.msg || j.message || '操作失败')
       active.value = false
       message.success('已取消收藏')
     } catch (e: any) { message.error(e.message || '操作失败') }
@@ -63,7 +63,7 @@ async function openDialog() {
   showDialog.value = true
   try {
     const j = await getJson('/favorites/folders')
-    if (!j.ok) throw new Error(j.message || '获取收藏夹失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取收藏夹失败')
     folders.value = j.folders || []
   } catch (e: any) { message.error(e.message || '获取收藏夹失败') }
   finally { loadingFolders.value = false }
@@ -73,7 +73,7 @@ async function confirm() {
   busy.value = true
   try {
     const j = await postJson(`/favorites/comics/${props.comic.id}/toggle`, { favorite: true, folder_id: selectedFolder.value || undefined })
-    if (!j.ok) throw new Error(j.message || '操作失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '操作失败')
     active.value = true
     message.success('已收藏')
     showDialog.value = false

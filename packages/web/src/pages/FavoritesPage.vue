@@ -253,7 +253,7 @@ async function loadFavorites() {
   try {
     const q = `page=${currentPage.value}${folderId.value ? `&folder_id=${folderId.value}` : ''}`
     const j = await getJson(`/favorites/comics?${q}`)
-    if (!j.ok) throw new Error(j.message || '获取收藏失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取收藏失败')
     list.value = j.list || []
     total.value = j.total || 0
     folderList.value = j.folders || []
@@ -289,7 +289,7 @@ async function onCreateFolder() {
   folderBusy.value = true
   try {
     const j = await postJson('/favorites/folder', { action: 'add', folder_name: name })
-    if (!j.ok) throw new Error(j.message || '创建失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '创建失败')
     message.success('已创建')
     showCreateFolder.value = false
     newFolderName.value = ''
@@ -313,7 +313,7 @@ async function onMoveConfirm() {
       source_folder_id: folderId.value || undefined,
       target_folder_id: moveTargetId.value,
     })
-    if (!j.ok) throw new Error(j.message || '移动失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '移动失败')
     message.success('已移动')
     showMoveDialog.value = false
     loadFavorites()
@@ -324,7 +324,7 @@ async function onDeleteFolder() {
   folderBusy.value = true
   try {
     const j = await postJson('/favorites/folder', { action: 'del', folder_id: folderId.value })
-    if (!j.ok) throw new Error(j.message || '删除失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '删除失败')
     message.success('已删除')
     showDeleteFolder.value = false
     folderId.value = ''

@@ -312,7 +312,7 @@ async function doSign() {
   try {
     const j = await postJson('/account/sign')
     if (j.ok) message.success(j.msg || '签到成功')
-    else message.error(j.message || '签到失败')
+    else message.error(j.msg || j.message || '签到失败')
   } catch (e: any) {
     message.error(e.message || '签到失败')
   } finally {
