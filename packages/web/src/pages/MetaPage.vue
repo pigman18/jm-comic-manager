@@ -32,14 +32,12 @@
                 <div class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作者：</span><span v-for="a in visibleAuthor" :key="a" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="onAuthorClick(a, $event)" @keyup.enter="onAuthorClick(a, $event)">{{ a }}</span><span v-if="comic.author?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandAuthor = !expandAuthor" @keyup.enter="expandAuthor = !expandAuthor">{{ expandAuthor ? '收起' : `+${comic.author.length - SHOW_LIMIT}` }}</span></div>
                 <p v-if="comic.description" class="jmt-meta-desc xxx-text">叙述：{{ comic.description }}</p>
                 <div v-if="comic" class="jmt-meta-stats">
-                  <span v-if="comic.total_views" class="jmz-stat-item xxx-text">
+                  <span class="jmz-stat-item xxx-text">更新时间：{{ fmtTime(comic.addtime) }}</span>
+                  <span v-if="comic.total_views" class="jmz-stat-item xxx-text" style="margin-left:8px">
                     <n-icon :component="EyeOutline" size="14" style="vertical-align:-2px;margin-right:3px" />{{ comic.total_views }}
                   </span>
                   <span v-if="comic.likes" class="jmz-stat-item xxx-text" style="margin-left:8px">
                     <n-icon :component="HeartOutline" size="14" style="vertical-align:-2px;margin-right:3px" />{{ comic.likes }}
-                  </span>
-                  <span v-if="comic.addtime" class="jmz-stat-item xxx-text" style="margin-left:8px">
-                    {{ fmtTime(comic.addtime) }}
                   </span>
                 </div>
               </div>
