@@ -182,7 +182,34 @@
 - **禁止** 遇到视觉问题时不先看同类实现的结构差异 — 同样都是 "spinner 覆盖在图片上"，ComicCard 的父容器有 `aspect-ratio: 3/4` 而 MetaPage 没有，一眼就能看出差异。先 grep 同类实现，对比 CSS 差异，再动手改
 - **禁止** 连续 3 次同一方向失败后仍然加更多 JS 逻辑 — 第 3 次还没解决就应该去查 CSS 了，而不是换第 4 种 JS 方案
 
-## 2026-06-27 教训：Harmony 图片处理的 MutationObserver 方案
+## 2026-06-29 教训：下载完成状态被覆盖的根因
+
+### 问题
+用户反馈下载明明完成但状态一直显示"下载中"。之前加过 `if (task.status === 'completed') return;` 的 guard，仍然没修好。
+
+### 错误方向
+- 一直以为问题在 taskManager.js 的 dispatcher 中（消息处理时序问题）
+- 加了 guard `if (task.status === 'completed') return;` 在 RUNNING 消息处理中
+- 但根本原因是 server.js 的 `sendMessage()` 函数对 progress 消息做了 200ms 节流
+
+### 完整根因
+**server.js `sendMessage` 的 progress 节流 + stale `_pendingProgress`**：
+1. 下载的最后一条 progress 消息（`stepState=success, status=downloading`）被节流缓存到 `_pendingProgress` 中
+2. `startDownload` 设置 `task.status = 'completed'` 并立即 broadcast 了 `type: 'completed'`（非 progress，不被节流，立即发送）
+3. 前端正确收到了 `completed` 消息，状态改为 `completed`
+4. 200ms 后节流 timer 触发，`_pendingProgress` 中缓存的 `status: 'downloading'` progress 消息被发送出去
+5. 前端的 `progress` handler 合并 `msg.task` 到 task 对象，**把 `completed` 覆盖回了 `downloading`**
+
+### 修复（三层防御）
+1. **server.js `sendMessage`**: 发送非 progress 消息时清除 `_pendingProgress` 和 `_progressTimer`
+2. **前端 `jmTasks.ts` `progress` handler**: 如果 task 已是 `completed` 且消息携带 `status: 'downloading'`，直接 return 不覆盖
+3. **WebSocket 重连**: `ws.onopen` 时发送 `{ type: 'list' }` 刷新任务列表
+
+### 对应的禁止事项
+- **禁止** 只盯着消息接收方改——消息发送方的节流/缓存机制也可能导致状态覆盖，必须全链路追踪
+- **禁止** 300ms+ 节流的 progress 消息和 terminal 消息存在竞态时不做处理——terminal 消息发送前必须清除 pending progress
+
+## 2026-06-29 教训：better-sqlite3 迁移
 
 ### 问题
 HomePage 的和谐图片一直黑屏。Toggle 和谐关/开才能恢复。

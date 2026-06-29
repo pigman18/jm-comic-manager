@@ -313,10 +313,9 @@ function createCrawler(manifest, ctx, message, config) {
      * @param number
      * @param filePath
      * @param phase
-     * @param afterSteps
      * @return {Promise<null|*>}
      */
-    async function downloadAlbumArchive(number, filePath, phase = PHASE.FETCH_COMIC, afterSteps = null, signal = null) {
+    async function downloadAlbumArchive(number, filePath, phase = PHASE.FETCH_COMIC, signal = null, metaAfterSteps = false) {
         number = Number(number);
         // 1、执行下载流程
         return await message.doPhase(phase || PHASE.FETCH_COMIC, async (stepHandler, phaseMessageData) => {
@@ -361,15 +360,23 @@ function createCrawler(manifest, ctx, message, config) {
                                 finalTotal = total;
                             }
                         });
-                        if (afterSteps) {
-                            await afterSteps({ number, complete: finalComplete, total: finalTotal });
-                        }
                         return {
                             complete: finalComplete,
                             total: finalTotal
                         }
                     }, {number});
-                }
+                },
+                [STEP.APPEND_COMIC_INFO]: async (result) => {
+                    return await stepHandler.doStep(STEP.APPEND_COMIC_INFO, async () => {
+                        try {
+                            const info = await comic.getMeta(number);
+                            if (info) {
+                                await comic.appendComicInfo2Archive(info, filePath);
+                            }
+                        } catch (_) {}
+                        return result;
+                    }, {number});
+                },
             };
             try {
                 // 同时间只能请求1个真实链接
@@ -377,13 +384,16 @@ function createCrawler(manifest, ctx, message, config) {
                     let {url} = await steps[STEP.REAL_LINK]();
                     return url;
                 });
-                let {complete, total} = await expireRetry(async () => {
+                let result = await expireRetry(async () => {
                     return await steps[STEP.DOWNLOAD](url);
                 }, signal);
+                if (metaAfterSteps) {
+                    result = await steps[STEP.APPEND_COMIC_INFO](result);
+                }
                 return {
                     number,
-                    complete,
-                    total
+                    complete: result.complete,
+                    total: result.total
                 }
             } catch (e) {
                 e.phase = PHASE.FETCH_COMIC;
@@ -618,7 +628,7 @@ function createCrawler(manifest, ctx, message, config) {
             return meta;
         },
         // 下载漫画压缩包
-        downloadArchive: async (number, withAppendComicInfo = true, afterSteps = null, signal = null) => {
+        downloadArchive: async (number, metaAfterSteps = false, signal = null) => {
             number = parseNumber(number);
             let archiveFile = `${comicDir}/${number}.zip`;
             if (isNotEmptySync(archiveFile)) {
@@ -632,11 +642,8 @@ function createCrawler(manifest, ctx, message, config) {
             let {
                 complete,
                 total
-            } = await expireRetry(() => downloadAlbumArchive(number, archiveFile, PHASE.FETCH_COMIC, null, signal), signal);
+            } = await expireRetry(() => downloadAlbumArchive(number, archiveFile, PHASE.FETCH_COMIC, signal, metaAfterSteps), signal);
             if (!!total) {
-                if (afterSteps) {
-                    await afterSteps({ number, file: archiveFile, complete, total });
-                }
                 return {
                     file: archiveFile,
                     complete: complete,

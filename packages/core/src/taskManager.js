@@ -94,7 +94,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             fs.mkdirSync(dir, { recursive: true });
         }
         const active = tasks.filter(t => t.status !== 'removed').map(t => {
-            const { _afterSteps, ...rest } = t;
+            const { ...rest } = t;
             return rest;
         });
         fs.writeFileSync(tasksFile, JSON.stringify(active, null, 2), 'utf-8');
@@ -207,7 +207,6 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
             addedDate: Date.now(),
             completedDate: null,
             payload: null,
-            _afterSteps: opts.afterSteps || null,
         };
 
         tasks.push(task);
@@ -265,7 +264,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
         }
 
         try {
-            await startDownload(task, task._afterSteps, signal);
+            await startDownload(task, signal);
         } finally {
             abortControllers.delete(task.id);
         }
@@ -278,7 +277,7 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
         if (!task) return { ok: false, message: '任务不存在' };
         const updated = {};
         for (const key of Object.keys(fields)) {
-            if (key === 'id' || key === 'number' || key === '_afterSteps') continue;
+            if (key === 'id' || key === 'number') continue;
             const val = fields[key];
             if (val !== undefined) {
                 task[key] = val;
@@ -292,26 +291,9 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
         return { ok: true };
     }
 
-    async function startDownload(task, afterSteps = null, signal = null) {
+    async function startDownload(task, signal = null) {
         try {
-            const result = await crawler.comic.downloadArchive(task.number, true, null, signal);
-            if (result?.file) {
-                // 注入元信息步骤（仅当 withMeta 为 true 且有 afterSteps）
-                if (task.withMeta && afterSteps) {
-                    task.step = STEP.APPEND_COMIC_INFO;
-                    task.stepState = STATE.RUNNING;
-                    broadcast({ type: 'progress', id: task.id, task: { step: task.step, stepState: task.stepState, stepStatus: stepStatusLabel(task.step, task.stepState, stepLabels, task.payload) } });
-                    try {
-                        await afterSteps(result);
-                        task.stepState = STATE.SUCCESS;
-                    } catch (_) {
-                        task.stepState = STATE.ERROR;
-                    }
-                    broadcast({ type: 'progress', id: task.id, task: { step: task.step, stepState: task.stepState, stepStatus: stepStatusLabel(task.step, task.stepState, stepLabels, task.payload) } });
-                } else if (afterSteps) {
-                    await afterSteps(result);
-                }
-            }
+            const result = await crawler.comic.downloadArchive(task.number, task.withMeta, signal);
             task.status = 'completed';
             task.progress = 1;
             task.completedDate = Date.now();

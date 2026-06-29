@@ -1,6 +1,6 @@
 ; ========= 基础配置 =========
 #define MyAppName "JM漫画管理器"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "pigman18"
 #define MyAppExeName "JM漫画管理器.exe"
 #define ToastAppId "com.pigman18.jmcomicmanager"

@@ -123,7 +123,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         if (database) return database;
         mkdirSyncIfNotExists(path.dirname(dbPath));
         database = openDatabase(dbPath);
-        database.exec(`
+        await database.exec(`
       CREATE TABLE IF NOT EXISTS comic_meta (
         id INTEGER PRIMARY KEY,
         name TEXT, images JSON, addtime TEXT, description TEXT,
@@ -135,106 +135,106 @@ function createStore(manifest, ctx, message, config, crawler) {
       );
     `);
         // 兼容旧表：可能缺少 create_time / update_time
-        try { database.exec('ALTER TABLE comic_meta ADD COLUMN create_time INTEGER'); } catch (_) {}
-        try { database.exec('ALTER TABLE comic_meta ADD COLUMN update_time INTEGER'); } catch (_) {}
+        try { await database.exec('ALTER TABLE comic_meta ADD COLUMN create_time INTEGER'); } catch (_) {}
+        try { await database.exec('ALTER TABLE comic_meta ADD COLUMN update_time INTEGER'); } catch (_) {}
         // 索引 — WHERE 过滤
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_series_id ON comic_meta(series_id)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_name ON comic_meta(name)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_author ON comic_meta(author)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_comment_total ON comic_meta(comment_total)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_price ON comic_meta(price)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_purchased ON comic_meta(purchased)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_series_id ON comic_meta(series_id)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_name ON comic_meta(name)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_author ON comic_meta(author)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_comment_total ON comic_meta(comment_total)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_price ON comic_meta(price)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_purchased ON comic_meta(purchased)'); } catch (_) {}
         // 复合排序索引 — 让 ORDER BY + LIMIT 直接走索引扫描
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_update ON comic_meta(update_time, id)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_create ON comic_meta(create_time, id)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_views ON comic_meta(total_views, id)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_likes ON comic_meta(likes, id)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_name ON comic_meta(name, id)'); } catch (_) {}
-        try { database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_addtime ON comic_meta(addtime, id)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_update ON comic_meta(update_time, id)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_create ON comic_meta(create_time, id)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_views ON comic_meta(total_views, id)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_likes ON comic_meta(likes, id)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_name ON comic_meta(name, id)'); } catch (_) {}
+        try { await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_addtime ON comic_meta(addtime, id)'); } catch (_) {}
         // 删除旧 FTS 表/触发器（已弃用，改用 LIKE）
         try {
-            database.exec('DROP TABLE IF EXISTS comic_meta_fts');
+            await database.exec('DROP TABLE IF EXISTS comic_meta_fts');
         } catch (_) {}
-        try { database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_ai'); } catch (_) {}
-        try { database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_ad'); } catch (_) {}
-        try { database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_au'); } catch (_) {}
-        database.exec(`
+        try { await database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_ai'); } catch (_) {}
+        try { await database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_ad'); } catch (_) {}
+        try { await database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_au'); } catch (_) {}
+        await database.exec(`
       CREATE TABLE IF NOT EXISTS comic_read (
         id INTEGER PRIMARY KEY,
         read_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
       );
     `);
-        database.exec(`
+        await database.exec(`
       CREATE TABLE IF NOT EXISTS comic_ban (
         id INTEGER PRIMARY KEY,
         banned_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
       );
     `);
-        database.exec(`
+        await database.exec(`
       CREATE TABLE IF NOT EXISTS comic_star (
         id INTEGER PRIMARY KEY,
         star_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
       );
     `);
         // 标签关联表（代替 json_each 全表扫描）
-        database.exec(`
+        await database.exec(`
             CREATE TABLE IF NOT EXISTS comic_meta_tag (
                 comic_id INTEGER NOT NULL,
                 tag TEXT NOT NULL,
                 PRIMARY KEY (comic_id, tag)
             )
         `);
-        database.exec('CREATE INDEX IF NOT EXISTS idx_meta_tag_tag ON comic_meta_tag(tag)');
-        database.exec(`DROP TRIGGER IF EXISTS comic_meta_tag_ai`);
-        database.exec(`DROP TRIGGER IF EXISTS comic_meta_tag_au`);
-        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_ai AFTER INSERT ON comic_meta BEGIN
+        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_tag_tag ON comic_meta_tag(tag)');
+        await database.exec(`DROP TRIGGER IF EXISTS comic_meta_tag_ai`);
+        await database.exec(`DROP TRIGGER IF EXISTS comic_meta_tag_au`);
+        await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_ai AFTER INSERT ON comic_meta BEGIN
             INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
             SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.tags) THEN new.tags ELSE '[]' END) t;
         END`);
-        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_au AFTER UPDATE ON comic_meta BEGIN
+        await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_au AFTER UPDATE ON comic_meta BEGIN
             DELETE FROM comic_meta_tag WHERE comic_id = old.id;
             INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
             SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.tags) THEN new.tags ELSE '[]' END) t;
         END`);
-        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_ad AFTER DELETE ON comic_meta BEGIN
+        await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_ad AFTER DELETE ON comic_meta BEGIN
             DELETE FROM comic_meta_tag WHERE comic_id = old.id;
         END`);
         // 自动同步标签表：已有数据但关联表为空
         try {
-            const tagCount = database.prepare('SELECT COUNT(*) as c FROM comic_meta_tag').get({}).c;
+            const tagCount = (await database.prepare('SELECT COUNT(*) as c FROM comic_meta_tag').get({})).c;
             if (tagCount === 0) {
-                database.exec(`INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
+                await database.exec(`INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
                     SELECT c.id, t.value FROM comic_meta c, json_each(CASE WHEN json_valid(c.tags) THEN c.tags ELSE '[]' END) t`);
             }
         } catch (_) {}
         // 作者关联表（代替 json_each 全表扫描）
-        database.exec(`
+        await database.exec(`
             CREATE TABLE IF NOT EXISTS comic_meta_author (
                 comic_id INTEGER NOT NULL,
                 author TEXT NOT NULL,
                 PRIMARY KEY (comic_id, author)
             )
         `);
-        database.exec('CREATE INDEX IF NOT EXISTS idx_meta_author_value ON comic_meta_author(author)');
-        database.exec(`DROP TRIGGER IF EXISTS comic_meta_author_ai`);
-        database.exec(`DROP TRIGGER IF EXISTS comic_meta_author_au`);
-        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_ai AFTER INSERT ON comic_meta BEGIN
+        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_author_value ON comic_meta_author(author)');
+        await database.exec(`DROP TRIGGER IF EXISTS comic_meta_author_ai`);
+        await database.exec(`DROP TRIGGER IF EXISTS comic_meta_author_au`);
+        await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_ai AFTER INSERT ON comic_meta BEGIN
             INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
             SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.author) THEN new.author ELSE '[]' END) t;
         END`);
-        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_au AFTER UPDATE ON comic_meta BEGIN
+        await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_au AFTER UPDATE ON comic_meta BEGIN
             DELETE FROM comic_meta_author WHERE comic_id = old.id;
             INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
             SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.author) THEN new.author ELSE '[]' END) t;
         END`);
-        database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_ad AFTER DELETE ON comic_meta BEGIN
+        await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_ad AFTER DELETE ON comic_meta BEGIN
             DELETE FROM comic_meta_author WHERE comic_id = old.id;
         END`);
         // 自动同步作者表：已有数据但关联表为空
         try {
-            const authorCount = database.prepare('SELECT COUNT(*) as c FROM comic_meta_author').get({}).c;
+            const authorCount = (await database.prepare('SELECT COUNT(*) as c FROM comic_meta_author').get({})).c;
             if (authorCount === 0) {
-                database.exec(`INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
+                await database.exec(`INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
                     SELECT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.author) THEN c.author ELSE '[]' END) t`);
             }
         } catch (_) {}
@@ -243,57 +243,57 @@ function createStore(manifest, ctx, message, config, crawler) {
 
     async function saveOrUpdateBatch(anyList, toRow) {
         let conn = await connect();
-        conn.exec('BEGIN TRANSACTION');
+        await conn.exec('BEGIN TRANSACTION');
         const stmt = conn.prepare(insertSQl);
         for (let obj of anyList) {
             let row = await toRow(obj);
-            if (row) stmt.run(row);
+            if (row) await stmt.run(row);
         }
-        conn.exec('COMMIT');
+        await conn.exec('COMMIT');
     }
 
     async function saveOrUpdate(row) {
         let conn = await connect();
         const stmt = conn.prepare(insertSQl);
-        stmt.run(row);
+        await stmt.run(row);
     }
 
     // ============ comicMeta sub-module ============
 
     async function has(id) {
         let conn = await connect();
-        let total = conn.prepare('SELECT COUNT(1) as c FROM comic_meta WHERE id = ?').get(id).c;
+        let total = (await conn.prepare('SELECT COUNT(1) as c FROM comic_meta WHERE id = ?').get(id)).c;
         return total !== 0;
     }
 
     async function get(id) {
         let conn = await connect();
-        return conn.prepare('SELECT * FROM comic_meta WHERE id = ?').get(id);
+        return await conn.prepare('SELECT * FROM comic_meta WHERE id = ?').get(id);
     }
 
     async function list() {
         let conn = await connect();
-        return conn.prepare('SELECT * FROM comic_meta').all({});
+        return await conn.prepare('SELECT * FROM comic_meta').all({});
     }
 
     async function listTags(query) {
         if (!query) return [];
         const conn = await connect();
-        const rows = conn.prepare('SELECT DISTINCT tag FROM comic_meta_tag WHERE tag LIKE ? LIMIT 100').all(`%${query}%`);
+        const rows = await conn.prepare('SELECT DISTINCT tag FROM comic_meta_tag WHERE tag LIKE ? LIMIT 100').all(`%${query}%`);
         return rows.map(r => r.tag);
     }
 
     async function syncAllTags() {
         const conn = await connect();
-        conn.exec('DELETE FROM comic_meta_tag');
-        conn.exec(`INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
+        await conn.exec('DELETE FROM comic_meta_tag');
+        await conn.exec(`INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
             SELECT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.tags) THEN c.tags ELSE '[]' END) t`);
     }
 
     async function syncAllAuthors() {
         const conn = await connect();
-        conn.exec('DELETE FROM comic_meta_author');
-        conn.exec(`INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
+        await conn.exec('DELETE FROM comic_meta_author');
+        await conn.exec(`INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
             SELECT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.author) THEN c.author ELSE '[]' END) t`);
     }
 
@@ -366,9 +366,9 @@ function createStore(manifest, ctx, message, config, crawler) {
         const countSQL = `SELECT COUNT(*) as c FROM (${sql} WHERE ${where})`;
         const dataSQL = `${sql} WHERE ${where} ORDER BY ${orderBy} ${orderDir} LIMIT @lim OFFSET @off`;
         console.log('[store]', countSQL, JSON.stringify(params));
-        const total = conn.prepare(countSQL).get(params).c;
+        const total = (await conn.prepare(countSQL).get(params)).c;
         console.log('[store]', dataSQL, JSON.stringify({ ...params, lim: pageSize, off: (page - 1) * pageSize }));
-        const rows = conn.prepare(dataSQL).all({ ...params, lim: pageSize, off: (page - 1) * pageSize });
+        const rows = await conn.prepare(dataSQL).all({ ...params, lim: pageSize, off: (page - 1) * pageSize });
         return { total, rows };
     }
 
@@ -388,16 +388,16 @@ function createStore(manifest, ctx, message, config, crawler) {
 
     async function saveRead(episodeId) {
         const conn = await connect();
-        const existing = conn.prepare('SELECT id FROM comic_read WHERE id = ?').get(episodeId);
+        const existing = await conn.prepare('SELECT id FROM comic_read WHERE id = ?').get(episodeId);
         if (existing) return;
-        conn.prepare('INSERT INTO comic_read (id) VALUES (?)').run(episodeId);
+        await conn.prepare('INSERT INTO comic_read (id) VALUES (?)').run(episodeId);
     }
 
     async function checkReads(ids) {
         if (!Array.isArray(ids) || ids.length === 0) return [];
         const conn = await connect();
         const placeholders = ids.map(() => '?').join(',');
-        const rows = conn.prepare(`SELECT id FROM comic_read WHERE id IN (${placeholders})`).all(ids);
+        const rows = await conn.prepare(`SELECT id FROM comic_read WHERE id IN (${placeholders})`).all(ids);
         return rows.map(r => (typeof r.id === 'bigint' ? Number(r.id) : r.id));
     }
 
@@ -410,23 +410,23 @@ function createStore(manifest, ctx, message, config, crawler) {
 
     async function addBan(comicId) {
         const conn = await connect();
-        const existing = conn.prepare('SELECT id FROM comic_ban WHERE id = ?').get(comicId);
+        const existing = await conn.prepare('SELECT id FROM comic_ban WHERE id = ?').get(comicId);
         if (existing) return false;
-        conn.prepare('INSERT INTO comic_ban (id) VALUES (?)').run(comicId);
+        await conn.prepare('INSERT INTO comic_ban (id) VALUES (?)').run(comicId);
         return true;
     }
 
     async function removeBan(comicId) {
         const conn = await connect();
-        const existing = conn.prepare('SELECT id FROM comic_ban WHERE id = ?').get(comicId);
+        const existing = await conn.prepare('SELECT id FROM comic_ban WHERE id = ?').get(comicId);
         if (!existing) return false;
-        conn.prepare('DELETE FROM comic_ban WHERE id = ?').run(comicId);
+        await conn.prepare('DELETE FROM comic_ban WHERE id = ?').run(comicId);
         return true;
     }
 
     async function listBans() {
         const conn = await connect();
-        const rows = conn.prepare('SELECT id FROM comic_ban ORDER BY banned_time DESC').all({});
+        const rows = await conn.prepare('SELECT id FROM comic_ban ORDER BY banned_time DESC').all({});
         return rows.map(r => (typeof r.id === 'bigint' ? Number(r.id) : r.id));
     }
 
@@ -434,7 +434,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         if (!Array.isArray(ids) || ids.length === 0) return [];
         const conn = await connect();
         const placeholders = ids.map(() => '?').join(',');
-        const rows = conn.prepare(`SELECT id FROM comic_ban WHERE id IN (${placeholders})`).all(ids);
+        const rows = await conn.prepare(`SELECT id FROM comic_ban WHERE id IN (${placeholders})`).all(ids);
         return rows.map(r => (typeof r.id === 'bigint' ? Number(r.id) : r.id));
     }
 
@@ -457,23 +457,23 @@ function createStore(manifest, ctx, message, config, crawler) {
 
     async function addStar(comicId) {
         const conn = await connect();
-        const existing = conn.prepare('SELECT id FROM comic_star WHERE id = ?').get(comicId);
+        const existing = await conn.prepare('SELECT id FROM comic_star WHERE id = ?').get(comicId);
         if (existing) return false;
-        conn.prepare('INSERT INTO comic_star (id) VALUES (?)').run(comicId);
+        await conn.prepare('INSERT INTO comic_star (id) VALUES (?)').run(comicId);
         return true;
     }
 
     async function removeStar(comicId) {
         const conn = await connect();
-        const existing = conn.prepare('SELECT id FROM comic_star WHERE id = ?').get(comicId);
+        const existing = await conn.prepare('SELECT id FROM comic_star WHERE id = ?').get(comicId);
         if (!existing) return false;
-        conn.prepare('DELETE FROM comic_star WHERE id = ?').run(comicId);
+        await conn.prepare('DELETE FROM comic_star WHERE id = ?').run(comicId);
         return true;
     }
 
     async function listStars() {
         const conn = await connect();
-        const rows = conn.prepare('SELECT id FROM comic_star ORDER BY star_time DESC').all({});
+        const rows = await conn.prepare('SELECT id FROM comic_star ORDER BY star_time DESC').all({});
         return rows.map(r => (typeof r.id === 'bigint' ? Number(r.id) : r.id));
     }
 
@@ -481,7 +481,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         if (!Array.isArray(ids) || ids.length === 0) return [];
         const conn = await connect();
         const placeholders = ids.map(() => '?').join(',');
-        const rows = conn.prepare(`SELECT id FROM comic_star WHERE id IN (${placeholders})`).all(ids);
+        const rows = await conn.prepare(`SELECT id FROM comic_star WHERE id IN (${placeholders})`).all(ids);
         return rows.map(r => (typeof r.id === 'bigint' ? Number(r.id) : r.id));
     }
 
@@ -599,10 +599,10 @@ function createStore(manifest, ctx, message, config, crawler) {
         return rows.length;
     }
 
-    function close() {
+    async function close() {
         if (database) {
             try {
-                database.close();
+                await database.close();
             } catch {
                 /* */
             }

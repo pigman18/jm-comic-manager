@@ -141,6 +141,12 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
             _pendingProgress = null;
         }
 
+        // non-progress: clear stale pending progress to avoid overwriting terminal state
+        if (!(payload?.type === 'progress')) {
+            if (_progressTimer) { clearTimeout(_progressTimer); _progressTimer = null; }
+            _pendingProgress = null;
+        }
+
         const s = typeof payload === 'string' ? payload : JSON.stringify(payload);
         for (const ws of progressClients) {
             try {
@@ -967,24 +973,12 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
 
                 if (taskManager) {
-                    // afterSteps：下载完成后用完整元信息注入 ComicInfo.xml
-                    const afterSteps = async ({file}) => {
-                        if (!withMeta) return;
-                        try {
-                            const albumInfo = await crawler.comic.getMeta(album);
-                            if (albumInfo) {
-                                await crawler.comic.appendComicInfo2Archive(albumInfo, file);
-                            }
-                        } catch (_) {
-                        }
-                    };
                     const taskLabels = name ? [name, ...comicTags] : [album.toString(), downloadLabel].filter(Boolean);
                     const result = await taskManager.addTask(n, taskLabels, {
                         coverBase64,
                         displayTitle,
                         episodeNumber: n,
                         withMeta,
-                        afterSteps,
                     });
                     if (!result.ok) {
                         res.json(result);
@@ -1014,19 +1008,9 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     return;
                 }
 
-                const afterSteps = async ({file}) => {
-                    if (!withMeta) return;
-                    try {
-                        const albumInfo = await crawler.comic.getMeta(num);
-                        if (albumInfo) await crawler.comic.appendComicInfo2Archive(albumInfo, file);
-                    } catch (_) {
-                    }
-                };
-
                 const result = await taskManager.addTask(num, [], {
                     episodeNumber: num,
                     withMeta,
-                    afterSteps,
                 });
                 res.json(result);
             } catch (e) {
