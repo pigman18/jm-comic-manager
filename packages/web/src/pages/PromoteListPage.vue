@@ -214,7 +214,7 @@ async function loadComics() {
   coverLoaded.value = {}
   try {
     const j = await getJson(`/promote/list?id=${activeId.value}&page=${currentPage.value}`)
-    if (!j.ok) throw new Error(j.message || '获取失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取失败')
     list.value = j.list || []
     total.value = j.total || 0
   } catch (e: any) {
@@ -226,6 +226,7 @@ async function loadComics() {
 
 function doPage(p: number) {
   currentPage.value = p
+  mainScrollRef.value?.scrollTo({ top: 0 })
   loadComics()
 }
 

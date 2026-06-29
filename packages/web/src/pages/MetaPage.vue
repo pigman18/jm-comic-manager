@@ -305,7 +305,7 @@ async function loadComments(page?: number) {
       commentTotal.value = Number(j.total) || 0
       commentPage.value = p
     } else {
-      message.error(j.message || '加载评论失败')
+      message.error(j.msg || j.message || '加载评论失败')
     }
   } catch (e: any) {
     message.error(String(e?.message || e))
@@ -333,7 +333,7 @@ async function postComment() {
       commentText.value = ''
       loadComments()
     } else {
-      message.error(j.message || '评论失败')
+      message.error(j.msg || j.message || '评论失败')
     }
   } catch (e: any) {
     message.error(String(e?.message || e))
@@ -366,7 +366,7 @@ async function postReply(cid: string) {
       replyingTo.value = null
       loadComments()
     } else {
-      message.error(j.message || '回复失败')
+      message.error(j.msg || j.message || '回复失败')
     }
   } catch (e: any) {
     message.error(String(e?.message || e))
@@ -463,13 +463,13 @@ async function loadDetail(silent = false) {
   try {
     if (props.fetchRemote !== false) {
       const j = await postJson(`/comics/${n}/fetch-meta`)
-      if (!j.ok) throw new Error(j.message || '加载失败')
+      if (!j.ok) throw new Error(j.msg || j.message || '加载失败')
       comic.value = j.comic
       if (j.comic) emit('title-changed', `${j.comic.name || ''}`)
       zipStatus.value = j.zipStatus || {}
     } else {
       const j = await getJson(`/comics/${n}`)
-      if (!j.ok || !j.comic) throw new Error(j.message || '加载失败')
+      if (!j.ok || !j.comic) throw new Error(j.msg || j.message || '加载失败')
       comic.value = j.comic
       if (j.comic) emit('title-changed', `${j.comic.name || ''}`)
       zipStatus.value = j.zipStatus || {}
@@ -599,7 +599,7 @@ async function postDownload(zipKey: string, label: string, silent = false) {
       episodeTitle: zipRows.value.find(r => r.zipKey === zipKey)?.epTitle || '',
       withMeta: withMeta.value,
     })
-    if (!j.ok) throw new Error(j.message || '排队失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '排队失败')
     if (!silent) message.success('已加入下载队列')
   } catch (e: any) { delPending(zipKey); if (!silent) message.error(String(e?.message || e)); throw e }
   finally { posting.delete(zipKey) }
@@ -693,7 +693,7 @@ async function onRedeem() {
       try {
         const j = await postJson(`/comics/${comic.value!.id}/buy`)
         if (!j.ok) {
-          message.error(j.message || '兑换失败')
+          message.error(j.msg || j.message || '兑换失败')
           d.loading = false
           return false
         }

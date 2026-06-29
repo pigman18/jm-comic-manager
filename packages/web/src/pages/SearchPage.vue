@@ -106,7 +106,7 @@ async function doSearch(page?: number) {
   loading.value = true
   try {
     const j = await getJson(`/search/comics${buildQuery({ keyword: kw, sort: sort.value, page: p })}`)
-    if (!j.ok) throw new Error(j.message || '搜索失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '搜索失败')
     list.value = j.list || []
     total.value = j.total || 0
     pages.value = j.pages || 1

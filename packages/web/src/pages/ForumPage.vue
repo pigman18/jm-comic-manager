@@ -193,7 +193,7 @@ async function postComment() {
       commentText.value = ''
       loadData()
     } else {
-      message.error(j.message || '评论失败')
+      message.error(j.msg || j.message || '评论失败')
     }
   } catch (e: any) {
     message.error(String(e?.message || e))
@@ -285,6 +285,7 @@ async function loadData() {
 
 function doPage(p: number) {
   currentPage.value = p
+  mainScrollRef.value?.scrollTo({ top: 0 })
   loadData()
 }
 
@@ -319,7 +320,7 @@ async function postReply(cid: string) {
       replyingTo.value = null
       loadData()
     } else {
-      message.error(j.message || '回复失败')
+      message.error(j.msg || j.message || '回复失败')
     }
   } catch (e: any) {
     message.error(String(e?.message || e))

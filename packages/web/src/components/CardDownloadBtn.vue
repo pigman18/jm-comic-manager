@@ -94,7 +94,7 @@ async function handleClick() {
   fetching.value = true
   try {
     const j = await postJson(`/comics/${c.id}/fetch-meta`)
-    if (!j.ok) { message.warning(j.message || '获取信息失败'); return }
+    if (!j.ok) { message.warning(j.msg || j.message || '获取信息失败'); return }
     const series = j.comic?.series || j.series || []
     const isMulti = series.length > 1
     if (c.canRead && !isMulti) {

@@ -88,7 +88,7 @@ async function handleClick() {
   fetching.value = true
   try {
     const j = fetchRemote ? await postJson(`/comics/${c.id}/fetch-meta`) : await getJson(`/comics/${c.id}`)
-    if (!j.ok) { message.warning(j.message || '获取信息失败'); return }
+    if (!j.ok) { message.warning(j.msg || j.message || '获取信息失败'); return }
     const series = j.comic?.series || j.series || []
     if (series.length <= 1) {
       if (!c.canRead) { message.warning('请先下载后再阅读'); return }

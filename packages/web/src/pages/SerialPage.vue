@@ -186,7 +186,7 @@ async function loadComics() {
   coverLoaded.value = {}
   try {
     const j = await getJson(`/serial/comics?day=${activeDay.value}&page=1`)
-    if (!j.ok) throw new Error(j.message || '获取失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取失败')
     list.value = j.list || []
     hasMore.value = j.hasMore !== false
   } catch (e: any) {
@@ -202,7 +202,7 @@ async function loadMore() {
   const nextPage = page.value + 1
   try {
     const j = await getJson(`/serial/comics?day=${activeDay.value}&page=${nextPage}`)
-    if (!j.ok) throw new Error(j.message || '获取失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取失败')
     const items = j.list || []
     hasMore.value = j.hasMore !== false
     if (items.length) {

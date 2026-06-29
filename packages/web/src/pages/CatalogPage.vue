@@ -143,7 +143,7 @@ async function loadList(): Promise<void> {
 
   try {
     const j = await getJson(`/comics${buildQuery(requestParams.value)}`);
-    if (!j.ok) throw new Error(j.message || '加载失败');
+    if (!j.ok) throw new Error(j.msg || j.message || '加载失败');
 
     list.value = j.list || [];
     total.value = j.total ?? 0;
@@ -347,7 +347,7 @@ async function fetchByNumber(): Promise<void> {
   fetchBusy.value = true;
   try {
     const j = await postJson(`/comics/${n}/fetch-meta`);
-    if (!j.ok) { message.warning(j.message || '拉取失败'); return; }
+    if (!j.ok) { message.warning(j.msg || j.message || '拉取失败'); return; }
     message.success('已更新');
     fetchNum.value = '';
     filters.number = String(n);

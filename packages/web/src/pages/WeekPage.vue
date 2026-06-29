@@ -103,7 +103,7 @@ async function loadWeekInfo() {
   loading.value = true
   try {
     const j = await getJson('/week/info')
-    if (!j.ok) throw new Error(j.message || '获取周信息失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取周信息失败')
     categories.value = j.categories || []
     const typeOrder = ['manga', 'hanman', 'another']
     types.value = (j.type || []).slice().sort((a: WeekType, b: WeekType) => {
@@ -131,7 +131,7 @@ async function loadComics() {
     const params = new URLSearchParams({ categoryId: activeCategory.value })
     if (activeType.value) params.set('typeId', activeType.value)
     const j = await getJson(`/week/comics?${params}`)
-    if (!j.ok) throw new Error(j.message || '获取失败')
+    if (!j.ok) throw new Error(j.msg || j.message || '获取失败')
     list.value = j.list || []
     total.value = j.total || 0
   } catch (e: any) {
