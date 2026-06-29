@@ -17,19 +17,20 @@
                 <div v-if="!coverLoaded" class="jmt-cover-spinner"><n-spin size="small" /></div>
                 <img ref="coverRef" class="jmt-meta-cover xxx-img" :src="comic.cover || ''" :alt="comic.name" @load="coverLoaded = true" @error="coverLoaded = true" />
               </div>
-              <div class="jmt-meta-info">
+                <div class="jmt-meta-info">
                 <p class="jmt-meta-tags">
-                  <span class="xxx-text">JM{{ comic.id }}</span>
+                  <span class="xxx-text">禁漫车：JM{{ comic.id }}</span>
                   <span class="xxx-text">{{ comic.displayKindLabel }}</span>
                 </p>
                 <div class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作品：</span><span v-for="w in visibleWorks" :key="w" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="onWorkClick(w, $event)" @keyup.enter="onWorkClick(w, $event)">{{ w }}</span><span v-if="comic.works?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandWorks = !expandWorks" @keyup.enter="expandWorks = !expandWorks">{{ expandWorks ? '收起' : `+${comic.works.length - SHOW_LIMIT}` }}</span></div>
-                <div class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作者：</span><span v-for="a in visibleAuthor" :key="a" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="onAuthorClick(a, $event)" @keyup.enter="onAuthorClick(a, $event)">{{ a }}</span><span v-if="comic.author?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandAuthor = !expandAuthor" @keyup.enter="expandAuthor = !expandAuthor">{{ expandAuthor ? '收起' : `+${comic.author.length - SHOW_LIMIT}` }}</span></div>
+                <div class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">登场人物：</span><span v-for="a in visibleActors" :key="a" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="onActorClick(a, $event)" @keyup.enter="onActorClick(a, $event)">{{ a }}</span><span v-if="comic.actors?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandActors = !expandActors" @keyup.enter="expandActors = !expandActors">{{ expandActors ? '收起' : `+${comic.actors.length - SHOW_LIMIT}` }}</span></div>
                 <div class="jmt-meta-chips">
-                  <span style="font-size:14px;color:#c4c4d6;margin-right:2px">标签：</span>
+                  <span style="font-size:14px;color:#c4c4d6;margin-right:2px">分类标签：</span>
                   <span v-for="t in visibleTags" :key="t" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="onTagClick(t, $event)" @keyup.enter="onTagClick(t, $event)">{{ t }}</span>
                   <span v-if="comic.tags?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandTags = !expandTags" @keyup.enter="expandTags = !expandTags">{{ expandTags ? '收起' : `+${comic.tags.length - SHOW_LIMIT}` }}</span>
                 </div>
-                <p v-if="comic.description" class="jmt-meta-desc xxx-text">{{ comic.description }}</p>
+                <div class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作者：</span><span v-for="a in visibleAuthor" :key="a" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="onAuthorClick(a, $event)" @keyup.enter="onAuthorClick(a, $event)">{{ a }}</span><span v-if="comic.author?.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandAuthor = !expandAuthor" @keyup.enter="expandAuthor = !expandAuthor">{{ expandAuthor ? '收起' : `+${comic.author.length - SHOW_LIMIT}` }}</span></div>
+                <p v-if="comic.description" class="jmt-meta-desc xxx-text">叙述：{{ comic.description }}</p>
                 <div v-if="comic" class="jmt-meta-stats">
                   <span v-if="comic.total_views" class="jmz-stat-item xxx-text">
                     <n-icon :component="EyeOutline" size="14" style="vertical-align:-2px;margin-right:3px" />{{ comic.total_views }}
@@ -230,6 +231,7 @@ const emit = defineEmits<{
   'work-click': [work: string, event: MouseEvent | KeyboardEvent]
   'author-click': [author: string, event: MouseEvent | KeyboardEvent]
   'tag-click': [tag: string, event: MouseEvent | KeyboardEvent]
+  'actor-click': [actor: string, event: MouseEvent | KeyboardEvent]
 }>()
 
 const route = useRoute()
@@ -255,6 +257,7 @@ const SHOW_LIMIT = 8
 const expandAuthor = ref(false)
 const expandTags = ref(false)
 const expandWorks = ref(false)
+const expandActors = ref(false)
 const replyingTo = ref<string | null>(null)
 const replyText = ref('')
 const postingReply = ref(false)
@@ -422,6 +425,7 @@ const previewImages = computed(() => (comic.value?.images || []).slice(1))
 const visibleAuthor = computed(() => expandAuthor.value ? (comic.value?.author || []) : (comic.value?.author || []).slice(0, SHOW_LIMIT))
 const visibleTags = computed(() => expandTags.value ? (comic.value?.tags || []) : (comic.value?.tags || []).slice(0, SHOW_LIMIT))
 const visibleWorks = computed(() => expandWorks.value ? (comic.value?.works || []) : (comic.value?.works || []).slice(0, SHOW_LIMIT))
+const visibleActors = computed(() => expandActors.value ? (comic.value?.actors || []) : (comic.value?.actors || []).slice(0, SHOW_LIMIT))
 const coverRef = ref<HTMLImageElement | null>(null)
 
 watch(coverRef, (el) => {
@@ -642,6 +646,17 @@ function onWorkClick(w: string, ev: MouseEvent | KeyboardEvent) {
 function onAuthorClick(a: string, ev: MouseEvent | KeyboardEvent) {
   emit('author-click', a, ev)
   if (!props.disableDefaultChip) filterByAuthor(a, ev)
+}
+
+function onActorClick(a: string, ev: MouseEvent | KeyboardEvent) {
+  emit('actor-click', a, ev)
+  if (!props.disableDefaultChip) {
+    ev?.stopPropagation?.()
+    a = a.trim()
+    if (!a) return
+    if (props.dialog) emit('close')
+    router.replace({ name: 'catalog', query: { actors: a, page: '1' } })
+  }
 }
 
 function onTagClick(t: string, ev: MouseEvent | KeyboardEvent) {

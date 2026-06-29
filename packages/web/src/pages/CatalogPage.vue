@@ -34,6 +34,10 @@ const worksOptions = ref<string[]>([]);
 const worksLoading = ref(false);
 let worksDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+const actorsOptions = ref<string[]>([]);
+const actorsLoading = ref(false);
+let actorsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 const loading = ref(false);
 const list = shallowRef<Comic[]>([]);
 const total = ref(0);
@@ -60,6 +64,7 @@ const filters = reactive({
   number: '',
   tags: [] as string[],
   works: [] as string[],
+  actors: [] as string[],
   kind: '',
   available: false,
   banned: false,
@@ -78,6 +83,7 @@ function readFiltersFromRoute(): void {
   filters.number = String(q.number || '');
   filters.tags = q.tags ? String(q.tags).split(',').filter(Boolean) : [];
   filters.works = q.works ? String(q.works).split(',').filter(Boolean) : [];
+  filters.actors = q.actors ? String(q.actors).split(',').filter(Boolean) : [];
   filters.kind = String(q.kind || '');
   filters.available = q.available === 'true';
   filters.banned = q.banned === 'true';
@@ -97,6 +103,7 @@ function filtersToQuery(): Record<string, string> {
   if (filters.number) q.number = filters.number;
   if (filters.tags.length) q.tags = filters.tags.join(',');
   if (filters.works.length) q.works = filters.works.join(',');
+  if (filters.actors.length) q.actors = filters.actors.join(',');
   if (filters.kind) q.kind = filters.kind;
   if (filters.available) q.available = 'true';
   if (filters.banned) q.banned = 'true';
@@ -120,6 +127,7 @@ const requestParams = computed(() => ({
   number: filters.number || undefined,
   tags: filters.tags.length ? filters.tags.join(',') : undefined,
   works: filters.works.length ? filters.works.join(',') : undefined,
+  actors: filters.actors.length ? filters.actors.join(',') : undefined,
   kind: filters.kind || undefined,
   available: filters.available ? 'true' : undefined,
   banned: filters.banned ? 'true' : undefined,
@@ -216,6 +224,7 @@ function clearAuthor(): void { filters.author = ''; resetPage(); }
 function clearNumber(): void { filters.number = ''; resetPage(); }
 function clearTags(): void { filters.tags = []; resetPage(); }
 function clearWorks(): void { filters.works = []; resetPage(); }
+function clearActors(): void { filters.actors = []; resetPage(); }
 function clearKind(): void { filters.kind = ''; resetPage(); }
 
 /* ===== 其余函数原样保留 ===== */
@@ -246,6 +255,20 @@ function searchWorks(query: string): void {
       worksOptions.value = j.works || [];
     } finally {
       worksLoading.value = false;
+    }
+  }, 300);
+}
+
+function searchActors(query: string): void {
+  if (actorsDebounceTimer) clearTimeout(actorsDebounceTimer);
+  if (!query?.trim()) return;
+  actorsDebounceTimer = setTimeout(async () => {
+    actorsLoading.value = true;
+    try {
+      const j = await getJson(`/actors${buildQuery({ query: query.trim() })}`);
+      actorsOptions.value = j.actors || [];
+    } finally {
+      actorsLoading.value = false;
     }
   }, 300);
 }
@@ -424,6 +447,19 @@ const orderOptions = [
                 :loading="worksLoading"
                 @search="searchWorks"
                 @clear="clearWorks"
+                @update:value="resetPage"
+            />
+            <n-select
+                v-model:value="filters.actors"
+                multiple
+                filterable
+                tag
+                placeholder="登场人物"
+                clearable
+                :options="actorsOptions.map(a => ({ label: a, value: a }))"
+                :loading="actorsLoading"
+                @search="searchActors"
+                @clear="clearActors"
                 @update:value="resetPage"
             />
             <n-select v-model:value="filters.kind" placeholder="类型" clearable :options="kindOptions" @clear="clearKind" @update:value="resetPage" />
