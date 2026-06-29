@@ -554,12 +554,11 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     const loginResult = await crawler.account.login();
                     memberInfo = loginResult?.memberInfo || null;
                 }
-                const row = await store.comicMeta.get(n);
-                if (row) {
-                    const dbRow = store.jsonRowToDb(store.dbRowToJson(row));
-                    dbRow.purchased = result?.data?.purchased || row.purchased || '1';
-                    await store.comicMeta.saveOrUpdate(dbRow);
+                const info = await crawler.comic.getMeta(n);
+                if (info) {
+                    await store.comicMeta.saveOrUpdate(store.jsonRowToDb(info));
                 }
+                const row = await store.comicMeta.get(n);
                 const comic = row ? rewriteComicMediaUrls(store.dbRowToJson(row)) : null;
                 res.json({ ok: true, comic, memberInfo });
             } catch (e) {
