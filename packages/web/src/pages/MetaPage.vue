@@ -19,11 +19,6 @@
               </div>
               <div class="jmt-meta-info">
                 <p class="jmt-meta-tags">
-                  <span style="display:inline-flex;align-items:center;margin-right:4px">
-                    <slot name="source-badge">
-                      <n-icon :component="ServerOutline" size="18" style="color:#63e2b7" />
-                    </slot>
-                  </span>
                   <span class="xxx-text">JM{{ comic.id }}</span>
                   <span class="xxx-text">{{ comic.displayKindLabel }}</span>
                 </p>
@@ -56,7 +51,7 @@
             </div>
             <div class="jmt-meta-tabs">
               <span :class="['jmt-meta-tab', { 'jmt-meta-tab--active': activeTab === 'eps' }]" @click="activeTab = 'eps'">章节列表</span>
-              <span :class="['jmt-meta-tab', { 'jmt-meta-tab--active': activeTab === 'comments' }]" @click="activeTab = 'comments'">漫画评论</span>
+              <span :class="['jmt-meta-tab', { 'jmt-meta-tab--active': activeTab === 'comments' }]" @click="activeTab = 'comments'">漫画评论<span v-if="comic?.comment_total" style="margin-left:4px;opacity:.6">({{ comic?.comment_total }})</span></span>
             </div>
             <section v-if="activeTab === 'eps'" class="jmt-meta-zip">
               <div class="jmt-ep-list-header">
@@ -214,7 +209,7 @@
 import { ref, computed, watch, inject, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { ArrowBackOutline, EyeOutline, HeartOutline, ThumbsUpOutline, HappyOutline, RefreshOutline, CloudOutline, ServerOutline } from '@vicons/ionicons5'
+import { ArrowBackOutline, EyeOutline, HeartOutline, ThumbsUpOutline, HappyOutline, RefreshOutline } from '@vicons/ionicons5'
 import { getJson, postJson } from '@/api'
 import { useZipReader } from '@/composables/useZipReader'
 import { useJmLiveStore } from '@/stores/jmLive'

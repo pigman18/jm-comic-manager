@@ -1,8 +1,5 @@
 <template>
   <MetaPage :num="num" :dialog="dialog" :fetch-remote="true" :disable-default-chip="true" @close="emit('close')" @title-changed="emit('title-changed', $event)" @work-click="onWorkClick" @author-click="onAuthorClick" @tag-click="onTagClick">
-    <template #source-badge>
-      <n-icon :component="CloudOutline" size="18" style="color:#f0b429" />
-    </template>
     <template #info-suffix>
       <n-button v-if="inStore === false" size="tiny" type="primary" @click="addToStore">加入库</n-button>
     </template>
