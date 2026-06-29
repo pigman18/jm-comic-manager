@@ -87,7 +87,7 @@ function fmtDate(ts: any): string {
 
 const kindLabel = computed(() => {
   const c = props.comic
-  return c.displayKindLabel || c.category_sub?.title || c.category?.title || c.kind || ''
+  return c.displayKindLabel || c.category?.title || c.kind || ''
 })
 
 const dateLabel = computed(() => {
