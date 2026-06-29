@@ -189,12 +189,12 @@ function createStore(manifest, ctx, message, config, crawler) {
         await database.exec(`DROP TRIGGER IF EXISTS comic_meta_tag_au`);
         await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_ai AFTER INSERT ON comic_meta BEGIN
             INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
-            SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.tags) THEN new.tags ELSE '[]' END) t;
+            SELECT DISTINCT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.tags) THEN new.tags ELSE '[]' END) t;
         END`);
         await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_au AFTER UPDATE ON comic_meta BEGIN
             DELETE FROM comic_meta_tag WHERE comic_id = old.id;
             INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
-            SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.tags) THEN new.tags ELSE '[]' END) t;
+            SELECT DISTINCT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.tags) THEN new.tags ELSE '[]' END) t;
         END`);
         await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_tag_ad AFTER DELETE ON comic_meta BEGIN
             DELETE FROM comic_meta_tag WHERE comic_id = old.id;
@@ -204,7 +204,7 @@ function createStore(manifest, ctx, message, config, crawler) {
             const tagCount = (await database.prepare('SELECT COUNT(*) as c FROM comic_meta_tag').get({})).c;
             if (tagCount === 0) {
                 await database.exec(`INSERT OR IGNORE INTO comic_meta_tag(comic_id, tag)
-                    SELECT c.id, t.value FROM comic_meta c, json_each(CASE WHEN json_valid(c.tags) THEN c.tags ELSE '[]' END) t`);
+                    SELECT DISTINCT c.id, t.value FROM comic_meta c, json_each(CASE WHEN json_valid(c.tags) THEN c.tags ELSE '[]' END) t`);
             }
         } catch (_) {}
         // 作者关联表（代替 json_each 全表扫描）
@@ -220,12 +220,12 @@ function createStore(manifest, ctx, message, config, crawler) {
         await database.exec(`DROP TRIGGER IF EXISTS comic_meta_author_au`);
         await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_ai AFTER INSERT ON comic_meta BEGIN
             INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
-            SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.author) THEN new.author ELSE '[]' END) t;
+            SELECT DISTINCT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.author) THEN new.author ELSE '[]' END) t;
         END`);
         await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_au AFTER UPDATE ON comic_meta BEGIN
             DELETE FROM comic_meta_author WHERE comic_id = old.id;
             INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
-            SELECT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.author) THEN new.author ELSE '[]' END) t;
+            SELECT DISTINCT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.author) THEN new.author ELSE '[]' END) t;
         END`);
         await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_meta_author_ad AFTER DELETE ON comic_meta BEGIN
             DELETE FROM comic_meta_author WHERE comic_id = old.id;
@@ -235,7 +235,37 @@ function createStore(manifest, ctx, message, config, crawler) {
             const authorCount = (await database.prepare('SELECT COUNT(*) as c FROM comic_meta_author').get({})).c;
             if (authorCount === 0) {
                 await database.exec(`INSERT OR IGNORE INTO comic_meta_author(comic_id, author)
-                    SELECT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.author) THEN c.author ELSE '[]' END) t`);
+                    SELECT DISTINCT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.author) THEN c.author ELSE '[]' END) t`);
+            }
+        } catch (_) {}
+        // 作品关联表
+        await database.exec(`
+            CREATE TABLE IF NOT EXISTS comic_work (
+                comic_id INTEGER NOT NULL,
+                work TEXT NOT NULL,
+                PRIMARY KEY (comic_id, work)
+            )
+        `);
+        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_work_value ON comic_work(work)');
+        await database.exec(`DROP TRIGGER IF EXISTS comic_work_ai`);
+        await database.exec(`DROP TRIGGER IF EXISTS comic_work_au`);
+        await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_work_ai AFTER INSERT ON comic_meta BEGIN
+            INSERT OR IGNORE INTO comic_work(comic_id, work)
+            SELECT DISTINCT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.works) THEN new.works ELSE '[]' END) t;
+        END`);
+        await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_work_au AFTER UPDATE ON comic_meta BEGIN
+            DELETE FROM comic_work WHERE comic_id = old.id;
+            INSERT OR IGNORE INTO comic_work(comic_id, work)
+            SELECT DISTINCT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.works) THEN new.works ELSE '[]' END) t;
+        END`);
+        await database.exec(`CREATE TRIGGER IF NOT EXISTS comic_work_ad AFTER DELETE ON comic_meta BEGIN
+            DELETE FROM comic_work WHERE comic_id = old.id;
+        END`);
+        try {
+            const workCount = (await database.prepare('SELECT COUNT(*) as c FROM comic_work').get({})).c;
+            if (workCount === 0) {
+                await database.exec(`INSERT OR IGNORE INTO comic_work(comic_id, work)
+                    SELECT DISTINCT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.works) THEN c.works ELSE '[]' END) t`);
             }
         } catch (_) {}
         return database;
@@ -279,7 +309,7 @@ function createStore(manifest, ctx, message, config, crawler) {
     async function listTags(query) {
         if (!query) return [];
         const conn = await connect();
-        const rows = await conn.prepare('SELECT DISTINCT tag FROM comic_meta_tag WHERE tag LIKE ? LIMIT 100').all(`%${query}%`);
+        const rows = await conn.prepare('SELECT DISTINCT tag FROM comic_meta_tag WHERE tag LIKE ? AND tag != \'\' LIMIT 100').all(`%${query}%`);
         return rows.map(r => r.tag);
     }
 
@@ -297,9 +327,27 @@ function createStore(manifest, ctx, message, config, crawler) {
             SELECT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.author) THEN c.author ELSE '[]' END) t`);
     }
 
+    async function listWorks(query) {
+        const conn = await connect();
+        let rows;
+        if (query) {
+            rows = await conn.prepare('SELECT DISTINCT work FROM comic_work WHERE work LIKE ? AND work != \'\' ORDER BY work LIMIT 100').all(`%${query}%`);
+        } else {
+            rows = await conn.prepare('SELECT DISTINCT work FROM comic_work WHERE work != \'\' ORDER BY work').all({});
+        }
+        return rows.map(r => r.work);
+    }
+
+    async function syncAllWorks() {
+        const conn = await connect();
+        await conn.exec('DELETE FROM comic_work');
+        await conn.exec(`INSERT OR IGNORE INTO comic_work(comic_id, work)
+            SELECT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.works) THEN c.works ELSE '[]' END) t`);
+    }
+
     async function page(qo) {
         const conn = await connect();
-        const { name, author, id, tags, kind, banned, starred, sort, order, page, pageSize, availDir } = qo;
+        const { name, author, id, tags, works, kind, banned, starred, sort, order, page, pageSize, availDir } = qo;
 
         const parts = ['1=1'];
         const params = {};
@@ -352,6 +400,13 @@ function createStore(manifest, ctx, message, config, crawler) {
                 params[`tag${i}`] = t.trim();
             });
         }
+        // 严格匹配 works（多个逗号分隔，AND 语义）
+        if (works) {
+            works.split(',').filter(Boolean).forEach((w, i) => {
+                parts.push(`EXISTS (SELECT 1 FROM comic_work WHERE comic_id = comic_meta.id AND work = @work${i})`);
+                params[`work${i}`] = w.trim();
+            });
+        }
         // 关键词 LIKE 匹配（name/author/tags）
         if (name) {
             parts.push('(name LIKE @kw OR author LIKE @kw OR tags LIKE @kw)');
@@ -377,9 +432,11 @@ function createStore(manifest, ctx, message, config, crawler) {
         get,
         list,
         listTags,
+        listWorks,
         page,
         syncAllTags,
         syncAllAuthors,
+        syncAllWorks,
         saveOrUpdate,
         saveOrUpdateBatch,
     };
@@ -620,6 +677,7 @@ function createStore(manifest, ctx, message, config, crawler) {
         get,
         listAllComic: list,
         listAllTags: listTags,
+        listAllWorks: listWorks,
         pageComic: page,
         comicMeta,
         comicRead,

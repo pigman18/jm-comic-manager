@@ -22,6 +22,7 @@
                   <span class="xxx-text">JM{{ comic.id }}</span>
                   <span class="xxx-text">{{ comic.displayKindLabel }}</span>
                 </p>
+                <div v-if="comic.works?.length" class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作品：</span><span v-for="w in visibleWorks" :key="w" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByWork(w, $event)" @keyup.enter="filterByWork(w, $event)">{{ w }}</span><span v-if="comic.works.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandWorks = !expandWorks" @keyup.enter="expandWorks = !expandWorks">{{ expandWorks ? '收起' : `+${comic.works.length - SHOW_LIMIT}` }}</span></div>
                 <div v-if="comic.author?.length" class="jmt-meta-chips"><span style="font-size:14px;color:#c4c4d6;margin-right:2px">作者：</span><span v-for="a in visibleAuthor" :key="a" class="jmz-chip jmz-chip--click xxx-text" role="link" tabindex="0" @click="filterByAuthor(a, $event)" @keyup.enter="filterByAuthor(a, $event)">{{ a }}</span><span v-if="comic.author.length > SHOW_LIMIT" class="jmz-chip jmz-chip--click xxx-text" role="button" tabindex="0" @click="expandAuthor = !expandAuthor" @keyup.enter="expandAuthor = !expandAuthor">{{ expandAuthor ? '收起' : `+${comic.author.length - SHOW_LIMIT}` }}</span></div>
                 <div v-if="comic.tags?.length" class="jmt-meta-chips">
                   <span style="font-size:14px;color:#c4c4d6;margin-right:2px">标签：</span>
@@ -245,6 +246,7 @@ const coverLoaded = ref(false)
 const SHOW_LIMIT = 8
 const expandAuthor = ref(false)
 const expandTags = ref(false)
+const expandWorks = ref(false)
 const replyingTo = ref<string | null>(null)
 const replyText = ref('')
 const postingReply = ref(false)
@@ -411,6 +413,7 @@ const comic = ref<Comic | null>(null)
 const previewImages = computed(() => (comic.value?.images || []).slice(1))
 const visibleAuthor = computed(() => expandAuthor.value ? (comic.value?.author || []) : (comic.value?.author || []).slice(0, SHOW_LIMIT))
 const visibleTags = computed(() => expandTags.value ? (comic.value?.tags || []) : (comic.value?.tags || []).slice(0, SHOW_LIMIT))
+const visibleWorks = computed(() => expandWorks.value ? (comic.value?.works || []) : (comic.value?.works || []).slice(0, SHOW_LIMIT))
 const coverRef = ref<HTMLImageElement | null>(null)
 
 watch(coverRef, (el) => {
