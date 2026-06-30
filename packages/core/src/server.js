@@ -33,8 +33,17 @@ const webEmbedded = (() => {
 function createServer(manifest, ctx, message, config, store, crawler, taskManager) {
     const {workspace} = manifest;
     let _server;
-    /** 本地 file 缓存 URL 前缀 */
     const FILE_URI = '/file';
+
+    /** 统一包装 async handler，消除重复 try/catch */
+    function wrapHandler(fn) {
+        return async (req, res, next) => {
+            try { await fn(req, res, next); }
+            catch (e) {
+                next(e);
+            }
+        };
+    }
     const fileQueue = new PQueue({concurrency: 10});
     /** @type {Set<import('ws')>} */
     const progressClients = new Set();
@@ -77,8 +86,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
@@ -309,39 +317,35 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleSync(app, api) {
-        app.post(`${api}/sync/local2db`, async (_req, res) => {
+        app.post(`${api}/sync/local2db`, async (_req, res, next) => {
             try {
                 store.runLocal2Db();
                 res.json({ok: true});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.post(`${api}/sync/db2local`, async (_req, res) => {
+        app.post(`${api}/sync/db2local`, async (_req, res, next) => {
             try {
                 store.runDb2Local();
                 res.json({ok: true});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.post(`${api}/sync/rebuild-cache`, async (_req, res) => {
+        app.post(`${api}/sync/rebuild-cache`, async (_req, res, next) => {
             try {
                 await store.comicMeta.syncAllTags();
                 await store.comicMeta.syncAllAuthors();
                 res.json({ok: true});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
@@ -353,7 +357,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
     const TAGS_CACHE_MAX = 100; // 最多缓存 100 个查询
 
     function handleTags(app, api) {
-        app.get(`${api}/tags`, async (req, res) => {
+        app.get(`${api}/tags`, async (req, res, next) => {
             try {
                 const query = String(req.query.query || '').trim();
 
@@ -394,12 +398,11 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
 
                 res.json({ok: true, tags, fromCache: false}).end();
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
 
-        app.get(`${api}/works`, async (req, res) => {
+        app.get(`${api}/works`, async (req, res, next) => {
             try {
                 const query = String(req.query.query || '').trim();
                 if (!query) {
@@ -425,12 +428,11 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true, works, fromCache: false}).end();
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
 
-        app.get(`${api}/actors`, async (req, res) => {
+        app.get(`${api}/actors`, async (req, res, next) => {
             try {
                 const query = String(req.query.query || '').trim();
                 if (!query) {
@@ -440,8 +442,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const actors = await store.comicMeta.listActors(query);
                 res.json({ok: true, actors}).end();
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
@@ -456,7 +457,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
       create_time: 'create_time',
       update_time: 'update_time',
     };
-        app.get(`${api}/comics`, async (req, res) => {
+        app.get(`${api}/comics`, async (req, res, next) => {
             try {
                 const qo = {
                     name: String(req.query.title || req.query.name || '').trim(),
@@ -483,14 +484,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 });
                 res.json({ok: true, list, total});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleFetchMeta(app, api) {
-        app.post(`${api}/comics/:num/fetch-meta`, async (req, res) => {
+        app.post(`${api}/comics/:num/fetch-meta`, async (req, res, next) => {
             try {
                 const n = Math.floor(Number(req.params.num));
                 const info = await crawler.comic.getMeta(n);
@@ -532,14 +532,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     allDone,
                 });
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleBuyComic(app, api) {
-        app.post(`${api}/comics/:num/buy`, async (req, res) => {
+        app.post(`${api}/comics/:num/buy`, async (req, res, next) => {
             try {
                 const n = Math.floor(Number(req.params.num));
                 const result = await crawler.comic.buyAlbum(n);
@@ -562,14 +561,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const comic = row ? rewriteComicMediaUrls(store.dbRowToJson(row)) : null;
                 res.json({ ok: true, comic, memberInfo });
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleComicDetail(app, api) {
-        app.get(`${api}/comics/:num`, async (req, res) => {
+        app.get(`${api}/comics/:num`, async (req, res, next) => {
             try {
                 const n = Math.floor(Number(req.params.num));
                 const row = await store.comicMeta.get(n);
@@ -587,14 +585,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const zipStatus = await buildZipStatusMap(comic);
                 res.json({ok: true, comic, zipStatus});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleComicSearch(app, api) {
-        app.get(`${api}/search/comics`, async (req, res) => {
+        app.get(`${api}/search/comics`, async (req, res, next) => {
             try {
                 const keyword = String(req.query.keyword || '').trim();
                 if (!keyword) {
@@ -628,20 +625,18 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: result.total || 0, pages: result.pages || 1});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.get(`${api}/search/hot-tags`, async (req, res) => {
+        app.get(`${api}/search/hot-tags`, async (req, res, next) => {
             try {
                 const list = await crawler.search.hotTags();
                 res.json({ok: true, list});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.get(`${api}/search/random-recommend`, async (req, res) => {
+        app.get(`${api}/search/random-recommend`, async (req, res, next) => {
             try {
                 const list = await crawler.search.randomRecommend();
                 const comicDir = path.join(config.dataDir, 'comic');
@@ -665,26 +660,24 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 });
                 res.json({ok: true, list: items});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleWeekInfo(app, api) {
-        app.get(`${api}/week/info`, async (req, res) => {
+        app.get(`${api}/week/info`, async (req, res, next) => {
             try {
                 const info = await crawler.rank.weekInfo();
                 res.json({ok: true, categories: info?.categories || [], type: info?.type || []});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleWeekComics(app, api) {
-        app.get(`${api}/week/comics`, async (req, res) => {
+        app.get(`${api}/week/comics`, async (req, res, next) => {
             try {
                 const categoryId = String(req.query.categoryId || '');
                 const typeId = req.query.typeId ? String(req.query.typeId) : null;
@@ -718,14 +711,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: result?.total || list.length});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleSerialComics(app, api) {
-        app.get(`${api}/serial/comics`, async (req, res) => {
+        app.get(`${api}/serial/comics`, async (req, res, next) => {
             try {
                 const day = parseInt(req.query.day, 10) || 0;
                 const page = parseInt(req.query.page, 10) || 1;
@@ -755,14 +747,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const hasMore = !result?.error;
                 res.json({ok: true, list, hasMore});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleLatestComics(app, api) {
-        app.get(`${api}/latest/comics`, async (req, res) => {
+        app.get(`${api}/latest/comics`, async (req, res, next) => {
             try {
                 const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
                 const result = await crawler.rank.latest(page);
@@ -790,14 +781,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: result?.total || list.length});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleFavorites(app, api) {
-        app.get(`${api}/favorites/comics`, async (req, res) => {
+        app.get(`${api}/favorites/comics`, async (req, res, next) => {
             try {
                 const page = Math.max(1, parseInt(req.query.page || '1', 10) || 1);
                 const folderId = String(req.query.folder_id || '');
@@ -827,20 +817,18 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: list.length, folders});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.get(`${api}/favorites/folders`, async (req, res) => {
+        app.get(`${api}/favorites/folders`, async (req, res, next) => {
             try {
                 const data = await crawler.account.getFavorites(1);
                 res.json({ok: true, folders: data?.folder_list || []});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.post(`${api}/favorites/comics/:num/toggle`, async (req, res) => {
+        app.post(`${api}/favorites/comics/:num/toggle`, async (req, res, next) => {
             try {
                 const num = Math.floor(Number(req.params.num));
                 if (!Number.isFinite(num) || num < 1) {
@@ -859,11 +847,10 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true, favorite});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.post(`${api}/favorites/folder`, async (req, res) => {
+        app.post(`${api}/favorites/folder`, async (req, res, next) => {
             try {
                 const { action, folder_id, folder_name } = req.body || {};
                 if (action === 'add') {
@@ -882,11 +869,10 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                     res.status(400).json({ok: false, message: '无效操作'});
                 }
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.post(`${api}/favorites/comics/move`, async (req, res) => {
+        app.post(`${api}/favorites/comics/move`, async (req, res, next) => {
             try {
                 const { album_id, source_folder_id, target_folder_id } = req.body || {};
                 if (!album_id || !target_folder_id) {
@@ -906,14 +892,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 await crawler.account.moveToFolder(album_id, source, target_folder_id);
                 res.json({ok: true});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleAccountSign(app, api) {
-        app.post(`${api}/account/sign`, async (_req, res) => {
+        app.post(`${api}/account/sign`, async (_req, res, next) => {
             try {
                 const result = await crawler.account.sign();
                 res.json({ok: true, msg: result?.msg || '签到成功'});
@@ -924,7 +909,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
     }
 
     function handleLogin(app, api) {
-        app.post(`${api}/login`, async (req, res) => {
+        app.post(`${api}/login`, async (req, res, next) => {
             try {
                 const { username, password } = req.body || {}
                 const u = (username || config.username || '').trim()
@@ -950,7 +935,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
     }
 
     function handleLogout(app, api) {
-        app.post(`${api}/logout`, async (_req, res) => {
+        app.post(`${api}/logout`, async (_req, res, next) => {
             try {
                 config.setValue('username', '')
                 config.setValue('password', '')
@@ -965,19 +950,18 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
     }
 
     function handleCategoryInfo(app, api) {
-        app.get(`${api}/category/info`, async (req, res) => {
+        app.get(`${api}/category/info`, async (req, res, next) => {
             try {
                 const info = await crawler.rank.categories();
                 res.json({ok: true, categories: info?.categories || [], blocks: info?.blocks || []});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleCategoryFilter(app, api) {
-        app.get(`${api}/category/filter`, async (req, res) => {
+        app.get(`${api}/category/filter`, async (req, res, next) => {
             try {
                 const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
                 const time = String(req.query.time || 'a').slice(0, 1) || 'a';
@@ -1009,14 +993,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: result?.total || list.length, pages: result?.pages || 1});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleDownload(app, api) {
-        app.post(`${api}/comics/:num/download`, async (req, res) => {
+        app.post(`${api}/comics/:num/download`, async (req, res, next) => {
             try {
                 const album = Math.floor(Number(req.params.num));
                 const episodeNumber = Math.floor(Number(req.body.episodeNumber));
@@ -1066,14 +1049,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleBatchAdd(app, api) {
-        app.post(`${api}/comics/:num/batch-add`, async (req, res) => {
+        app.post(`${api}/comics/:num/batch-add`, async (req, res, next) => {
             try {
                 const num = Math.floor(Number(req.params.num));
                 if (!Number.isFinite(num)) {
@@ -1093,8 +1075,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 });
                 res.json(result);
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
@@ -1135,7 +1116,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
     }
 
     function handleReads(app, api) {
-        app.post(`${api}/comics/:num/read`, async (req, res) => {
+        app.post(`${api}/comics/:num/read`, async (req, res, next) => {
             try {
                 const comicId = Math.floor(Number(req.params.num));
                 const episodeId = req.body.episodeId != null ? Math.floor(Number(req.body.episodeId)) : comicId;
@@ -1146,11 +1127,10 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 await store.comicRead.saveRead(episodeId);
                 res.json({ok: true});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.post(`${api}/reads/check`, async (req, res) => {
+        app.post(`${api}/reads/check`, async (req, res, next) => {
             try {
                 const ids = req.body.ids;
                 if (!Array.isArray(ids)) {
@@ -1160,14 +1140,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const readIds = await store.comicRead.checkReads(ids.map(id => Math.floor(Number(id))).filter(Number.isFinite));
                 res.json({ok: true, readIds});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleBans(app, api) {
-        app.post(`${api}/comics/:num/ban`, async (req, res) => {
+        app.post(`${api}/comics/:num/ban`, async (req, res, next) => {
             try {
                 const num = Math.floor(Number(req.params.num));
                 if (!Number.isFinite(num) || num < 1) {
@@ -1177,11 +1156,10 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const banned = await store.comicBan.toggleBan(num);
                 res.json({ok: true, banned});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.post(`${api}/bans/check`, async (req, res) => {
+        app.post(`${api}/bans/check`, async (req, res, next) => {
             try {
                 const ids = req.body.ids;
                 if (!Array.isArray(ids)) {
@@ -1191,20 +1169,21 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const bannedIds = await store.comicBan.checkBans(ids.map((id) => Math.floor(Number(id))).filter(Number.isFinite));
                 res.json({ok: true, bannedIds});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.get(`${api}/bans`, async (_req, res) => {
+        app.get(`${api}/bans`, async (_req, res, next) => {
             try {
                 const ids = await store.comicBan.listBans();
                 res.json({ok: true, ids});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.post(`${api}/comics/:num/star`, async (req, res) => {
+    }
+
+    function handleStars(app, api) {
+        app.post(`${api}/comics/:num/star`, async (req, res, next) => {
             try {
                 const num = Math.floor(Number(req.params.num));
                 if (!Number.isFinite(num) || num < 1) {
@@ -1214,11 +1193,10 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const starred = await store.comicStar.toggleStar(num);
                 res.json({ok: true, starred});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.post(`${api}/stars/check`, async (req, res) => {
+        app.post(`${api}/stars/check`, async (req, res, next) => {
             try {
                 const ids = req.body.ids;
                 if (!Array.isArray(ids)) {
@@ -1228,23 +1206,21 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const starredIds = await store.comicStar.checkStars(ids.map((id) => Math.floor(Number(id))).filter(Number.isFinite));
                 res.json({ok: true, starredIds});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.get(`${api}/stars`, async (_req, res) => {
+        app.get(`${api}/stars`, async (_req, res, next) => {
             try {
                 const ids = await store.comicStar.listStars();
                 res.json({ok: true, ids});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleOpenViewer(app, api) {
-        app.post(`${api}/comics/:num/open-viewer`, async (req, res) => {
+        app.post(`${api}/comics/:num/open-viewer`, async (req, res, next) => {
             try {
                 const album = Math.floor(Number(req.params.num));
                 const episodeNumber = Math.floor(Number(req.body.episodeNumber));
@@ -1282,25 +1258,23 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 spawn(exeAbs, args, {detached: true, stdio: 'ignore'}).unref();
                 res.json({ok: true, useBrowser: false});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handleForum(app, api) {
-        app.get(`${api}/forum/list`, async (req, res) => {
+        app.get(`${api}/forum/list`, async (req, res, next) => {
             try {
                 const mode = String(req.query.mode || 'all');
                 const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
                 const data = await crawler.forum.feed(mode, page);
                 res.json({ok: true, ...data});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.get(`${api}/forum`, async (req, res) => {
+        app.get(`${api}/forum`, async (req, res, next) => {
             try {
                 const aid = String(req.query.aid || '');
                 let uid = String(req.query.uid || '');
@@ -1318,11 +1292,10 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }
                 res.json({ok: true, ...data});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
-        app.post(`${api}/comment`, async (req, res) => {
+        app.post(`${api}/comment`, async (req, res, next) => {
             try {
                 const comment = String(req.body.comment || '').trim();
                 const aid = String(req.body.aid || '');
@@ -1331,14 +1304,13 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 const data = await crawler.forum.post(comment, aid, comment_id);
                 res.json({ok: data.status === 'ok', ...data});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
 
     function handlePromote(app, api) {
-        app.get(`${api}/promote`, async (req, res) => {
+        app.get(`${api}/promote`, async (req, res, next) => {
             try {
                 const list = await crawler.promote.list();
                 const sections = (list || []).map((s) => ({
@@ -1365,22 +1337,20 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list: sections});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
 
-        app.get(`${api}/promote/sections`, async (req, res) => {
+        app.get(`${api}/promote/sections`, async (req, res, next) => {
             try {
                 const list = await crawler.promote.sections();
                 res.json({ok: true, list});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
 
-        app.get(`${api}/promote/list`, async (req, res) => {
+        app.get(`${api}/promote/list`, async (req, res, next) => {
             try {
                 const id = parseInt(req.query.id, 10);
                 const page = parseInt(req.query.page, 10);
@@ -1409,8 +1379,7 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
                 }));
                 res.json({ok: true, list, total: result?.total || 0});
             } catch (e) {
-                console.error('[server]', e);
-                res.status(500).json({ok: false, message: String(e.message || e)});
+                next(e);
             }
         });
     }
@@ -1456,11 +1425,17 @@ function createServer(manifest, ctx, message, config, store, crawler, taskManage
         handleBatchAdd(app, api);
         handleZipFile(app, api);
         handleBans(app, api);
+        handleStars(app, api);
         handleReads(app, api);
         handleOpenViewer(app, api);
         handleBrowse(app, api);
         handleForum(app, api);
         handlePromote(app, api);
+        // 全局错误处理
+        app.use((err, req, res, _next) => {
+            console.error('[server]', err);
+            res.status(500).json({ok: false, message: String(err.message || err)});
+        });
         await new Promise((resolve, reject) => {
             _server = app.listen(port, host, () => {
                 if (typeof ctx?.log === 'function') {

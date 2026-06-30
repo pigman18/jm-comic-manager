@@ -85,11 +85,11 @@ function createJmBundle(manifest) {
      * @return {Promise<void>}
      */
     async function stop() {
-        if (state.server) await state.server?.stop() && (state.server = null);
-        if (state.store) await state.store?.close() && (state.store = null);
-        if (state.crawler) await state.crawler?.close() && (state.crawler = null);
-        if (state.message) await state.message?.close() && (state.message = null);
-        if (state.config) await state.config?.close() && (state.config = null);
+        if (state.server) { try { await state.server.stop(); } catch {} state.server = null; }
+        if (state.store) { try { await state.store.close(); } catch {} state.store = null; }
+        if (state.crawler) { try { await state.crawler.close(); } catch {} state.crawler = null; }
+        if (state.message) { try { await state.message.close(); } catch {} state.message = null; }
+        if (state.config) { try { await state.config.close(); } catch {} state.config = null; }
         console.log(`卸载模块：${manifest.id}`);
     }
 
