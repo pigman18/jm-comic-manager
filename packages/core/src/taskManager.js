@@ -249,8 +249,8 @@ function createTaskManager(manifest, ctx, store, crawler, message, config) {
                     if (!task.coverBase64) {
                         try {
                             let cdnHost = config.cdnHosts[Math.floor(Math.random() * config.cdnHosts.length)];
-                            meta.cover = meta.cover || `${cdnHost}/media/albums/${task.id}.jpg`;
-                            const resp = await crawler.httpClient.get(meta.cover || re, { responseType: 'arraybuffer', timeout: 5000 });
+                            const coverUrl = meta.cover || `${cdnHost}/media/albums/${task.id}.jpg`;
+                            const resp = await crawler.httpClient.get(coverUrl, { responseType: 'arraybuffer', timeout: 5000 });
                             if (resp && resp.data) {
                                 const buf = Buffer.from(resp.data);
                                 const mime = resp.headers['content-type'] || 'image/jpeg';
