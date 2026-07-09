@@ -93,23 +93,6 @@ parentPort.on('message', (msg) => {
         return [values];
     }
 
-    let exiting = false;
-    async function gracefulShutdown(signal) {
-        if (exiting) return;
-        exiting = true;
-        try {
-            await send('close', []);
-        } catch {}
-        try { await worker.terminate(); } catch {}
-        process.exit(0);
-    }
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('uncaughtException', (err) => {
-        console.error(err);
-        gracefulShutdown('uncaughtException');
-    });
-
     return {
         async exec(sql) {
             await send('exec', [sql]);
@@ -132,7 +115,10 @@ parentPort.on('message', (msg) => {
         },
         async close() {
             try {
-                await send('close', []);
+                await Promise.race([
+                    send('close', []),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('close timeout')), 5000))
+                ]);
             } catch {}
             try { await worker.terminate(); } catch {}
         },

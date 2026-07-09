@@ -168,8 +168,9 @@ async function main() {
         });
         trayRef = tr;
         process.on('exit', () => { if (tr) tr.close(); });
-        process.on('SIGTERM', () => { if (tr) tr.close(); process.exit(0); });
-        process.on('SIGINT', () => { if (tr) tr.close(); process.exit(0); });
+        process.on('SIGTERM', () => { if (tr) tr.close(); bundle.stop().catch(() => {}).finally(() => process.exit(0)); });
+        process.on('SIGINT', () => { if (tr) tr.close(); bundle.stop().catch(() => {}).finally(() => process.exit(0)); });
+        process.on('uncaughtException', (err) => { console.error('[desktop]', err); if (tr) tr.close(); bundle.stop().catch(() => {}).finally(() => process.exit(1)); });
     }
 
     expose('loadConfig', () => ({}));
