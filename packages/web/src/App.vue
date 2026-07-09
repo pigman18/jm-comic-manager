@@ -98,7 +98,15 @@
                         <span :style="harmonyEnabled ? { color: '#34d399' } : {}">和谐模式</span>
                       </n-button>
                     </template>
-                    <div class="jmz-harmony-threshold">
+                    <div class="jmz-harmony-mode">
+                      <span class="jmz-ht-label">替换方式</span>
+                      <div class="jmz-hm-row">
+                        <span>彩色马赛克</span>
+                        <n-switch size="small" :value="harmonyUseCover" @update:value="onHarmonyModeChange" />
+                        <span>封面图</span>
+                      </div>
+                    </div>
+                    <div class="jmz-harmony-threshold" v-if="!harmonyUseCover">
                       <span class="jmz-ht-label">和谐阈值: {{ harmonyThreshold }}</span>
                       <n-slider v-model:value="harmonyThreshold" :min="1" :max="100" :step="1" @update:value="onThresholdChange" />
                     </div>
@@ -163,6 +171,7 @@ import UserBar from '@/components/UserBar.vue'
 import { peekCatalogReturnQuery } from '@/utils/catalogReturn'
 
 import sensitiveWordsRaw from '@/assets/sensitive-words.txt?raw'
+import coverDefaultImg from '@/assets/icons/cover_default.jpg'
 
 const _sensitiveWords = [...new Set(
   sensitiveWordsRaw.split('\n').map(s => s.trim()).filter(Boolean)
@@ -211,11 +220,20 @@ const harmonyEnabled = ref(localStorage.getItem('harmonyEnabled') === 'true')
 provide('harmonyEnabled', harmonyEnabled)
 const harmonyThreshold = ref(Number(localStorage.getItem('harmonyThreshold')) || 50)
 provide('harmonyThreshold', harmonyThreshold)
+const harmonyUseCover = ref(localStorage.getItem('harmonyUseCover') === 'true')
+provide('harmonyUseCover', harmonyUseCover)
 provide('applyHarmony', applyHarmony)
 provide('harmonyText', (text: string) => harmonyText(text))
 watch(harmonyEnabled, (v) => {
   localStorage.setItem('harmonyEnabled', String(v))
   applyHarmony()
+})
+watch(harmonyUseCover, () => {
+  localStorage.setItem('harmonyUseCover', String(harmonyUseCover.value))
+  if (harmonyEnabled.value) {
+    reProcessHarmony()
+    nextTick(applyHarmony)
+  }
 })
 watch(currentPageComics, () => {
   if (harmonyEnabled.value) nextTick(applyHarmony)
@@ -291,15 +309,32 @@ function processImages(list: NodeListOf<Element> | NodeListOf<HTMLImageElement>)
   })
 }
 
+function reProcessHarmony() {
+  document.querySelectorAll('.xxx-img').forEach(el => {
+    if (!(el instanceof HTMLImageElement)) return
+    delete el.dataset._harmonySrc
+    delete el.dataset.harmonyReady
+    delete el.dataset._harmonyPending
+    if (el.dataset._harmonyOrig) {
+      el.src = el.dataset._harmonyOrig
+    }
+  })
+}
+
 function tryApplyHarmonyImg(img: HTMLImageElement, origSrc: string) {
   delete img.dataset._harmonyPending
   img.dataset._harmonyOrig = origSrc
   try {
-    const dw = parseInt(img.getAttribute('width') || '240', 10)
-    const dh = parseInt(img.getAttribute('height') || '320', 10)
-    const dataUrl = createHarmonyDataUrl(img, dw, dh, harmonyThreshold.value)
-    img.dataset._harmonySrc = dataUrl
-    img.src = dataUrl
+    if (harmonyUseCover.value) {
+      img.dataset._harmonySrc = coverDefaultImg
+      img.src = coverDefaultImg
+    } else {
+      const dw = parseInt(img.getAttribute('width') || '240', 10)
+      const dh = parseInt(img.getAttribute('height') || '320', 10)
+      const dataUrl = createHarmonyDataUrl(img, dw, dh, harmonyThreshold.value)
+      img.dataset._harmonySrc = dataUrl
+      img.src = dataUrl
+    }
   } catch {
     if (origSrc) img.src = origSrc
   }
@@ -395,22 +430,18 @@ function connectWs() {
 function toggleHarmony() {
   const next = !harmonyEnabled.value
   harmonyEnabled.value = next
-  putJson('/settings', { bundleConfig: { harmony: next, harmonyThreshold: harmonyThreshold.value } }).catch(() => {})
+  putJson('/settings', { bundleConfig: { harmony: next, harmonyThreshold: harmonyThreshold.value, harmonyUseCover: harmonyUseCover.value } }).catch(() => {})
+}
+
+function onHarmonyModeChange(v: boolean) {
+  harmonyUseCover.value = v
+  putJson('/settings', { bundleConfig: { harmonyUseCover: v } }).catch(() => {})
 }
 
 function onThresholdChange(val: number) {
   localStorage.setItem('harmonyThreshold', String(val))
   putJson('/settings', { bundleConfig: { harmonyThreshold: val } }).catch(() => {})
-  // re-process all harmony images with new threshold
-  document.querySelectorAll('.xxx-img').forEach(el => {
-    if (!(el instanceof HTMLImageElement)) return
-    delete el.dataset._harmonySrc
-    delete el.dataset.harmonyReady
-    delete el.dataset._harmonyPending
-    if (el.dataset._harmonyOrig) {
-      el.src = el.dataset._harmonyOrig
-    }
-  })
+  reProcessHarmony()
   nextTick(applyHarmony)
 }
 
@@ -438,6 +469,7 @@ onMounted(async () => {
     if (j.ok && j.bundleConfig) {
       if (j.bundleConfig.harmony) harmonyEnabled.value = true
       if (j.bundleConfig.harmonyThreshold != null) harmonyThreshold.value = j.bundleConfig.harmonyThreshold
+      if (j.bundleConfig.harmonyUseCover != null) harmonyUseCover.value = j.bundleConfig.harmonyUseCover
     }
   } catch {}
   if (harmonyEnabled.value) nextTick(applyHarmony)
@@ -665,6 +697,16 @@ onUnmounted(() => {
 
 .harmonize img.xxx-img {
   opacity: 0 !important;
+}
+.jmz-harmony-mode {
+  padding: 4px 0;
+}
+.jmz-hm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #9b9bb4;
 }
 .jmz-harmony-threshold {
   padding: 4px 0;
