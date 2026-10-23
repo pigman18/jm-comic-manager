@@ -4,7 +4,7 @@
   "displayName": "jm.bundle.vscode",
   "description": "一个用于JM漫画的快速导航与下载辅助插件",
   "publisher": "pigman",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "engines": {
     "vscode": "^1.105.1"
   },
