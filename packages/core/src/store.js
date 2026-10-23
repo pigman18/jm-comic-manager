@@ -55,6 +55,25 @@ function createStore(manifest, ctx, message, config, crawler) {
       update_time = strftime('%s','now');
   `;
 
+    /**
+     * 数组去重（保持原顺序）。
+     * 关联表 comic_meta_tag / comic_meta_author / comic_work / comic_meta_actor
+     * 以 (comic_id, value) 为主键，若 JSON 数组里存在重复项（如 1171888 的 tags 里「巨乳」出现两次），
+     * 触发器逐项 INSERT 时会触发 UNIQUE constraint failed。写入前先去重可从根本上避免。
+     */
+    function dedupeValues(list, { trim = false } = {}) {
+        const seen = new Set();
+        const out = [];
+        for (const item of (Array.isArray(list) ? list : [])) {
+            const value = trim ? String(item).trim() : item;
+            const key = typeof value === 'string' ? value : JSON.stringify(value);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push(value);
+        }
+        return out;
+    }
+
     function jsonRowToDb(obj) {
         return {
             id: Number(obj.id),
@@ -71,10 +90,10 @@ function createStore(manifest, ctx, message, config, crawler) {
             }))),
             series_id: String(obj.series_id ?? ''),
             comment_total: String(obj.comment_total ?? ''),
-            author: JSON.stringify(obj.author || []),
-            tags: JSON.stringify((obj.tags || []).map(t => String(t).trim())),
-            works: JSON.stringify(obj.works || []),
-            actors: JSON.stringify(obj.actors || []),
+            author: JSON.stringify(dedupeValues(obj.author)),
+            tags: JSON.stringify(dedupeValues(obj.tags, { trim: true })),
+            works: JSON.stringify(dedupeValues(obj.works)),
+            actors: JSON.stringify(dedupeValues(obj.actors)),
             related_list: JSON.stringify(obj.related_list || []),
             liked: obj.liked ? 1 : 0,
             is_favorite: obj.is_favorite ? 1 : 0,

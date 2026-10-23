@@ -1,4 +1,4 @@
-﻿import { create_window, expose, start } from 'ewvjs';
+import { create_window, expose, start } from 'ewvjs';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -94,7 +94,11 @@ async function main() {
         console.log('[con] jm-desktop starting, log:', path.join(appDataDir(), 'jm-desktop.log'));
     }
 
-    const iconIco = path.join(__dirname, 'icon.ico');
+    // 打包后 pkg 的 __dirname 指向虚拟快照，原生层（.NET）无法读取快照内文件，
+    // 因此图标必须从 exe 同目录的真实文件读取（安装包会把 icon.ico 放到安装目录）。
+    const iconIco = typeof process.pkg !== 'undefined'
+        ? path.join(path.dirname(process.execPath), 'icon.ico')
+        : path.join(__dirname, 'icon.ico');
 
     let mainWin = null;
     let mainWinAlive = false;

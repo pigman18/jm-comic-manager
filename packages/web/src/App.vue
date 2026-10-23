@@ -131,6 +131,7 @@
                   </n-button>
                 </div>
               </template>
+              <span class="jmz-app-version" :title="`版本 ${appVersion}`">v{{ appVersion }}</span>
             </div>
           </header>
           <main class="jmz-app-main">
@@ -183,6 +184,7 @@ const _sensitiveRe = new RegExp(
 
 const route = useRoute()
 const router = useRouter()
+const appVersion = __APP_VERSION__
 const store = useJmLiveStore()
 const live = useJmLiveStore()
 const tasksStore = useJmTasksStore()
@@ -622,6 +624,16 @@ onUnmounted(() => {
   gap: 6px;
   flex-shrink: 0;
   margin-left: auto;
+}
+
+.jmz-app-version {
+  font-size: 11px;
+  color: #7a7a8a;
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  white-space: nowrap;
+  cursor: default;
 }
 
 .jmz-header-btn {

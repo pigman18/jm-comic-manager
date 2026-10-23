@@ -14,13 +14,10 @@ const _require = createRequire(__filename);
 
 const outputDir = path.join(ROOT, 'dist');
 const outputExe = path.join(outputDir, 'JM漫画管理器.exe');
-
-// pkg cache
-const CACHE_DIR = path.join(os.homedir(), '.pkg-cache', 'v3.6');
-const FETCHED = path.join(CACHE_DIR, 'fetched-v22.22.3-win-x64');
-const BUILT = path.join(CACHE_DIR, 'built-v22.22.3-win-x64');
-const FETCHED_BAK = FETCHED + '.build-bak';
 const ICON = path.join(ROOT, 'icon.ico');
+const LANG = 1033;
+const CODEPAGE = 1200;
+const CACHE_DIR = path.join(os.homedir(), '.pkg-cache', 'v3.6');
 
 function copyRecursive(src, dest) {
   if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
@@ -30,39 +27,90 @@ function copyRecursive(src, dest) {
   }
 }
 
-function restoreFetched() {
-  if (fs.existsSync(FETCHED_BAK)) {
-    if (fs.existsSync(FETCHED)) fs.unlinkSync(FETCHED);
-    fs.renameSync(FETCHED_BAK, FETCHED);
+function compareVersion(a, b) {
+  const pa = a.match(/v(\d+)\.(\d+)\.(\d+)/).slice(1).map(Number);
+  const pb = b.match(/v(\d+)\.(\d+)\.(\d+)/).slice(1).map(Number);
+  for (let i = 0; i < 3; i++) if (pa[i] !== pb[i]) return pa[i] - pb[i];
+  return 0;
+}
+
+// 找到 pkg-fetch 实际会使用的模板（node22 → 缓存里最新的 fetched/built）
+function findTemplate() {
+  const list = fs.existsSync(CACHE_DIR) ? fs.readdirSync(CACHE_DIR) : [];
+  const fetched = list.filter(f => /^fetched-v\d+\.\d+\.\d+-win-x64$/.test(f)).sort(compareVersion).pop();
+  if (fetched) {
+    return { fetchedPath: path.join(CACHE_DIR, fetched), builtPath: path.join(CACHE_DIR, fetched.replace(/^fetched-/, 'built-')) };
   }
+  const built = list.filter(f => /^built-v\d+\.\d+\.\d+-win-x64$/.test(f)).sort(compareVersion).pop();
+  if (built) return { fetchedPath: null, builtPath: path.join(CACHE_DIR, built) };
+  throw new Error(`未找到 pkg 模板（${CACHE_DIR}），请先确保 pkg-fetch 已缓存 node22-win-x64 模板`);
+}
+
+// 直接在 pkg 模板上写入应用图标与版本信息。
+// 必须在 pkg 打包【之前】做：pkg 会在模板末尾追加应用快照，
+// 若事后用 resedit/rcedit 修改最终 exe，会破坏/截断该快照导致程序无法启动。
+function patchTemplate(builtPath, version, appTitle, company) {
+  const [major, minor, patch] = String(version).split('.').map(n => Number(n) || 0);
+
+  const exe = ResEdit.NtExecutable.from(fs.readFileSync(builtPath), { ignoreCert: true });
+  const res = ResEdit.NtExecutableResource.from(exe);
+
+  // 图标
+  const icoBuf = fs.readFileSync(ICON);
+  const count = icoBuf.readUInt16LE(4);
+  const iconEntries = [];
+  for (let i = 0; i < count; i++) {
+    const off = 6 + i * 16;
+    iconEntries.push(ResEdit.Data.IconItem.from(icoBuf, icoBuf.readUInt32LE(off + 12), icoBuf.readUInt32LE(off + 8)));
+  }
+  const iconGroupEntry = res.entries.find(e => e.type === 14);
+  const iconGroupId = iconGroupEntry ? iconGroupEntry.id : 1;
+  ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, iconGroupId, LANG, iconEntries);
+
+  // 版本信息（覆盖 Node.js 默认值）
+  const viList = ResEdit.Resource.VersionInfo.fromEntries(res.entries);
+  if (viList.length > 0) {
+    const vi = viList[0];
+    vi.setFileVersion(major, minor, patch, 0, LANG);
+    vi.setProductVersion(major, minor, patch, 0, LANG);
+    vi.setStringValues(
+      { lang: LANG, codepage: CODEPAGE },
+      {
+        FileDescription: appTitle,
+        ProductName: appTitle,
+        CompanyName: company,
+        ProductVersion: String(version),
+        FileVersion: String(version),
+        OriginalFilename: 'JM漫画管理器.exe',
+        LegalCopyright: `© ${new Date().getFullYear()} ${company}`,
+      }
+    );
+    vi.outputToResourceEntries(res.entries);
+  }
+
+  res.outputResource(exe);
+  fs.writeFileSync(builtPath, Buffer.from(exe.generate()));
 }
 
 fs.mkdirSync(outputDir, { recursive: true });
+const pack = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf-8'));
 
-// ── Step 1: Patch pkg cache template with custom icon ──────────────
-// (pattern from packages/core/build/pkg-icon.mjs)
-console.log('🎨 Step 1: Patching pkg cache template with icon...');
-if (!fs.existsSync(FETCHED)) {
-  console.error('Fetched template not found at', FETCHED);
-  process.exit(1);
+// ── Step 1: 预补丁 pkg 模板（图标 + 版本信息）─────────────────────
+console.log('🎨 Step 1: Patching pkg template (icon + version info)...');
+const tpl = findTemplate();
+const FETCHED_BAK = tpl.fetchedPath ? tpl.fetchedPath + '.build-bak' : null;
+if (tpl.fetchedPath) {
+  fs.copyFileSync(tpl.fetchedPath, tpl.builtPath);
 }
-fs.copyFileSync(FETCHED, BUILT);
-const exeData = fs.readFileSync(BUILT);
-const exe = ResEdit.NtExecutable.from(exeData);
-const res = ResEdit.NtExecutableResource.from(exe);
-const icoBuf = fs.readFileSync(ICON);
-const count = icoBuf.readUInt16LE(4);
-const iconEntries = [];
-for (let i = 0; i < count; i++) {
-const off = 6 + i * 16;
-iconEntries.push(ResEdit.Data.IconItem.from(icoBuf, icoBuf.readUInt32LE(off + 12), icoBuf.readUInt32LE(off + 8)));
+patchTemplate(tpl.builtPath, pack.version, 'JM漫画管理器', pack.author || 'pigman18');
+console.log(`   ✓ Template patched: ${tpl.builtPath}`);
+
+function restoreFetched() {
+  if (tpl.fetchedPath && FETCHED_BAK && fs.existsSync(FETCHED_BAK)) {
+    if (fs.existsSync(tpl.fetchedPath)) fs.unlinkSync(tpl.fetchedPath);
+    fs.renameSync(FETCHED_BAK, tpl.fetchedPath);
+  }
 }
-const iconGroupEntry = res.entries.find(e => e.type === 14);
-const iconGroupId = iconGroupEntry ? iconGroupEntry.id : 1;
-ResEdit.Resource.IconGroupEntry.replaceIconsForResource(res.entries, iconGroupId, 1033, iconEntries);
-res.outputResource(exe);
-fs.writeFileSync(BUILT, Buffer.from(exe.generate()));
-console.log('   ✓ Template patched:', BUILT);
 
 // ── Step 2: Run pkg (uses patched template) ───────────────────────
 console.log('\n🔨 Step 2: Running pkg...');
@@ -89,8 +137,11 @@ if (nativePath && fs.existsSync(nativePath)) pkgConfig.assets.push(`${nativePath
 const pkgCfgPath = path.join(ROOT, '.pkg-config.json');
 fs.writeFileSync(pkgCfgPath, JSON.stringify(pkgConfig, null, 2));
 
-// Hide fetched so pkg uses built
-fs.renameSync(FETCHED, FETCHED_BAK);
+// 隐藏 fetched，强制 pkg 使用已补丁的 built 模板
+if (tpl.fetchedPath) {
+  try { if (fs.existsSync(FETCHED_BAK)) fs.unlinkSync(FETCHED_BAK); } catch {}
+  fs.renameSync(tpl.fetchedPath, FETCHED_BAK);
+}
 
 try {
   const pkgBin = _require.resolve('@yao-pkg/pkg/lib-es5/bin.js');
@@ -126,6 +177,11 @@ const runtimeSrc = path.join(ROOT, 'runtime');
 if (fs.existsSync(runtimeSrc)) {
   copyRecursive(runtimeSrc, path.join(outputDir, 'runtime'));
   console.log('   ✓ Runtime files copied');
+}
+// 运行期窗口/托盘图标由原生层读取真实文件，必须与 exe 放在同一目录
+if (fs.existsSync(ICON)) {
+  fs.copyFileSync(ICON, path.join(outputDir, 'icon.ico'));
+  console.log('   ✓ icon.ico copied');
 }
 
 // ── Step 4: Patch subsystem to GUI (2) ─────────────────────────

@@ -1,6 +1,6 @@
 ; ========= 基础配置 =========
 #define MyAppName "JM漫画管理器"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.0.2"
 #define MyAppPublisher "pigman18"
 #define MyAppExeName "JM漫画管理器.exe"
 #define ToastAppId "com.pigman18.jmcomicmanager"
@@ -30,6 +30,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; ========= 文件打包 =========
 [Files]
 Source: "{#BuildDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BuildDir}\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#BuildDir}\native\*"; DestDir: "{app}\native"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#BuildDir}\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
