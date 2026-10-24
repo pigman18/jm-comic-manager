@@ -20,8 +20,11 @@ env:
 
 jobs:
   build:
-    # 桌面端与 pkg 目标均为 Windows，必须在 windows runner 上构建
-    runs-on: windows-latest
+    # 桌面端与 pkg 目标均为 Windows，必须在 windows runner 上构建。
+    # 固定 windows-2022 而非 windows-latest：后者已升级到 VS 2026（VS 18），
+    # node-gyp 11.x 不认识该版本，会报 "unknown version undefined" 导致
+    # 原生依赖（taskbar-progress 等）的 node-gyp rebuild 失败，npm install 直接挂掉。
+    runs-on: windows-2022
     timeout-minutes: 45
 
     steps:

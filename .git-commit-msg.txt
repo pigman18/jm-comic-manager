@@ -1,0 +1,12 @@
+ci: runner 固定 windows-2022，避开 VS2026 与 node-gyp 不兼容
+
+windows-latest 已切到 windows-2025-vs2026（VS 18），node-gyp 11.x
+识别不出该版本，报 "unknown version undefined found at ...Visual Studio\18\Enterprise"，
+导致 taskbar-progress 等原生依赖的 node-gyp rebuild 失败、npm install 直接中断。
+
+CI 日志证据：
+  npm error path ...node_modules\taskbar-progress
+  npm error command ... node-gyp rebuild
+  npm error gyp ERR! find VS unknown version "undefined" found at "C:\Program Files\Microsoft Visual Studio\18\Enterprise"
+
+固定到 windows-2022（VS 2022，node-gyp 官方支持）
