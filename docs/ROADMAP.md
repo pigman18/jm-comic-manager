@@ -554,3 +554,65 @@ P3 构建与发布
 
 - CI workflow 尚未在真实 GitHub Actions 上跑过（本地已验证各步骤命令可用）；首次推送 tag 时需观察
 - `jm.core.exe` 未纳入 `build:release`（它由 `packages/core` 的 `build:pkg` 单独产出，耗时较长），CI 中当前从 `core/dist` 取已有产物 —— 若需每次重新生成，需在 workflow 里增加一步
+
+---
+
+### 发布级 BUG 修复：exe 绑死构建机路径（2026-10-25）
+
+**现象**：CI 构建的 exe 在干净环境启动即崩，报
+`ERR_MODULE_NOT_FOUND: Cannot find module 'D:\a\jm-comic-manager\...\packages\desktop\app.js'`。
+
+**影响范围**：1.0.0 / 1.0.1 / 1.0.2 全部受影响。本地之所以"能跑"，是因为
+exe 内固化的绝对路径恰好指向构建机的源码目录（该目录在构建机上确实存在）；
+换任何一台没有该目录的机器，启动即崩。
+
+**根因**：`package.js` 生成 `.pkg-bootstrap.cjs`，内容为
+`import(pathToFileURL('<构建机绝对路径>'))`。pkg 靠静态分析决定哪些文件进快照，
+字面量绝对路径能被分析到，于是文件进了快照，但 exe 从此绑死构建机路径。
+
+**排查方法**：不靠猜，用 `build/_probe*.mjs` 逐项实测（用完已删除）：
+
+| 方案 | 结果 |
+|---|---|
+| `.cjs` bootstrap + 绝对路径 | 能跑，但绑死构建机（换机器崩） |
+| `.cjs` bootstrap + `__dirname` 相对 | pkg 不做运行时求值 → 文件不进快照 → 崩 |
+| 直接以 ESM 的 `app.js` 作 pkg 入口 | 单层目录可行；本项目入口在子目录，pkg 快照层级错位 → 崩 |
+| **esbuild 打单文件 CJS 再交 pkg** | ✅ 与目录结构、构建机路径彻底解耦 |
+
+**改动**：
+
+| 文件 | 改动 |
+|---|---|
+| `build/package.js` | esbuild 把 `app.js` + 全部本地依赖（含 `ewvjs`）打成单文件 CJS，pkg 只处理该文件 |
+| `build/package.js` | 新增 esbuild 插件 `ewvjsPathFix`：`ewvjs` 内部 `path.resolve(__dirname, '../../native')` / `'../js/api.js'` 在 bundle 后错位，改为打包态按 `process.execPath` 目录解析 |
+| `build/package.js` | Step 4 额外复制 `ewvjs` 的 `js/api.js` 到 exe 同目录 |
+| `build/package.js` | Step 7 新增回归防线：exe 内含构建机路径特征串直接判失败 |
+| `app.js` | 新增 `RUNTIME_ROOT`（打包态取 exe 目录 / 开发态取源码目录）；`await import` 改静态 import |
+| `src/logger.js` | `koffi` 改运行时按需 `require`，不可用时静默降级 |
+| `src/logger.js` | 修复 stdout 被整体吞掉（koffi 不可用时日志 0 字节、无法定位问题） |
+| `package.json` | 显式声明 `esbuild` 依赖（原先是 pkg 的传递依赖） |
+| `test/desktop-diag.ps1` | 新增启动诊断脚本 |
+
+**验收**：
+
+| 项 | 结果 |
+|---|---|
+| 独立解压目录（无源码）启动 | ✅ 服务 200 |
+| exe 内构建机路径特征 | ✅ `C:/code/`、`D:/a/`、`C:/snapshot`、`jm-comic-manager/packages` 均为 0 次 |
+| 点 X → 弹确认框 | ✅ `#32770` / 「是」「否」 |
+| 点「否」 | ✅ 进程存活、窗口可见、服务可用 |
+| 点「是」 | ✅ 退出、端口释放、无残留进程 |
+| CI 全流程 | ✅ 15/15 步通过（GitHub Actions `windows-2022`） |
+| CI 产物独立验收 | ✅ 下载 release 的 `JM.zip`，在无源码目录启动成功，确认框行为一致 |
+| 全量测试 | ✅ 7 个文件 / 62 用例 |
+
+**同时修复的 CI 问题**：
+
+| 问题 | 修法 |
+|---|---|
+| `setup-node` 的 `cache: 'npm'` 强制要求 lock 文件（仓库不跟踪） | 去掉 `cache` |
+| `windows-latest` 已切 VS2026，node-gyp 11 识别不出 → 原生模块编译失败 | runner 固定 `windows-2022` |
+| `webpack` 的 `resolve.modules` 把根 `node_modules` 放首位，跳过包内嵌套依赖（`entities@4` 无 `./decode`） | 改为 `['node_modules', repoRoot/node_modules]` |
+| `terser-webpack-plugin` / `@yao-pkg/pkg` / `pkg-fetch` / `resedit` 未声明（靠提升侥幸可用） | 显式声明并把 pkg 锁定为本地验证过的 `6.20.0` / `3.6.3` |
+| `gen-config-doc --check` 未归一化换行，Windows CRLF 检出误报不一致 | 校验前归一化 |
+| Inno Setup 官方不附带简体中文语言文件 | 随仓库提供 `build/languages/ChineseSimplified.isl` |

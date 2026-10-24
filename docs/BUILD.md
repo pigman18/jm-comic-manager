@@ -62,11 +62,11 @@ build:core            packages/core/build/build.mjs
 build:desktop         packages/desktop/build/package.js
    ├── Step 1  预补丁 pkg 模板（图标 + VERSIONINFO）
    ├── Step 2  从 core/dist 自动同步 runtime bundle
-   ├── Step 3  pkg 打包 exe
-   ├── Step 4  复制 native / runtime / icon.ico
+   ├── Step 3  esbuild 打成单文件 CJS → pkg 打包 exe
+   ├── Step 4  复制 native / runtime / icon.ico / js/api.js
    ├── Step 5  子系统补丁为 GUI(2)
    ├── Step 6  生成 zip
-   └── Step 7  校验产物（图标 / 版本 / 子系统 / 关键文件）
+   └── Step 7  校验产物（图标 / 版本 / 子系统 / 关键文件 / 无构建机路径）
    ↓
 build:installer       packages/desktop/build/make-installer.mjs
    └── 查找 ISCC.exe 并编译 setup.iss
@@ -93,6 +93,39 @@ pkg 会在模板末尾追加应用快照。若打包后用 resedit/rcedit 修改
 因此 `package.js` 的 Step 1 先给 pkg 模板补图标与 VERSIONINFO，再让 pkg 基于该模板生成 exe。
 
 Step 7 会校验：图标资源存在、`ProductName` 不是 `Node.js`、`FileVersion` 与 `package.json` 一致、子系统为 GUI(2)。
+
+### 4.1.1 入口必须先用 esbuild 打成单文件 CJS（**不要**用 .cjs bootstrap）
+
+这是 1.0.0～1.0.2 一直存在的发布级 BUG，本地能跑、换机器必崩。
+
+**错误做法**：生成 `.pkg-bootstrap.cjs`，内容 `import(pathToFileURL('<构建机绝对路径>'))`。
+pkg 靠静态分析决定哪些文件进快照：
+
+- 写死绝对路径 → 能被分析到、文件进快照，但 exe 绑死构建机路径，用户机器上
+  直接 `ERR_MODULE_NOT_FOUND` 启动即崩；
+- 改成 `__dirname` 相对 → pkg 不做运行时求值、分析不出来，文件根本不进快照，同样崩。
+
+**也试过**直接把 ESM 的 `app.js` 作为 pkg 入口：单层目录可行，但本项目入口位于
+`packages/desktop/` 子目录，pkg 的快照层级会错位（`__dirname` 变成
+`C:\snapshot\desktop`，丢掉 `packages` 这一层），`require('./runtime/...')` 一律失败。
+
+**正确做法**：esbuild 把 `app.js` 及其全部本地依赖（含 `ewvjs`）打成**单个 CJS 文件**，
+pkg 只处理这一个文件，不涉及任何模块解析 → 与目录结构、构建机路径彻底解耦。
+
+配套注意：
+
+- `ewvjs` 内部用 `path.resolve(__dirname, '../../native')` 和 `'../js/api.js'`
+  定位资源，打进 bundle 后 `__dirname` 错位。`package.js` 用 esbuild 插件
+  `ewvjsPathFix` 把这些表达式改写成「打包态按 `process.execPath` 目录解析」。
+- 因此 `js/api.js` 必须复制到 exe 同目录（Step 4 已处理），`native/` 同理。
+- `app.js` 里**不允许**出现字面量动态 `import()`（如旧的
+  `await import('./src/secret-codec.js')`）——esbuild 虽能打包，但请统一用顶部静态
+  import，避免再踩同类坑。
+- `koffi` 保持 `external` 并改为运行时按需 `require`：它在 pkg 下必然加载失败，
+  顶部静态 import 会让整个应用在启动阶段就抛错。
+
+Step 7 新增回归防线：exe 内一旦出现构建目录特征串（`ROOT` 的绝对路径、
+`pkg-bootstrap.cjs` 等）直接判失败，同类问题不会再静默发布。
 
 ### 4.2 pkg 模板缺失时会自动下载
 
@@ -124,6 +157,22 @@ CI / 全新机器没有 `~/.pkg-cache`。`package.js` 会调用 `pkg-fetch` 的 
 4. Inno Setup 5 的对应路径
 
 找不到时会给出明确提示，而不是抛出难以理解的 npm 错误。
+
+### 4.6 Inno Setup 简体中文语言文件随仓库提供
+
+Inno Setup 官方安装包**不附带**简体中文语言文件（它是社区翻译，
+见 <https://jrsoftware.org/files/istrans/>），不会随 `ISCC` 一起安装。
+
+若 `setup.iss` 写 `MessagesFile: "compiler:Languages\ChineseSimplified.isl"`，
+在全新环境（CI / 未手动放过该文件的机器）会报：
+
+```
+Error on line 26: Couldn't open include file
+"C:\Program Files (x86)\Inno Setup 6\Languages\ChineseSimplified.isl"
+```
+
+因此该文件已纳入仓库 `packages/desktop/build/languages/ChineseSimplified.isl`，
+`setup.iss` 用相对路径引用。
 
 ---
 
@@ -182,8 +231,10 @@ checkout → setup node 22 → npm install → check-version → npm test
 | `未找到 Inno Setup 编译器` | 未安装 ISCC | 安装 Inno Setup 6，或设 `ISCC_PATH`；也可用 `build:portable` 跳过 |
 | exe 图标仍是 Node 默认图标 | 模板预补丁失败 | 看 Step 7 校验输出；确认 `icon.ico` 存在 |
 | 改了源码但 exe 行为没变 | bundle 未重新生成 | 删 `packages/core/dist` 后重新 `build:core` |
-| 打包后 `require('koffi')` 失败 | koffi 用动态 require 加载原生模块，pkg 抓不到 | 已知限制：托盘已移除；logger 的 koffi 失败会安全降级 |
-| 桌面端关闭窗口后进程不退出 | `confirm_close: true` 会弹确认框 | 已改为 `false`（关窗即退出） |
+| 打包后 `require('koffi')` 失败 | koffi 用动态 require 加载原生模块，pkg 抓不到 | 已知限制：logger 已改为运行时按需 require，失败自动降级（控制台功能不可用，日志文件正常） |
+| exe 换台机器启动即崩 / `ERR_MODULE_NOT_FOUND` 指向构建机路径 | 入口用了绝对路径 bootstrap，exe 绑死构建机 | 见 4.1.1：改用 esbuild 打单文件 CJS 再交 pkg；Step 7 已加路径特征校验 |
+| 打包后启动无任何输出、日志 0 字节 | koffi 不可用时 `process.stdout.write` 被整体替换为空操作 | 已修复：保留原始 stdout 兜底写入 |
+| 关闭窗口后进程残留 | 旧版 `on_close` 未真正退出 + 日志死循环 | 已修复：`on_close` → `quitApp()`；DevTools 转发器加防重入 |
 
 ---
 
