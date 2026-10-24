@@ -6,10 +6,25 @@ import { spawn, exec } from 'child_process';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { createLogger, setDevToolsEval, setupConsole } from './src/logger.js';
+// 注意：这里必须是【静态 import】。esbuild 打 bundle 时按静态依赖图收文件，
+// 动态 import 的模块（旧写法 await import('./src/secret-codec.js')）不会被收集，
+// 打包后运行时会 ERR_MODULE_NOT_FOUND。
+import { createLocalCodec } from './src/secret-codec.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
+
+/**
+ * 运行时资源根目录。
+ *
+ * 打包后（pkg）__dirname 指向只读虚拟快照，而 runtime/、native/、icon.ico
+ * 是由安装包放到 exe 旁边的真实文件，必须按 exe 所在目录取；
+ * 开发态则用源码目录。
+ */
+const RUNTIME_ROOT = typeof process.pkg !== 'undefined'
+    ? path.dirname(process.execPath)
+    : __dirname;
 
 // ── 0. Config ──────────────────────────────────────────────────
 function appDataDir() {
@@ -30,19 +45,24 @@ setupConsole(_cfg.debug);
 const _logger = createLogger({ file: path.join(appDataDir(), 'jm-desktop.log') });
 
 // ── 3. Bundle ─────────────────────────────────────────────────
+// runtime/jm.core.all.cjs 是 pkg assets（打进快照）也是安装包里的真实文件。
+// 优先从 exe 同目录加载（安装包布局），回退到快照内（assets 命中的情况）。
 let bundle;
 try {
-    bundle = require('./runtime/jm.core.all.cjs');
-} catch (e) {
-    process.stdout.write('[FATAL] bundle require failed: ' + String(e) + '\n');
-    process.exit(1);
+    bundle = require(path.join(RUNTIME_ROOT, 'runtime', 'jm.core.all.cjs'));
+} catch (e1) {
+    try {
+        bundle = require('./runtime/jm.core.all.cjs');
+    } catch (e2) {
+        process.stdout.write('[FATAL] bundle require failed: ' + String(e2) + '\n');
+        process.exit(1);
+    }
 }
 
 // ── 3.1 注入本地加密（加密 config.json 中的 password/token/cookie）──
 // 使用 AES-256-GCM + 机器/用户派生密钥；core 不依赖原生模块，能力由桌面端注入，
 // 注入失败时 core 自动降级为明文，保证 CLI / 非 Windows 环境可用。
 try {
-    const { createLocalCodec } = await import('./src/secret-codec.js');
     const codec = createLocalCodec();
     if (!codec) {
         console.warn('[desktop] 本地加密不可用，敏感配置将以明文保存');
@@ -96,17 +116,13 @@ function restartApp() {
 const isDev = process.argv.includes('--dev') || process.env.NODE_ENV === 'development';
 
 async function main() {
-    process.stdout.write('[TRACE] main() called\n');
-
     if (_cfg.debug) {
         console.log('[con] jm-desktop starting, log:', path.join(appDataDir(), 'jm-desktop.log'));
     }
 
     // 打包后 pkg 的 __dirname 指向虚拟快照，原生层（.NET）无法读取快照内文件，
     // 因此图标必须从 exe 同目录的真实文件读取（安装包会把 icon.ico 放到安装目录）。
-    const iconIco = typeof process.pkg !== 'undefined'
-        ? path.join(path.dirname(process.execPath), 'icon.ico')
-        : path.join(__dirname, 'icon.ico');
+    const iconIco = path.join(RUNTIME_ROOT, 'icon.ico');
 
     let mainWin = null;
 

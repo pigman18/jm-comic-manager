@@ -1,8 +1,21 @@
 import fs from 'fs';
 import path from 'path';
-import koffi from 'koffi';
+import { createRequire } from 'module';
 import iconv from 'iconv-lite';
 import { createRotatingStream } from './log-rotate.js';
+
+// koffi 是可选依赖：它用动态 require 加载原生二进制，pkg 静态分析抓不到，
+// 打包后顶部静态 import 会直接抛错，而 GUI 子系统下 stderr 无处输出，
+// 表现就是「双击没反应、进程静默退出」（CI 实测踩过）。
+// 因此改成运行时按需 require：拿不到就让控制台功能静默降级，不影响日志文件。
+const _req = createRequire(import.meta.url);
+let koffi = null;
+try {
+  // eslint-disable-next-line global-require
+  koffi = _req('koffi');
+} catch {
+  koffi = null;
+}
 
 const STD_OUTPUT_HANDLE = -11;
 const ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
@@ -26,6 +39,8 @@ let _kernel32 = null;
 
 function kernel() {
   if (_kernel32) return _kernel32;
+  // koffi 不可用（打包后常见）→ 控制台相关能力整体降级，日志仍写文件
+  if (!koffi) return null;
 
   const lib = koffi.load('kernel32.dll');
 
@@ -52,8 +67,10 @@ function writeConsole(msg) {
   if (_hOut) {
     try {
       const k = kernel();
-      const gbkBuffer = iconv.encode(msg + '\r\n', 'gbk');
-      k.WriteConsoleA(_hOut, gbkBuffer, gbkBuffer.length, _written, null);
+      if (k) {
+        const gbkBuffer = iconv.encode(msg + '\r\n', 'gbk');
+        k.WriteConsoleA(_hOut, gbkBuffer, gbkBuffer.length, _written, null);
+      }
     } catch {}
   }
 
@@ -82,6 +99,7 @@ export function setupConsole(visible) {
   if (!visible) return;
   try {
     const k = kernel();
+    if (!k) return; // koffi 不可用 → 不开控制台，静默降级
     k.AllocConsole();
     _hOut = k.GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -125,9 +143,19 @@ export function createLogger(options = {}) {
 
   override();
 
-  process.stdout.write = (chunk) => {
+  // 保留原始 write：koffi 不可用（打包后常见）时 _hOut 为 null，
+  // 若把输出整个吞掉，会连「启动失败原因」都看不到（实测日志 0 字节、静默退出）。
+  // 因此：始终同时写日志文件 + 原始 stdout；控制台可用时再额外写控制台。
+  const _origStdoutWrite = process.stdout.write.bind(process.stdout);
+  process.stdout.write = (chunk, enc, cb) => {
     const str = Buffer.isBuffer(chunk) ? chunk.toString() : String(chunk);
-    writeConsole(str.replace(/[\r\n]+$/, ''));
+    if (_stream) { try { _stream.write(str); } catch { /* ignore */ } }
+    if (_hOut) {
+      writeConsole(str.replace(/[\r\n]+$/, ''));
+    } else {
+      try { _origStdoutWrite(chunk, enc, cb); } catch { /* ignore */ }
+    }
+    return true;
   };
 
   return { reinstall: override, close: () => { try { _rotator?.close(); } catch { /* ignore */ } } };

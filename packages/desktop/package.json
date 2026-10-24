@@ -17,6 +17,7 @@
   "devDependencies": {
     "@yao-pkg/pkg": "6.20.0",
     "@yao-pkg/pkg-fetch": "3.6.3",
+    "esbuild": "^0.25.12",
     "ewvjs-cli": "^1.0.24",
     "resedit": "^3.0.2"
   },

@@ -199,16 +199,98 @@ console.log('\n🔗 Step 2: Syncing runtime bundle from core...');
   console.log(`   ✓ runtime bundle synced: ${mb} MB`);
 }
 
-// ── Step 3: Run pkg (uses patched template) ───────────────────────
-console.log('\n🔨 Step 3: Running pkg...');
+// ── Step 3: Bundle app.js → 单文件 CJS，再交给 pkg ────────────────
+console.log('\n🔨 Step 3: Bundling + running pkg...');
 
-// Generate CJS bootstrap for ESM
-const absEntry = path.resolve(path.join(ROOT, 'app.js')).replace(/\\/g, '/');
-const tempBootstrap = path.join(ROOT, '.pkg-bootstrap.cjs');
-fs.writeFileSync(tempBootstrap,
-  `const { pathToFileURL } = require('url');\n` +
-  `import(pathToFileURL('${absEntry}').href);\n`
-);
+// ⚠️ 为什么先用 esbuild 打成单文件，而不是直接把 app.js 交给 pkg：
+//
+// 历史坑（CI 真机复现，1.0.2 发布版同样中招）：
+// 旧做法生成 .pkg-bootstrap.cjs，内容是 import(pathToFileURL('<构建机绝对路径>'))。
+// pkg 靠静态分析决定哪些文件进快照：
+//   - 绝对路径是字面量 → 能分析到 → 文件进快照，但 exe 绑死构建机路径，
+//     换机器就 ERR_MODULE_NOT_FOUND 启动即崩；
+//   - 改成 __dirname 相对 → pkg 不做运行时求值、分析不出来 → 文件不进快照，
+//     同样启动即崩（Cannot find module 'C:\snapshot\...\app.js'）。
+//
+// 也试过直接把 ESM 的 app.js 当 pkg 入口：单层目录能跑，但本项目的入口位于
+// packages/desktop/ 子目录，pkg 的快照层级会错位（__dirname 变成 C:\snapshot\desktop，
+// 丢掉 packages 这一层），require('./runtime/...') 一律失败。
+// 以上均在 build/_probe*.mjs 中用最小复现实测确认。
+//
+// 最终方案：esbuild 把 app.js 及其所有本地依赖压成【单个 CJS 文件】，
+// pkg 只处理这一个文件，不涉及任何模块解析 → 与目录结构和构建机路径彻底解耦。
+// runtime/、native/、icon.ico 由 Step 4 复制到 exe 旁边，运行时按 exe 目录读取。
+const bundleEntry = path.join(ROOT, '.desktop.bundle.cjs');
+
+{
+  const esbuild = _require('esbuild');
+
+  /**
+   * esbuild 插件：修正 ewvjs 的内部资源路径。
+   *
+   * ewvjs 用 __dirname 推算两个资源位置：
+   *   dllDir  = path.resolve(__dirname, '../../native')   → native/*.dll + WebView.cjs
+   *   apiPath = path.resolve(__dirname, '../js/api.js')   → 注入页面的 API 脚本
+   * 一旦被 esbuild 打进 bundle，__dirname 变成 bundle 所在目录，两个路径全部错位，
+   * 运行时报 "Cannot find module '...\native\WebView.cjs'"（实测确认）。
+   *
+   * 这里在 esbuild 阶段直接把这些表达式替换成「按 exe 目录解析」的等价物：
+   * 打包态取 process.execPath 的目录（native/ 由 Step 4 复制到 exe 旁边，
+   * api.js 一并复制过去），开发态回退到源码目录。
+   */
+  const ewvjsPathFix = {
+    name: 'ewvjs-path-fix',
+    setup(build) {
+      build.onLoad({ filter: /ewvjs[\\/]dist[\\/]platforms[\\/]windows\.js$/ }, (args) => {
+        let src = fs.readFileSync(args.path, 'utf8');
+        src = src
+          // 原生 DLL 目录
+          .replace(
+            /dllDir = path\.resolve\(__dirname, '\.\.\/\.\.\/native'\);/g,
+            `dllDir = (typeof process.pkg !== 'undefined' ? path.dirname(process.execPath) : path.resolve(__dirname, '../../native'));`
+          )
+          // 注入用的 api.js
+          .replace(
+            /apiPath = path\.resolve\(__dirname, '\.\.\/js\/api\.js'\);/g,
+            `apiPath = (typeof process.pkg !== 'undefined' ? path.join(path.dirname(process.execPath), 'js', 'api.js') : path.resolve(__dirname, '../js/api.js'));`
+          );
+        return { contents: src, loader: 'js' };
+      });
+    },
+  };
+
+  // 注意：带 plugins 必须用异步 build()，buildSync 不支持插件
+  await esbuild.build({
+    entryPoints: [path.join(ROOT, 'app.js')],
+    outfile: bundleEntry,
+    bundle: true,
+    platform: 'node',
+    target: 'node22',
+    format: 'cjs',
+    charset: 'utf8',
+    logLevel: 'warning',
+    plugins: [ewvjsPathFix],
+    // ewvjs 必须【一起打进 bundle】：
+    // 它虽然是 ESM（type:module 且用 import/export），但 pkg 的快照里会按 CJS 加载，
+    // 直接 require 会报 "module is not defined in ES module scope"（CI 实测）。
+    // 打进 bundle 后由 esbuild 转成 CJS 即可。
+    // 它运行时要的真实文件（native/*.dll、WebView.cjs、js/api.js）由 Step 4
+    // 复制到 exe 同目录，上面插件负责让 ewvjs 去那里找。
+    // koffi 是原生模块且用动态 require 加载，pkg 抓不到，保持 external（失败自动降级）。
+    external: ['koffi'],
+    // CJS 输出没有 import.meta，补一个等价 shim 供 createRequire 使用
+    define: { 'import.meta.url': '__jm_import_meta_url' },
+    banner: {
+      js: [
+        `const { pathToFileURL: __jm_p2u } = require('url');`,
+        `const __jm_import_meta_url = __jm_p2u(__filename).href;`,
+      ].join('\n'),
+    },
+  });
+  console.log(`   ✓ App bundled: ${(fs.statSync(bundleEntry).size / 1024).toFixed(1)} KB`);
+}
+
+const pkgEntry = bundleEntry;
 
 // pkg config
 const nativePath = (() => {
@@ -218,12 +300,18 @@ const nativePath = (() => {
   } catch { return null; }
 })();
 
-// 说明：koffi 的原生二进制（@koromix/koffi-<platform>）不在包内源码树里，
-// 且 koffi 用动态 require 加载原生模块，pkg 静态分析抓不到（实测打包后 require 失败）。
-// 托盘已移除，logger 的 koffi 用法（debug 模式开控制台）失败时会安全降级，
-// 因此不再把 koffi 作为 assets 打包，避免无谓增大体积。
-const pkgConfig = { assets: ['package.json', `${path.join(ROOT, 'runtime')}/**/*`], scripts: ['./app.js'] };
-if (nativePath && fs.existsSync(nativePath)) pkgConfig.assets.push(`${nativePath}/**/*`);
+// assets 用【相对 bundle 所在目录】的 glob，pkg 会解析成快照内相对路径。
+// 注意：快照外的绝对路径不能写进来（会污染快照映射）。
+// runtime/ 实际由 Step 4 复制到 exe 旁边，运行时 app.js 按 exe 目录读取，
+// 这里列出来只是为了兜底（安装包缺文件时不至于直接崩）。
+const pkgConfig = {
+  assets: ['./runtime/**/*'],
+};
+if (nativePath && fs.existsSync(nativePath)) {
+  // ewvjs 原生 DLL 位于快照外，运行时需要真实文件，
+  // 实际由 Step 4 复制到 dist/native。
+  pkgConfig.assets.push(`${nativePath}/**/*`);
+}
 
 const pkgCfgPath = path.join(ROOT, '.pkg-config.json');
 fs.writeFileSync(pkgCfgPath, JSON.stringify(pkgConfig, null, 2));
@@ -239,7 +327,7 @@ try {
     await new Promise((resolve, reject) => {
     const proc = spawn(process.execPath, [
       pkgBin,
-      tempBootstrap,
+      pkgEntry,
       '--target', 'node22-win-x64',
       '--output', outputExe,
       '--public',
@@ -253,7 +341,7 @@ try {
 } finally {
   restoreFetched();
   try { fs.unlinkSync(pkgCfgPath); } catch {}
-  try { fs.unlinkSync(tempBootstrap); } catch {}
+  try { fs.unlinkSync(bundleEntry); } catch {}
 }
 
 console.log('   ✓ Executable created');
@@ -273,6 +361,19 @@ if (fs.existsSync(runtimeSrc)) {
 if (fs.existsSync(ICON)) {
   fs.copyFileSync(ICON, path.join(outputDir, 'icon.ico'));
   console.log('   ✓ icon.ico copied');
+}
+// ewvjs 注入页面的 API 脚本：被打进 bundle 后 ewvjs 会按 exe 目录的 js/api.js 读取，
+// 因此必须随产物一起复制（见上面 esbuild 插件 ewvjsPathFix 的说明）。
+{
+  const apiSrc = nativePath ? path.join(path.dirname(nativePath), 'dist', 'js', 'api.js') : null;
+  if (apiSrc && fs.existsSync(apiSrc)) {
+    const apiDstDir = path.join(outputDir, 'js');
+    fs.mkdirSync(apiDstDir, { recursive: true });
+    fs.copyFileSync(apiSrc, path.join(apiDstDir, 'api.js'));
+    console.log('   ✓ ewvjs api.js copied');
+  } else {
+    throw new Error(`未找到 ewvjs api.js（期望位置: ${apiSrc}）`);
+  }
 }
 
 // ── Step 5: Patch subsystem to GUI (2) ─────────────────────────
@@ -350,17 +451,35 @@ console.log('\n🔍 Step 7: Verifying artifacts...');
   if (subsystem !== 2) errors.push(`子系统应为 GUI(2)，实际 ${subsystem}`);
 
   // 4) 关键文件存在
-  for (const rel of ['icon.ico', 'runtime/jm.core.all.cjs', 'native/WebView.cjs']) {
+  for (const rel of ['icon.ico', 'runtime/jm.core.all.cjs', 'native/WebView.cjs', 'js/api.js']) {
     if (!fs.existsSync(path.join(outputDir, rel))) errors.push(`缺少文件: ${rel}`);
   }
   if (!fs.existsSync(archivePath)) errors.push('缺少 zip 产物');
+
+  // 5) 回归防线：exe 内不得残留「构建机绝对路径」。
+  //    1.0.2 / 1.0.3 初版都因为 bootstrap 写死构建机路径，
+  //    在本机能跑、换台机器就 ERR_MODULE_NOT_FOUND 启动即崩。
+  //    exe 里一旦出现构建目录特征串，说明又有绝对路径被固化进快照。
+  {
+    const ascii = data.toString('latin1');
+    const buildMarkers = [
+      ROOT.replace(/\\/g, '/'),                      // C:/code/.../packages/desktop
+      ROOT,                                          // C:\code\...\packages\desktop
+      'pkg-bootstrap.cjs',                           // 旧的 CJS bootstrap 方案残留
+    ];
+    for (const m of buildMarkers) {
+      if (m && ascii.includes(m)) {
+        errors.push(`exe 内残留构建机路径特征 "${m}"（会在其他机器上启动即崩）`);
+      }
+    }
+  }
 
   if (errors.length) {
     console.error('\n❌ 产物校验失败：');
     for (const e of errors) console.error('   - ' + e);
     process.exit(1);
   }
-  console.log(`   ✓ 图标 / VERSIONINFO(v${pack.version}) / 子系统 / 关键文件 全部通过`);
+  console.log(`   ✓ 图标 / VERSIONINFO(v${pack.version}) / 子系统 / 关键文件 / 无构建机路径 全部通过`);
 }
 
 console.log('\n✅ Done:', outputExe);
