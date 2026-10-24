@@ -23,7 +23,11 @@ SolidCompression=yes
 WizardStyle=modern
 
 [Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+; 注意：Inno Setup 官方安装包【不附带】简体中文语言文件，它是社区翻译
+; （https://jrsoftware.org/files/istrans/）。CI 与未手动装过该语言包的机器上
+; 直接用 "compiler:Languages\ChineseSimplified.isl" 会报 "Couldn't open include file"。
+; 因此把该文件随仓库一起提供，这里用相对路径引用。
+Name: "chinesesimplified"; MessagesFile: "build\languages\ChineseSimplified.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
