@@ -186,7 +186,7 @@
 ### P3-2 CI / 自动发布
 
 - [x] GitHub Actions：push tag → 构建 → 上传 Release 资产
-- [x] 资产清单固定为 5 个：`JM-Setup-x.y.z.exe` / `JM.zip` / `jm.core.exe` / `jm.core.all.js` / `jm.core.js`
+- [x] 资产清单固定为 4 个：`JM-Setup-x.y.z.exe` / `JM.zip` / `jm.core.all.js` / `jm.core.js`（`jm.core.exe` 自 1.0.3 起不再发布）
 - [x] 大文件上传注意：本机代理会在 30 MB 以上断连，CI 里直连即可
 
 ### P3-3 文档
@@ -510,8 +510,8 @@ P3 构建与发布
 | 消除手工复制 | `package.js` Step 2 从 `core/dist` 自动同步 runtime bundle（P0 已加，P3 确认可用） |
 | 清理 dist 后构建 | `package.js` 启动时清空 `packages/desktop/dist` |
 | **打包后自动校验** | 新增 Step 7：校验图标资源、VERSIONINFO（ProductName 非 Node.js、FileVersion 与 package.json 一致）、子系统 GUI(2)、关键文件齐全 |
-| CI / 自动发布 | 新增 `.github/workflows/release.yml`：tag 触发 → 构建 → 上传 5 个固定资产 → 创建 Release；支持手动触发只出 artifact |
-| 固定 5 个资产 | `JM-Setup-<ver>.exe` / `JM.zip` / `jm.core.exe` / `jm.core.all.js` / `jm.core.js` |
+| CI / 自动发布 | 新增 `.github/workflows/release.yml`：tag 触发 → 构建 → 上传 4 个固定资产 → 创建 Release；支持手动触发只出 artifact |
+| 固定 4 个资产 | `JM-Setup-<ver>.exe` / `JM.zip` / `jm.core.all.js` / `jm.core.js`（`jm.core.exe` 自 1.0.3 起不再发布） |
 | 大文件上传 | CI 直连不受代理影响；文档中注明本地手动上传用 `curl --http1.1` |
 | `docs/BUILD.md` | 环境要求、命令、流程详解、踩坑说明、发布流程、FAQ |
 | `docs/CONFIG.md` | **从 config-schema 自动生成**（`scripts/gen-config-doc.mjs`），含 `--check` 供 CI 校验一致性 |
@@ -552,8 +552,8 @@ P3 构建与发布
 
 **遗留**
 
-- CI workflow 尚未在真实 GitHub Actions 上跑过（本地已验证各步骤命令可用）；首次推送 tag 时需观察
-- `jm.core.exe` 未纳入 `build:release`（它由 `packages/core` 的 `build:pkg` 单独产出，耗时较长），CI 中当前从 `core/dist` 取已有产物 —— 若需每次重新生成，需在 workflow 里增加一步
+- `jm.core.exe` 已从发布流程移除（1.0.3 起）：CLI 改用 js 版，桌面端自带 core。
+  `build:core-exe` 脚本仍保留，需要时手动执行。
 
 ---
 

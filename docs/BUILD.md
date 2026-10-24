@@ -79,8 +79,11 @@ build:installer       packages/desktop/build/make-installer.mjs
 | 桌面 exe | `packages/desktop/dist/JM漫画管理器.exe` |
 | 免安装 zip | `packages/desktop/dist/JM漫画管理器.zip` |
 | 安装包 | `packages/desktop/installer/JM漫画管理器-Setup-<版本>.exe` |
-| core 单文件 | `packages/core/dist/jm.core.exe` |
 | core bundle | `packages/core/dist/jm.core.all.js`、`jm.core.js` |
+
+> **`jm.core.exe` 已不再发布**（1.0.3 起）。CLI 用 js 版即可；桌面端安装包内已自带 core。
+> `packages/core` 的 `build:exe` / 根级 `build:core-exe` 脚本仍保留，需要时手动执行，
+> 但已从 `build:release` 与 CI 发布流程中移除（资产由 5 个减为 4 个）。
 
 ---
 
@@ -203,18 +206,19 @@ git push origin master 1.0.3
 ```
 checkout → setup node 22 → npm install → check-version → npm test
   → build:core → build:desktop → 安装 Inno Setup → build:installer
-  → 收集 5 个资产 → 上传 artifact → 创建 GitHub Release
+  → 收集 4 个资产 → 上传 artifact → 创建 GitHub Release
 ```
 
-**固定 5 个发布资产**：
+**固定 4 个发布资产**：
 
 | 资产 | 来源 |
 |---|---|
 | `JM-Setup-<版本>.exe` | `packages/desktop/installer/` |
 | `JM.zip` | `packages/desktop/dist/` |
-| `jm.core.exe` | `packages/core/dist/` |
 | `jm.core.all.js` | `packages/core/dist/` |
 | `jm.core.js` | `packages/core/dist/` |
+
+> `jm.core.exe` 自 1.0.3 起不再发布（见上节说明），CI 也不再执行 `build:core-exe`。
 
 也可手动触发（`workflow_dispatch`），此时只上传 artifact，不创建 Release。
 

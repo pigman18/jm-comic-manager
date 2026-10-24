@@ -63,9 +63,9 @@ jobs:
       - name: Build core (web + engine + server bundles)
         run: npm run build:core
 
-      - name: Build core single-file exe
-        run: npm run build:core-exe
-
+      # CLI 不再发布 exe：pkg 打出的 jm.core.exe 体积 66MB 且需要单独验证，
+      # 而 js 版 CLI（jm.core.all.js）已覆盖同一能力，桌面端也自带一份 core。
+      # 因此不再执行 build:core-exe，也不再产出 jm.core.exe 资产。
       - name: Build desktop package (exe + zip)
         run: npm run build:desktop
 
@@ -89,10 +89,9 @@ jobs:
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           Write-Output "version=$version"
 
-          # 固定 5 个资产
+          # 固定 4 个资产（不再发布 jm.core.exe）
           Copy-Item "$inst/JM漫画管理器-Setup-$version.exe" "$out/JM-Setup-$version.exe"
           Copy-Item "$dist/JM漫画管理器.zip" "$out/JM.zip"
-          Copy-Item "$core/jm.core.exe" "$out/jm.core.exe"
           Copy-Item "$core/jm.core.all.js" "$out/jm.core.all.js"
           Copy-Item "$core/jm.core.js" "$out/jm.core.js"
 

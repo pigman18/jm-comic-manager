@@ -32,11 +32,13 @@
 |---|---|
 | `JM-Setup-<版本>.exe` | **推荐**。Windows 安装版，带开始菜单与桌面快捷方式 |
 | `JM.zip` | 免安装绿色版，解压即用 |
-| `jm.core.exe` | 仅命令行 / 服务端，单文件可执行 |
-| `jm.core.all.js` | 打包好的 core（含依赖），需配合 Node 22 运行 |
-| `jm.core.js` | 轻量版 core，部分依赖需自行 `npm install` |
+| `jm.core.all.js` | 命令行 / 服务端。打包好的 core（含依赖），需配合 Node 22 运行 |
+| `jm.core.js` | 命令行 / 服务端。轻量版 core，部分依赖需自行 `npm install` |
 
 > 使用前请确保已安装 **WebView2 运行时**（Win10/11 一般已自带）。
+
+> **1.0.3 起不再发布 `jm.core.exe`**：CLI 用上面的 js 版即可（`node jm.core.all.js --help`），
+> 桌面端安装包内也已自带一份 core。
 
 **关于关闭行为**：关闭窗口即退出应用（不再最小化到托盘，也不会残留后台进程）。
 
