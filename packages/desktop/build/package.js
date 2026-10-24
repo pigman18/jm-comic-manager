@@ -482,8 +482,16 @@ console.log('\n🔍 Step 7: Verifying artifacts...');
   //    可靠判据只有一个：入口里是否存在 import(pathToFileURL( 这种字面量 ESM 加载。
   {
     const ascii = data.toString('latin1');
-    if (ascii.includes('import(pathToFileURL(')) {
-      errors.push('exe 入口仍是旧的 ESM bootstrap（import(pathToFileURL(...))），换机器会启动即崩');
+    const needle = 'import(pathToFileURL(';
+    if (ascii.includes(needle)) {
+      // 打印命中上下文，便于定位来源（CI 与本地行为不同，必须留证据）
+      const idx = ascii.indexOf(needle);
+      const ctx = ascii.substring(Math.max(0, idx - 300), idx + 300)
+        .replace(/[^\x20-\x7E]/g, '.');
+      errors.push(
+        `exe 入口仍是旧的 ESM bootstrap（${needle}），换机器会启动即崩\n` +
+        `     命中位置: ${idx}\n     上下文: ${ctx}`
+      );
     }
   }
 
