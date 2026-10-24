@@ -453,14 +453,21 @@ P3 构建与发布
 
 ### 移除托盘（2026-10-25）
 
-**背景**：用户反馈「原本设计可以最小化，但桌面端最小化有问题，且退出应用后托盘还在」，决定直接移除托盘。
+**背景**：用户反馈「原本设计是可以最小化（到托盘），但目前的桌面端最小化有问题，而且实测发现退出应用后托盘还在」，决定**只移除托盘**。
+
+**需求边界（用户明确确认）**
+
+- 点 X → 弹「确认退出？」→ 点「是」退出，点「否」留在应用内（**保留** `confirm_close: true`）
+- 托盘相关的一切（托盘图标、托盘菜单、最小化到托盘、隐藏/显示窗口）**全部删除**
 
 **根因（实测定位）**
 
-问题不在托盘本身，而在 `confirm_close: true`：
-- ewvjs 的 `confirm_close` 会在关闭窗口时弹二次确认框；
-- 用户点 X 后窗口关闭，但确认框让进程挂起等待，`on_close` 未及时触发退出；
-- 进程不退出 → 托盘图标（及本地服务）残留。
+托盘残留在退出后仍存在，根因不是托盘本身，而是**关闭窗口时进程没有真正退出**：
+
+- 早期 `mw.on_close` 只做了日志，没有 `bundle.stop()` + `process.exit()`；
+- 窗口对象关闭后，`mw.evaluate` 走 `_call()`，`_isClosed` 为真时 `console.warn('Cannot call evaluate: Window is closed')`；
+- 该 `warn` 被 `logger` 的 `tee()` 捕获 → 再次调用 DevTools 转发器 → 再 `evaluate` → 再 `warn`，**同步死循环**；
+- 死循环把主线程钉死，`on_close` 的退出逻辑永远等不到，进程与本地服务残留。
 
 **改动**
 
@@ -468,27 +475,27 @@ P3 构建与发布
 |---|---|
 | `packages/desktop/src/tray.js` | **删除**（266 行） |
 | `packages/desktop/app.js` | 移除 `createTray` import、`setupTray()`、`getTrayMenu()`、`trayRef`、`mainWinAlive`；新增 `quitApp()` 统一退出（停服务 → 退进程）；`on_close` → `quitApp(0)`；右键菜单去掉"隐藏到托盘"；补 `SIGTERM`/`SIGINT`/`uncaughtException` 兜底 |
-| `packages/desktop/app.js` | `confirm_close: true` → **`false`**（关窗即退出，无需二次确认） |
+| `packages/desktop/app.js` | **保留** `confirm_close: true`（关窗弹二次确认，这是用户明确要求保留的行为，不属于托盘范畴） |
+| `packages/desktop/app.js` | DevTools 转发器加 `_hostLogBusy` 防重入 + 失败一次即 `setDevToolsEval(null)` 摘掉转发器，并加 `_quitting` 守卫 → 彻底断开上面那条死循环 |
 | `packages/desktop/build/package.js` | 移除 koffi 原生 assets（托盘已删，logger 的 koffi 失败时会安全降级） |
 | `packages/desktop/app.js` | 移除 `hideToTray` 暴露的 API（前端未使用） |
 
-**验收结果**
+**验收结果（WM_CLOSE 消息级实测，非人工点击）**
 
 | 场景 | 期望 | 实测 |
 |---|---|---|
 | 启动 | 正常 | ✅ HTTP 200 |
-| 关窗后进程退出 | 退出 | ✅ `HasExited=true`，退出码 0 |
-| 端口释放 | 释放 | ✅ 47310 已释放 |
-| 残留进程 | 0 | ✅ 0 |
-| 二次启动（端口复用） | 成功 | ✅ 启动正常 |
-| 二次关窗 | 退出 | ✅ 通过 |
-| 托盘代码残留 | 无 | ✅ 全仓库 grep `tray` 为空 |
+| 点 X | 弹「确认退出」框 | ✅ 检测到 `#32770` 对话框，标题 `Confirm Close`，按钮「是(&Y)」/「否(&N)」 |
+| 点「否」 | 不退出，窗口保留，服务可用 | ✅ 进程存活 / 主窗口可见 / 47310 仍 200 |
+| 点「是」 | 退出，端口释放，无残留 | ✅ `HasExited=true` / 47310 已释放 / 残留进程 0 |
+| 日志死循环 | 无 | ✅ 关闭全程日志 7 行（修复前 1222 行，其中 1217 行是 `Cannot call evaluate`） |
+| 托盘/最小化代码残留 | 无 | ✅ `packages/desktop` grep `tray\|minimize\|on_minimize\|hideToTray` 为空 |
 | 全量测试 | 通过 | ✅ 7 个文件 / 62 个用例 |
 
 **影响**
 
-- 关闭窗口 = 退出应用，不再有后台常驻
-- 托盘图标问题（退出后正确消失）随进程正确退出而解决
+- 关闭窗口 = 弹确认框 → 确认后退出应用，不再有后台常驻、不再有托盘残留
+- 窗口标题栏的**系统最小化按钮**保留（普通 Windows 窗口行为），但**没有任何"最小化到托盘"逻辑**
 - koffi 依赖仅剩 `logger.js` 的 debug 控制台功能，且失败时安全降级
 
 ---

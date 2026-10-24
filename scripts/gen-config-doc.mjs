@@ -116,7 +116,7 @@ function build() {
     lines.push('');
     lines.push('## 修改方式');
     lines.push('');
-    lines.push('1. **桌面端设置页**（推荐）：右键托盘区域已移除，使用应用内「设置」或首启引导');
+    lines.push('1. **桌面端设置页**（推荐）：应用内右键菜单「设置」，或首启引导');
     lines.push('2. **直接编辑** `config.json`：修改后重启应用生效（标记「需重启」的字段）');
     lines.push('3. **HTTP 接口**：`GET /api/config` 读取、`POST /api/config` 写入（只接受 schema 中可见字段）');
     lines.push('');

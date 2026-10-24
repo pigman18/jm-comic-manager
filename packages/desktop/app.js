@@ -127,7 +127,7 @@ async function main() {
 
     /**
      * 退出应用：先停本地服务，再结束进程。
-     * 已移除托盘，因此关闭窗口 == 退出应用。
+     * 无托盘，关闭窗口（经确认）即退出应用。
      */
     let _quitting = false;
     async function quitApp(code = 0) {
@@ -142,15 +142,18 @@ async function main() {
 
         const mw = await create_window('JM漫画管理器', startUrl, {
             width: 1200, height: 800, min_width: 800, min_height: 600, icon: iconIco,
-            // 关闭窗口即退出（无托盘），因此不需要二次确认弹窗
-            confirm_close: false, debug: true,
+            // 关闭窗口时弹出「确认退出」，用户确认后才关闭
+            confirm_close: true, debug: true,
             dark_mode: true
         });
         await mw.run();
         mw.setIcon(iconIco).catch(e => console.error('[desktop] setIcon failed:', e));
         mainWin = mw;
-        // 关闭窗口即退出应用（无托盘，不再隐藏到后台）
-        mw.on_close = () => { void quitApp(0); };
+        // 用户确认关闭后触发：停服务并退出进程
+        mw.on_close = () => {
+            process.stdout.write('[desktop] on_close 触发，准备退出\n');
+            void quitApp(0);
+        };
         mw.on_context_menu = () => {
             return [
                 { label: '设置', click: () => mw.evaluate('window.__showSettingsModal()').catch(() => {}) },
@@ -209,15 +212,21 @@ async function main() {
     }
 
     /* ---------- 始终输出日志到 DevTools ---------- */
+    // 注意：窗口一旦关闭，ewvjs 的 evaluate 会走 console.warn('Cannot call evaluate: Window is closed')，
+    // 而这条 warn 又会经 tee → 本转发器 → 再 evaluate，形成同步死循环刷日志。
+    // 因此：1) _hostLogBusy 防重入；2) 失败一次即摘掉转发器（窗口已关，无需再转发）。
+    let _hostLogBusy = false;
     setDevToolsEval((msg) => {
-        if (!mainWin) return;
+        if (!mainWin || _quitting || _hostLogBusy) return;
         // 前端回声重复调用，忽略掉即可
         if (msg.startsWith('WebView Console')) {
             return;
         }
+        _hostLogBusy = true;
         mainWin.evaluate(`
             window?.__hostLog(${JSON.stringify(msg)})
-        `).catch(() => {});
+        `).catch(() => { setDevToolsEval(null); })
+            .finally(() => { _hostLogBusy = false; });
     });
 
     // 进程级退出兜底：确保本地服务被正确关闭，不留孤儿进程/端口占用
