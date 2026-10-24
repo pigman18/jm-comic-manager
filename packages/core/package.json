@@ -4,7 +4,7 @@
   "type": "commonjs",
   "main": "src/index.js",
   "author": "pigman17",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "private": true,
   "title": "jm.core",
   "description": "用于JM漫画的快速导航和下载，仅供研究学习禁止用于其他用途！",

@@ -1,5 +1,44 @@
 # JM漫画管理器 · 更新日志
 
+## [1.1.0] - 2026-10-25
+
+> 本版本修复了一个**影响所有历史版本的发布级 BUG**：桌面端 exe 绑死了打包机器的源码路径，
+> 一旦该路径不存在（换台电脑、挪动/重命名工程目录），程序双击后完全无反应。
+> **所有使用 1.0.0 ~ 1.0.3 的用户都强烈建议升级。**
+
+### 🐛 关键修复
+
+- ✅ **修复 exe 绑死构建机路径、换机器/改目录名后双击无反应**
+  根因：旧版打包脚本生成 `.pkg-bootstrap.cjs`，内容为
+  `import(pathToFileURL('C:/code/jm-comic-manager/packages/desktop/app.js'))`。
+  `import()` 走 Node 原生 ESM 解析器，**不会**经过 pkg 的路径重定向
+  （那条重定向只对 CJS `require` 生效），因此程序会去真实文件系统找源码，
+  找不到就启动即崩；而 GUI 子系统下没有控制台，表现就是「双击一闪而过」。
+  修复：改用 esbuild 把应用打成**单文件 CJS** 再交给 pkg，彻底消除对源码目录的依赖。
+- ✅ **修复安装包漏打 `js/api.js`**：ewvjs 需要读取 exe 同目录的 `js/api.js` 注入页面脚本，
+  安装包此前只打包了 `runtime/` 与 `native/`，导致「免安装版能跑、安装版不能跑」。
+  现已在 `setup.iss` 补上 `js\*`，并在构建时自动校验三个关键目录是否都被打包。
+- ✅ **修复打包后启动失败时无任何日志**：koffi 不可用时 `process.stdout.write` 被整体替换为空操作，
+  日志文件 0 字节、完全无法定位问题。现在保留原始 stdout 兜底写入。
+
+### 🔧 构建/发布
+
+- ✅ **新增构建期回归防线**：Step 7 校验 exe 内不得出现构建机路径特征串
+  （`ROOT` 绝对路径、`pkg-bootstrap.cjs` 等），同类问题不会再被静默发布
+- ✅ **不再发布 `jm.core.exe`**：CLI 用 js 版（`jm.core.all.js`）即可，桌面端安装包内已自带 core。
+  发布资产由 5 个减为 4 个
+- ✅ **CI 修复**：runner 固定 `windows-2022`（避开 VS2026 与 node-gyp 不兼容）、
+  补全 `terser-webpack-plugin`/`@yao-pkg/pkg`/`resedit`/`esbuild` 等未声明的构建依赖、
+  修正 webpack `resolve.modules` 顺序（嵌套依赖解析）、
+  随仓库提供 Inno Setup 简体中文语言文件、文档校验兼容 CRLF
+
+### 🧪 验证
+
+- ✅ 新增 `test/desktop-no-repo-dep.ps1`：把仓库 `app.js` 临时改名以模拟「源码不存在」，
+  验证 exe 不再依赖源码目录（旧版必失败、新版通过）
+- ✅ 新增 `test/desktop-diag.ps1`：启动诊断脚本，抓 stdout/stderr/日志/appdata
+- ✅ 实测：安装目录改名后仍可正常启动；点 X 弹「确认退出」→「否」留在应用内、「是」退出且端口释放
+
 ## [1.0.3] - 2026-10-25
 
 > 本版本以**工程重构与安全加固**为主，功能行为基本不变，但内部结构大幅调整。
