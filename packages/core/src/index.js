@@ -9,6 +9,7 @@ const {createServer} = require('./server');
 const {createCli} = require('./cli');
 const {createTaskManager} = require('./taskManager');
 const {resolveAppId, saveB64Image} = require('../util/app')
+const {setCodec: setSecretCodec} = require('./security/secret-codec');
 
 // 1、加载JM模块应用配置，里面直接包含服务器配置、命令行配置
 let manifest = require(`../package.json`);
@@ -123,7 +124,12 @@ function createJmBundle(manifest) {
         start,
         stop,
         run,
-        state
+        state,
+        /** 注入敏感配置加解密实现（由宿主提供，如桌面端 DPAPI） */
+        setSecretCodec: (codec) => {
+            setSecretCodec(codec);
+            return {ok: true, enabled: typeof codec?.encrypt === 'function'};
+        },
     }
 
 }

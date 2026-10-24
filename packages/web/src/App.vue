@@ -3,8 +3,8 @@
     <n-global-style />
     <n-message-provider>
       <n-dialog-provider>
-      <div id="jm-app-root">
-        <aside class="jmz-sidebar" v-if="!isDetail">
+      <div id="jm-app-root" :class="{ 'jmz-setup-mode': isSetup }">
+        <aside class="jmz-sidebar" v-if="!isDetail && !isSetup">
           <div class="jmz-sidebar-head" style="display:none">
             <img src="/icon.ico" class="jmz-app-logo" alt="" />
             <span class="jmz-app-title">JM漫画管理器</span>
@@ -56,7 +56,7 @@
           </div>
         </aside>
         <div class="jmz-main-area">
-          <header class="jmz-app-header">
+          <header class="jmz-app-header" v-if="!isSetup">
             <div class="jmz-header-left">
               <n-button text size="small" class="jmz-app-back" v-if="isDetail" @click="backToCatalog">
                 <template #icon><n-icon :component="ArrowBack" /></template>
@@ -193,6 +193,7 @@ const showLoginDialog = ref(false)
 const showSettings = ref(false)
 const rebuildBusy = ref(false)
 const isDetail = computed(() => route.name === 'detail')
+const isSetup = computed(() => route.name === 'setup')
 const userStore = useUserStore()
 const pageTitle = computed(() => {
   const map: Record<string, string> = {
@@ -461,6 +462,19 @@ function onLoginSuccess() {
 
 onMounted(async () => {
   connectWs()
+
+  // 首启引导：未完成配置时跳转到 /setup（setup 页自身不再重复跳转）
+  try {
+    const cfg = await getJson('/config')
+    if (cfg.ok && !cfg.setupCompleted && route.name !== 'setup') {
+      router.replace({ name: 'setup' })
+      return
+    }
+    if (cfg.ok && cfg.setupCompleted && route.name === 'setup') {
+      router.replace({ name: 'catalog' })
+    }
+  } catch { /* 后端未就绪时忽略，按正常流程继续 */ }
+
   await userStore.checkSession()
   if (!userStore.loggedIn) {
     showLoginDialog.value = true
@@ -489,6 +503,11 @@ onUnmounted(() => {
 #jm-app-root {
   height: 100vh;
   display: flex;
+}
+
+/* 首启引导：铺满整屏，不显示侧边栏与顶栏 */
+#jm-app-root.jmz-setup-mode .jmz-main-area {
+  width: 100%;
 }
 
 .jmz-sidebar {

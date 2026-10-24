@@ -1,14 +1,27 @@
 {
   "name": "jm-comic-manager",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "JM本地搜索与下载管理器",
   "workspaces": [
     "packages/core",
     "packages/web",
-    "packages/vscode",
     "packages/desktop"
   ],
+  "scripts": {
+    "sync-version": "node scripts/sync-version.mjs",
+    "check-version": "node scripts/sync-version.mjs --check",
+    "gen-config-doc": "node scripts/gen-config-doc.mjs",
+    "check-config-doc": "node scripts/gen-config-doc.mjs --check",
+    "test": "node scripts/run-tests.mjs",
+    "build:web": "npm run build --workspace @jm/web",
+    "build:core": "npm run build --workspace @jm/core",
+    "build:core-exe": "npm run build:exe --workspace @jm/core",
+    "build:desktop": "npm run package --workspace @jm/desktop",
+    "build:installer": "npm run installer --workspace @jm/desktop",
+    "build:release": "npm run sync-version && npm run check-version && npm run build:core && npm run build:core-exe && npm run build:desktop && npm run build:installer",
+    "build:portable": "npm run sync-version && npm run build:core && npm run build:core-exe && npm run build:desktop"
+  },
   "devDependencies": {
     "@neplex/vectorizer": "^0.1.0",
     "powertoast": "^1.2.3",
@@ -16,7 +29,6 @@
     "to-ico": "^1.1.5"
   },
   "dependencies": {
-    "express": "^5.2.1",
-    "http-proxy-middleware": "^4.1.1"
+    "express": "^5.2.1"
   }
 }

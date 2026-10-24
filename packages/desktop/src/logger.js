@@ -2,11 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import koffi from 'koffi';
 import iconv from 'iconv-lite';
+import { createRotatingStream } from './log-rotate.js';
 
 const STD_OUTPUT_HANDLE = -11;
 const ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
 
 let _stream = null;
+let _rotator = null;
 let _log = null;
 let _warn = null;
 let _error = null;
@@ -109,7 +111,13 @@ export function createLogger(options = {}) {
   if (options.file) {
     try {
       fs.mkdirSync(path.dirname(options.file), { recursive: true });
-      _stream = fs.createWriteStream(options.file, { flags: 'a' });
+      // 按大小轮转，避免单文件无限增长（实测曾达 852MB）
+      _rotator = createRotatingStream({
+        file: options.file,
+        maxBytes: options.maxBytes,
+        backups: options.backups,
+      });
+      _stream = _rotator.getStream();
     } catch (e) {
       _error('[logger] failed to open log file:', e.message);
     }
@@ -122,7 +130,7 @@ export function createLogger(options = {}) {
     writeConsole(str.replace(/[\r\n]+$/, ''));
   };
 
-  return { reinstall: override };
+  return { reinstall: override, close: () => { try { _rotator?.close(); } catch { /* ignore */ } } };
 }
 
 /* ---------- ★ 新增：DevTools 注入 ---------- */

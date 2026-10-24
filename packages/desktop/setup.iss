@@ -1,6 +1,7 @@
 ; ========= 基础配置 =========
+; 版本号由 build/package.js 在打包前写入 version.iss（唯一来源：根 package.json）
 #define MyAppName "JM漫画管理器"
-#define MyAppVersion "1.0.2"
+#include "version.iss"
 #define MyAppPublisher "pigman18"
 #define MyAppExeName "JM漫画管理器.exe"
 #define ToastAppId "com.pigman18.jmcomicmanager"
@@ -28,15 +29,12 @@ Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.i
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 ; ========= 文件打包 =========
+; 前端已内嵌进 exe（core 的 web-embedded.json），不再需要 assets/index.html/favicon.svg
 [Files]
 Source: "{#BuildDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#BuildDir}\native\*"; DestDir: "{app}\native"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#BuildDir}\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#BuildDir}\index.html"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#BuildDir}\favicon.svg"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#BuildDir}\icons.svg"; DestDir: "{app}"; Flags: ignoreversion
 
 ; ========= 快捷方式（关键：绑定 AppId）=========
 [Icons]

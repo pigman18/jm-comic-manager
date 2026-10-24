@@ -18,6 +18,10 @@ taskManager/.npmrc
 /resources/jm-api/JMComic3v2.0.25/
 /resources/jm-api/JMComic3v2.0.25.apk
 /packages/core/config.json
+# 构建产物：打包时由 packages/desktop/build/package.js 从 core/dist 自动同步
+/packages/desktop/runtime/jm.core.all.cjs
+# 版本号由 build/package.js 从根 package.json 生成
+/packages/desktop/version.iss
 /packages/desktop/installer
 /packages/desktop/CONOUT$
 /CONOUT$

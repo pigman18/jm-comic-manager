@@ -5,11 +5,12 @@ import {readFileSync} from 'node:fs'
 import Components from 'unplugin-vue-components/vite'
 import {NaiveUiResolver} from 'unplugin-vue-components/resolvers'
 
-const pkg = JSON.parse(readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf-8'))
+// 版本号唯一来源：根 package.json
+const rootPkg = JSON.parse(readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf-8'))
 
 export default defineConfig({
     define: {
-        __APP_VERSION__: JSON.stringify(pkg.version),
+        __APP_VERSION__: JSON.stringify(rootPkg.version),
     },
     server: {
         proxy: {

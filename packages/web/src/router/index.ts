@@ -4,6 +4,7 @@ import CatalogPage from '@/pages/CatalogPage.vue'
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [
+    { path: '/setup', name: 'setup', component: () => import('@/pages/SetupPage.vue') },
     { path: '/', name: 'catalog', component: CatalogPage },
     { path: '/home', name: 'home', component: () => import('@/pages/HomePage.vue') },
     { path: '/search', name: 'search', component: () => import('@/pages/SearchPage.vue') },
@@ -34,7 +35,8 @@ export const router = createRouter({
 })
 
 router.afterEach((to) => {
-  if (to.name === 'catalog') document.title = '本地管理'
+  if (to.name === 'setup') document.title = '初始化'
+  else if (to.name === 'catalog') document.title = '本地管理'
   else if (to.name === 'home') document.title = '主站首页'
   else if (to.name === 'search') document.title = '漫画搜索'
   else if (to.name === 'week') document.title = '每周必看'

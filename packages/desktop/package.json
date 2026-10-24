@@ -1,42 +1,23 @@
 {
   "name": "@jm/desktop",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "scripts": {
-    "dev:web": "vite",
-    "dev": "node dev.js",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
+    "dev": "node app.js --dev",
     "start": "node app.js",
-    "package": "npm run build && node build/package.js",
-    "postpackage": "C:\\\"Program Files (x86)\"\\\"Inno Setup 6\"\\ISCC.exe setup.iss"
+    "package": "node build/package.js",
+    "installer": "node build/make-installer.mjs",
+    "release": "node build/package.js && node build/make-installer.mjs"
   },
   "dependencies": {
     "ewvjs": "^1.0.24",
-    "koffi": "^3.0.2",
-    "marked": "^18.0.5",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "koffi": "^3.0.2"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@types/node": "^24.12.3",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
     "@yao-pkg/pkg": "^6.20.0",
-    "eslint": "^10.3.0",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
     "ewvjs-cli": "^1.0.24",
-    "globals": "^17.6.0",
-    "rcedit": "^5.0.2",
-    "resedit": "^3.0.2",
-    "typescript": "~6.0.2",
-    "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
+    "resedit": "^3.0.2"
   },
   "ewvjs": {
     "subsystem": "windows"

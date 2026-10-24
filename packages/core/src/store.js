@@ -6,6 +6,7 @@ const path = require('node:path');
 const {mkdirSyncIfNotExists, listFiles, writeToFileSync, getBaseName} = require('../util/file');
 const {openDatabase} = require('../util/sqlite-compat');
 const {PHASE, STATE} = require('./protocol');
+const {migrate} = require('./migrations');
 
 /**
  * JM 模块数据存储
@@ -138,94 +139,12 @@ function createStore(manifest, ctx, message, config, crawler) {
         };
     }
 
-    /** 创建关联表（tag/author/work/actor）+ 索引 + 触发器 + 自动填充 */
-    async function ensureAssocTable({ table, column, jsonColumn, indexName }) {
-        await database.exec(`
-            CREATE TABLE IF NOT EXISTS ${table} (
-                comic_id INTEGER NOT NULL,
-                ${column} TEXT NOT NULL,
-                PRIMARY KEY (comic_id, ${column})
-            )
-        `);
-        await database.exec(`CREATE INDEX IF NOT EXISTS ${indexName} ON ${table}(${column})`);
-        await database.exec(`DROP TRIGGER IF EXISTS ${table}_ai`);
-        await database.exec(`DROP TRIGGER IF EXISTS ${table}_au`);
-        await database.exec(`CREATE TRIGGER IF NOT EXISTS ${table}_ai AFTER INSERT ON comic_meta BEGIN
-            INSERT OR IGNORE INTO ${table}(comic_id, ${column})
-            SELECT DISTINCT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.${jsonColumn}) THEN new.${jsonColumn} ELSE '[]' END) t;
-        END`);
-        await database.exec(`CREATE TRIGGER IF NOT EXISTS ${table}_au AFTER UPDATE ON comic_meta BEGIN
-            DELETE FROM ${table} WHERE comic_id = old.id;
-            INSERT OR IGNORE INTO ${table}(comic_id, ${column})
-            SELECT DISTINCT new.id, TRIM(t.value) FROM json_each(CASE WHEN json_valid(new.${jsonColumn}) THEN new.${jsonColumn} ELSE '[]' END) t;
-        END`);
-        await database.exec(`CREATE TRIGGER IF NOT EXISTS ${table}_ad AFTER DELETE ON comic_meta BEGIN
-            DELETE FROM ${table} WHERE comic_id = old.id;
-        END`);
-        try {
-            const count = (await database.prepare(`SELECT COUNT(*) as c FROM ${table}`).get({})).c;
-            if (count === 0) {
-                await database.exec(`INSERT OR IGNORE INTO ${table}(comic_id, ${column})
-                    SELECT DISTINCT c.id, TRIM(t.value) FROM comic_meta c, json_each(CASE WHEN json_valid(c.${jsonColumn}) THEN c.${jsonColumn} ELSE '[]' END) t`);
-            }
-        } catch (_) {}
-    }
-
     async function connect() {
         if (database) return database;
         mkdirSyncIfNotExists(path.dirname(dbPath));
         database = openDatabase(dbPath);
-        await database.exec(`
-      CREATE TABLE IF NOT EXISTS comic_meta (
-        id INTEGER PRIMARY KEY,
-        name TEXT, images JSON, addtime TEXT, description TEXT,
-        total_views TEXT, likes TEXT, series JSON, series_id TEXT,
-        comment_total TEXT, author JSON, tags JSON, works JSON,
-        actors JSON, related_list JSON, liked INTEGER, is_favorite INTEGER,
-        is_aids INTEGER, price INTEGER, purchased TEXT,
-        create_time INTEGER, update_time INTEGER
-      );
-    `);
-        try { await database.exec('ALTER TABLE comic_meta ADD COLUMN create_time INTEGER'); } catch (_) {}
-        try { await database.exec('ALTER TABLE comic_meta ADD COLUMN update_time INTEGER'); } catch (_) {}
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_series_id ON comic_meta(series_id)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_name ON comic_meta(name)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_author ON comic_meta(author)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_comment_total ON comic_meta(comment_total)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_price ON comic_meta(price)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_purchased ON comic_meta(purchased)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_update ON comic_meta(update_time, id)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_create ON comic_meta(create_time, id)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_views ON comic_meta(total_views, id)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_likes ON comic_meta(likes, id)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_name ON comic_meta(name, id)');
-        await database.exec('CREATE INDEX IF NOT EXISTS idx_meta_sort_addtime ON comic_meta(addtime, id)');
-        await database.exec('DROP TABLE IF EXISTS comic_meta_fts');
-        await database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_ai');
-        await database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_ad');
-        await database.exec('DROP TRIGGER IF EXISTS comic_meta_fts_au');
-        await database.exec(`
-      CREATE TABLE IF NOT EXISTS comic_read (
-        id INTEGER PRIMARY KEY,
-        read_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-      );
-    `);
-        await database.exec(`
-      CREATE TABLE IF NOT EXISTS comic_ban (
-        id INTEGER PRIMARY KEY,
-        banned_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-      );
-    `);
-        await database.exec(`
-      CREATE TABLE IF NOT EXISTS comic_star (
-        id INTEGER PRIMARY KEY,
-        star_time INTEGER NOT NULL DEFAULT (strftime('%s','now'))
-      );
-    `);
-        await ensureAssocTable({ table: 'comic_meta_tag',    column: 'tag',    jsonColumn: 'tags',   indexName: 'idx_meta_tag_tag' });
-        await ensureAssocTable({ table: 'comic_meta_author', column: 'author', jsonColumn: 'author', indexName: 'idx_meta_author_value' });
-        await ensureAssocTable({ table: 'comic_work',        column: 'work',   jsonColumn: 'works',  indexName: 'idx_meta_work_value' });
-        await ensureAssocTable({ table: 'comic_meta_actor',  column: 'actor',  jsonColumn: 'actors', indexName: 'idx_meta_actor_value' });
+        // 表结构、索引、关联表触发器统一由迁移管理（幂等，禁止全表重写）
+        await migrate(database, (msg) => console.log(msg));
         return database;
     }
 

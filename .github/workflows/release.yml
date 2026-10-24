@@ -1,0 +1,115 @@
+name: Release
+
+# 触发方式：
+#   1. push 形如 1.0.2 的 tag        → 构建并创建 GitHub Release
+#   2. 手动触发（workflow_dispatch） → 只构建，产物作为 artifact 供下载
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  # pkg 打包不需要代理；显式清空避免继承意外配置
+  HTTP_PROXY: ''
+  HTTPS_PROXY: ''
+  NO_PROXY: '*'
+
+jobs:
+  build:
+    # 桌面端与 pkg 目标均为 Windows，必须在 windows runner 上构建
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          # 仓库刻意不跟踪 package-lock.json（见 .gitignore），优先尝试 npm ci，失败回退 npm install
+          if (Test-Path package-lock.json) {
+            npm ci
+            if ($LASTEXITCODE -ne 0) { Write-Output 'npm ci failed, falling back to npm install'; npm install }
+          } else {
+            Write-Output 'no package-lock.json, using npm install'
+            npm install
+          }
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Verify version consistency
+        run: npm run check-version
+
+      - name: Verify config docs up to date
+        run: npm run check-config-doc
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build core (web + engine + server bundles)
+        run: npm run build:core
+
+      - name: Build core single-file exe
+        run: npm run build:core-exe
+
+      - name: Build desktop package (exe + zip)
+        run: npm run build:desktop
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup --no-progress -y
+          echo "ISCC_PATH=C:\Program Files (x86)\Inno Setup 6\ISCC.exe" >> $env:GITHUB_ENV
+
+      - name: Build installer
+        run: npm run build:installer
+
+      - name: Collect release assets
+        shell: pwsh
+        run: |
+          $dist = 'packages/desktop/dist'
+          $inst = 'packages/desktop/installer'
+          $core = 'packages/core/dist'
+          $out = 'release-assets'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          Write-Output "version=$version"
+
+          # 固定 5 个资产
+          Copy-Item "$inst/JM漫画管理器-Setup-$version.exe" "$out/JM-Setup-$version.exe"
+          Copy-Item "$dist/JM漫画管理器.zip" "$out/JM.zip"
+          Copy-Item "$core/jm.core.exe" "$out/jm.core.exe"
+          Copy-Item "$core/jm.core.all.js" "$out/jm.core.all.js"
+          Copy-Item "$core/jm.core.js" "$out/jm.core.js"
+
+          Get-ChildItem $out | ForEach-Object {
+            Write-Output ("  {0}  {1:N2} MB" -f $_.Name, ($_.Length / 1MB))
+          }
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jm-release-assets
+          path: release-assets/*
+          retention-days: 14
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
