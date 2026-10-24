@@ -127,7 +127,10 @@ const content = build();
 
 if (process.argv.includes('--check')) {
     const existing = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
-    if (existing.trim() !== content.trim()) {
+    // 归一化换行：仓库没有 .gitattributes，Windows 上 core.autocrlf=true 时
+    // 检出的是 CRLF，而本脚本写出的是 LF。若不归一化，CI 会误报文档不一致。
+    const norm = (s) => s.replace(/\r\n/g, '\n').trim();
+    if (norm(existing) !== norm(content)) {
         console.error('✗ docs/CONFIG.md 与 schema 不一致，请运行: node scripts/gen-config-doc.mjs');
         process.exit(1);
     }

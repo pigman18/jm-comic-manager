@@ -32,7 +32,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
+          # 刻意不开 cache: 'npm'：仓库不跟踪 package-lock.json（见 .gitignore），
+          # 而 setup-node 的 npm 缓存强制要求 lock 文件存在，否则直接报错退出
 
       - name: Install dependencies
         shell: pwsh
