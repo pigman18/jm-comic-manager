@@ -469,29 +469,28 @@ console.log('\n🔍 Step 7: Verifying artifacts...');
     }
   }
 
-  // 5) 回归防线：确认入口不是「ESM import() 加载绝对路径」的旧方案。
+  // 5) 回归防线：入口必须是「esbuild 单文件 bundle」，不能是旧的 ESM bootstrap。
   //
   //    历史坑：1.0.0~1.0.3 用 .pkg-bootstrap.cjs，内容是
   //      import(pathToFileURL('<构建机绝对路径>'))
   //    import() 走 Node 原生 ESM 解析，不经过 pkg 的路径重定向，
   //    所以 exe 会去真实文件系统找源码，换机器/改目录名即崩（用户已实测复现）。
   //
-  //    注意不要用"exe 内是否含构建目录绝对路径"来判断：
-  //    pkg 会把它记录的目录结构（含构建时的父目录名）写进快照，
-  //    这是正常行为，在 CI 上必然出现，纯属误报（踩过一次）。
-  //    可靠判据只有一个：入口里是否存在 import(pathToFileURL( 这种字面量 ESM 加载。
+  //    ⚠️ 这里【不用文本搜索】判断：CHANGELOG/README 里描述这个 bug 时
+  //    会写出同样的代码片段，被 core 读进 manifest 一起打进 exe，纯属误报
+  //    （CI 上连踩两次）。改用结构性判据：pkg 快照里记录的入口文件名。
+  //    运行时"是否依赖外部文件"由 test/desktop-no-repo-dep.ps1 实际启动验证。
   {
     const ascii = data.toString('latin1');
-    const needle = 'import(pathToFileURL(';
-    if (ascii.includes(needle)) {
-      // 打印命中上下文，便于定位来源（CI 与本地行为不同，必须留证据）
-      const idx = ascii.indexOf(needle);
-      const ctx = ascii.substring(Math.max(0, idx - 300), idx + 300)
-        .replace(/[^\x20-\x7E]/g, '.');
-      errors.push(
-        `exe 入口仍是旧的 ESM bootstrap（${needle}），换机器会启动即崩\n` +
-        `     命中位置: ${idx}\n     上下文: ${ctx}`
-      );
+    // pkg 快照的文件清单是 JSON：["入口文件名", ...]
+    // 旧方案的入口名是 .pkg-bootstrap.cjs；新方案是 .desktop.bundle.cjs。
+    const hasOldBootstrapEntry = ascii.includes('".pkg-bootstrap.cjs"');
+    const hasNewBundleEntry = ascii.includes('".desktop.bundle.cjs"');
+    if (hasOldBootstrapEntry) {
+      errors.push('exe 快照入口仍是 .pkg-bootstrap.cjs（旧 ESM bootstrap 方案），换机器会启动即崩');
+    }
+    if (!hasNewBundleEntry) {
+      errors.push('exe 快照入口不是 .desktop.bundle.cjs（esbuild 单文件 bundle），请检查 Step 3');
     }
   }
 
