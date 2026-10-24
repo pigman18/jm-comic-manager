@@ -132,8 +132,14 @@ public class W {
             Write-Output '   !! 15 秒内没退出'
         } else {
             Start-Sleep -Seconds 2
+            # 只统计「真正被进程占用」的连接。
+            # 进程退出后 TCP 会留下 TimeWait 状态的条目（OwningProcess=0），
+            # 那是内核回收期，不代表端口泄漏，不能算作占用。
             $portUsed = $false
-            try { $portUsed = [bool](Get-NetTCPConnection -LocalPort 47310 -ErrorAction SilentlyContinue) } catch {}
+            try {
+                $conns = Get-NetTCPConnection -LocalPort 47310 -ErrorAction SilentlyContinue
+                $portUsed = [bool]($conns | Where-Object { $_.State -ne 'TimeWait' -and $_.OwningProcess -gt 0 })
+            } catch {}
             Write-Output "   端口 47310 已释放=$(-not $portUsed)  (期望 True)"
             $left = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like '*JM*' }
             Write-Output "   残留同名进程数=$(@($left).Count)  (期望 0)"
