@@ -469,21 +469,21 @@ console.log('\n🔍 Step 7: Verifying artifacts...');
     }
   }
 
-  // 5) 回归防线：exe 内不得残留「构建机绝对路径」。
-  //    1.0.2 / 1.0.3 初版都因为 bootstrap 写死构建机路径，
-  //    在本机能跑、换台机器就 ERR_MODULE_NOT_FOUND 启动即崩。
-  //    exe 里一旦出现构建目录特征串，说明又有绝对路径被固化进快照。
+  // 5) 回归防线：确认入口不是「ESM import() 加载绝对路径」的旧方案。
+  //
+  //    历史坑：1.0.0~1.0.3 用 .pkg-bootstrap.cjs，内容是
+  //      import(pathToFileURL('<构建机绝对路径>'))
+  //    import() 走 Node 原生 ESM 解析，不经过 pkg 的路径重定向，
+  //    所以 exe 会去真实文件系统找源码，换机器/改目录名即崩（用户已实测复现）。
+  //
+  //    注意不要用"exe 内是否含构建目录绝对路径"来判断：
+  //    pkg 会把它记录的目录结构（含构建时的父目录名）写进快照，
+  //    这是正常行为，在 CI 上必然出现，纯属误报（踩过一次）。
+  //    可靠判据只有一个：入口里是否存在 import(pathToFileURL( 这种字面量 ESM 加载。
   {
     const ascii = data.toString('latin1');
-    const buildMarkers = [
-      ROOT.replace(/\\/g, '/'),                      // C:/code/.../packages/desktop
-      ROOT,                                          // C:\code\...\packages\desktop
-      'pkg-bootstrap.cjs',                           // 旧的 CJS bootstrap 方案残留
-    ];
-    for (const m of buildMarkers) {
-      if (m && ascii.includes(m)) {
-        errors.push(`exe 内残留构建机路径特征 "${m}"（会在其他机器上启动即崩）`);
-      }
+    if (ascii.includes('import(pathToFileURL(')) {
+      errors.push('exe 入口仍是旧的 ESM bootstrap（import(pathToFileURL(...))），换机器会启动即崩');
     }
   }
 
