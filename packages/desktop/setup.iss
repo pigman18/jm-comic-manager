@@ -39,6 +39,9 @@ Source: "{#BuildDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\runtime\*"; DestDir: "{app}\runtime"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#BuildDir}\native\*"; DestDir: "{app}\native"; Flags: ignoreversion recursesubdirs createallsubdirs
+; ewvjs 注入页面的 API 脚本：exe 被打成单文件 bundle 后，ewvjs 按 exe 同目录的
+; js\api.js 读取。漏了它会导致安装版启动即崩（打包版能跑、装完不能跑）。
+Source: "{#BuildDir}\js\*"; DestDir: "{app}\js"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; ========= 快捷方式（关键：绑定 AppId）=========
 [Icons]

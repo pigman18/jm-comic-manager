@@ -456,6 +456,19 @@ console.log('\n🔍 Step 7: Verifying artifacts...');
   }
   if (!fs.existsSync(archivePath)) errors.push('缺少 zip 产物');
 
+  // 4.1) 安装包清单必须覆盖 dist 下的关键目录。
+  //      回归：曾漏掉 js\*，导致「打包版能跑、安装版启动即崩」。
+  {
+    const issPath = path.join(ROOT, 'setup.iss');
+    const iss = fs.readFileSync(issPath, 'utf8');
+    for (const dir of ['runtime', 'native', 'js']) {
+      if (!new RegExp(`\\{\\{#BuildDir\\}\\\\\\\\${dir}\\\\\\\\`, 'i').test(iss) &&
+          !iss.includes(`{#BuildDir}\\${dir}\\`)) {
+        errors.push(`setup.iss 的 [Files] 未包含 ${dir}\\*（安装版会缺文件）`);
+      }
+    }
+  }
+
   // 5) 回归防线：exe 内不得残留「构建机绝对路径」。
   //    1.0.2 / 1.0.3 初版都因为 bootstrap 写死构建机路径，
   //    在本机能跑、换台机器就 ERR_MODULE_NOT_FOUND 启动即崩。
